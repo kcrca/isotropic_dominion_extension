@@ -12,6 +12,10 @@ var player_count = 0;
 // psuedo-player for Trash card counts
 var trashPlayer = newTrashPlayer();
 
+// table for active player's data
+var activePlayerDataTable;
+var activeData;
+
 // Places to print number of cards and points.
 var deck_spot;
 var points_spot;
@@ -65,6 +69,21 @@ for (var i = 0; i < card_list.length; ++i) {
     plural_map[card['Plural']] = card['Singular'];
   }
 }
+
+// Keep a map from card name (singular or plural) to card description
+var card_map = {};
+for (i = 0; i < card_list.length; i++) {
+  card = card_list[i];
+  card_map[card.Singular] = card;
+  card_map[card.Plural] = card;
+  card.getActionCount = function() { return parseInt(this.Actions); };
+  card.getBuyCount = function() { return parseInt(this.Buys); };
+  card.getCoinCount = function() { return (this.Coins == "?" || this.Coins == "P" ? 0 : parseInt(this.Coins)); };
+  card.getPotionCount = function() { return (this.Coins == "P" ? 1 : 0); };
+  card.isAction = function() { return this.Action != "0"; }
+}
+
+var gameHasPotions = false;
 
 function debugString(thing) {
   return JSON.stringify(thing);
@@ -331,6 +350,67 @@ function Player(name, num) {
   }
 }
 
+function ActiveData() {
+  this.reset = function() {
+    this.actions = 1;
+    this.buys = 1;
+    this.coins = 0;
+    this.potions = 0;
+    this.played = 0;
+  };
+  
+  this.prefixes = {coins: '$', potions: '◉'};
+  
+  this.changeField = function(key, delta) {
+    if (delta == 0) return;
+    this[key] += delta;
+    this.displayField(key);
+  }
+  
+  this.displayField = function(key) {
+    if (key == 'potions' && !gameHasPotions) return;
+    var prefix = this.prefixes[key];
+    prefix = prefix || '';
+    $('#active_' + key).text(prefix + this[key]);
+  }
+
+  this.display = function() {
+    this.displayField('actions');
+    this.displayField('buys');
+    this.displayField('coins');
+    this.displayField('potions');
+    this.displayField('played');
+  };
+
+  this.playsCard = function(countIndicator, cardName, userAction) {
+    var count = NaN;
+    try {
+      count = parseInt(countIndicator);
+    } catch (err) {
+      // a, an, the
+      count = 1;
+    }
+    if (isNaN(count))
+      count = 1;
+
+    var card = card_map[cardName];
+    if (card == null) {
+      alert("Unknown card in playsCard(): " + cardName);
+      return;
+    }
+
+    this.changeField('played', count); // this comes first because the value of some cards depends on it
+    this.changeField('actions', count * card.getActionCount());
+    if (userAction && card.isAction()) // consume the action
+      this.changeField('actions', -count);
+    this.changeField('buys', count * card.getBuyCount());
+    this.changeField('coins', count * card.getCoinCount());
+    this.changeField('potions', count * card.getPotionCount());
+  };
+
+  this.reset();
+}
+
 function newTrashPlayer() {
   var t = new Player('Trash', i);
   t.card_counts = {};
@@ -375,6 +455,44 @@ function findTrailingPlayer(text) {
   return null;
 }
 
+function placeActivePlayerData() {
+  if (last_player == null)
+    return;
+  
+  var playerID = last_player.idFor("active");
+  var cell = document.getElementById(playerID);
+  if (cell == undefined)
+    return;
+
+  if (activePlayerDataTable == undefined) {
+    activePlayerDataTable = document.createElement("table");
+    addRow(activePlayerDataTable, undefined,
+        '<td class="playerDataKey">Actions:</td>' + '<td id="active_actions" class="playerDataValue"></td>');
+    addRow(activePlayerDataTable, undefined,
+        '<td class="playerDataKey">Buys:</td>' + '<td id="active_buys" class="playerDataValue"></td>');
+    addRow(activePlayerDataTable, undefined,
+        '<td class="playerDataKey">Coins:</td>' + '<td id="active_coins" class="playerDataValue"></td>');
+    $('#supply .supplycard[cardname="Potion"]').each(function() {gameHasPotions = true});
+    if (gameHasPotions) {
+      addRow(activePlayerDataTable, undefined,
+          '<td class="playerDataKey">Potions:</td>' + '<td id="active_potions" class="playerDataValue"></td>');
+    }
+    addRow(activePlayerDataTable, undefined,
+        '<td class="playerDataKey">Played:</td>' + '<td id="active_played" class="playerDataValue"></td>');
+  }
+  activeData.display();
+
+  try {
+    rewritingTree++;
+    if (cell.firstElementChild != activePlayerDataTable) {
+      cell.setAttribute("currentAt", new Date() + "");
+      cell.appendChild(activePlayerDataTable);
+    }
+  } finally {
+    rewritingTree--;
+  }
+}
+
 function maybeHandleTurnChange(node) {
   var text = node.innerText;
   if (text.indexOf("—") != -1) {
@@ -395,6 +513,9 @@ function maybeHandleTurnChange(node) {
       console.log("Failed to get player from: " + node.innerText);
     }
 
+    activeData.reset();
+    placeActivePlayerData();
+    
     if (last_player.icon == undefined) {
       var imgs = node.getElementsByTagName("img");
       if (imgs.length > 0)
@@ -411,6 +532,29 @@ function maybeHandleTurnChange(node) {
     return true;
   }
   return false;
+}
+
+function adjustActive(key, spec) {
+  if (spec != null) 
+    activeData.changeField(key, parseInt(spec[1]));
+}
+
+function maybeHandleActiveCounts(elems, text) {
+  if (text.match(/ plays? /)) {
+    var parts = text.split(/,|,?\s+and\b/);
+    var elemNum = 0;
+    for (var i = 0; i < parts.length; i++) {
+      var match = /\b(an?|the|[0-9]+) (.*)/.exec(parts[i]);
+      if (match == null) continue;
+      var cardName = elems[elemNum++].innerText;
+      activeData.playsCard(match[1], cardName, !text.match(/^\.\.\. /));
+    }
+    return elemNum > 0;
+  }
+  adjustActive('actions', /\+([0-9]+) action/.exec(text));
+  adjustActive('buys', /\+([0-9]+) buy/.exec(text));
+  adjustActive('coins', /\+\$([0-9]+)/.exec(text));
+  return false; // the log message may say something else valuable
 }
 
 function handleScoping(text_arr, text) {
@@ -657,6 +801,8 @@ function handleLogEntry(node) {
   if (i == text.length) return;
   text = text.slice(i);
 
+  if (maybeHandleActiveCounts(elems, node.innerText)) return;
+
   if (maybeHandleMint(elems, node.innerText)) return;
   if (maybeHandleTradingPost(elems, node.innerText)) return;
   if (maybeHandleExplorer(elems, node.innerText)) return;
@@ -701,6 +847,7 @@ function handleLogEntry(node) {
   if (action.indexOf("buy") == 0) {
     var count = getCardCount(card_text, node.innerText);
     player.gainCard(card, count);
+    activeData.changeField('buy', -count);
   } else if (action.indexOf("pass") == 0) {
     possessed_turn_backup = possessed_turn;
     possessed_turn = false;
@@ -824,6 +971,8 @@ function updateScores() {
       playerCell.setAttribute("rowSpan", numRows);
     }
     
+    placeActivePlayerData();
+
     setupPerPlayerCardCounts('kingdom');
     setupPerPlayerCardCounts('basic');
   } catch (e) {
@@ -865,6 +1014,8 @@ function initialize(doc) {
   player_re = "";
   player_count = 0;
 
+  activeData = new ActiveData();
+
   // Figure out what turn we are. We'll use that to figure out how long to wait
   // before announcing the extension.
   var self_index = -1;
@@ -901,11 +1052,6 @@ function initialize(doc) {
     }
   }
   player_re = '(' + other_player_names.join('|') + ')';
-
-  if (localStorage["always_display"] != "f") {
-    updateScores();
-    updateDeck();
-  }
 
   var wait_time = 200 * Math.floor(Math.random() * 10 + 5);
   if (self_index != -1) {
