@@ -9,9 +9,13 @@ var player_re = "";
 // Count of the number of players in the game.
 var player_count = 0;
 
+// psuedo-player for Trash card counts
+var trashPlayer = newTrashPlayer();
+
 // Places to print number of cards and points.
 var deck_spot;
 var points_spot;
+var player_spot;
 
 var started = false;
 var introduced = false;
@@ -131,14 +135,42 @@ function pointsForCard(card_name) {
   return 0;
 }
 
-function Player(name) {
+function Player(name, num) {
   this.name = name;
   this.score = 3;
   this.deck_size = 10;
+  this.icon = undefined;
+
+  var isTrash = name == "Trash";
+
+  this.num = num;
+  if (isTrash) {
+    this.idPrefix = "trash";
+  } else {
+    this.idPrefix = "player" + num;
+  }
+  if (name == "You") {
+    this.classFor = "you";
+  } else if (isTrash) {
+    this.classFor = "trash";
+  } else {
+    this.classFor = "player" + (num % 2 == 0 ? "Even" : "Odd");
+  }
 
   // Map from special counts (such as number of gardens) to count.
+  if (isTrash) {
+    this.special_counts = {};
+    this.card_counts = {};
+  } else {
     this.special_counts = { "Treasure" : 7, "Victory" : 3, "Uniques" : 2 };
     this.card_counts = { "Copper" : 7, "Estate" : 3 };
+  }
+
+  this.setIcon = function(imgNode) {
+    this.icon = imgNode.cloneNode(true);
+    this.icon.removeAttribute("class");
+    this.icon.setAttribute("align", "top");
+  }
 
   this.getScore = function() {
     var score_str = this.score;
@@ -234,7 +266,13 @@ function Player(name) {
       delete this.card_counts[name];
       this.special_counts["Uniques"] -= 1;
     }
+
+    var cardId = this.idFor(name);
+    var cardCountCell = document.getElementById(cardId);
+    if (cardCountCell) {
+      cardCountCell.innerText = displayCardCount(this.card_counts[name]);
     }
+  }
 
   this.recordSpecialCards = function(card, count) {
     var name = card.innerHTML;
@@ -287,7 +325,20 @@ function Player(name) {
     this.recordSpecialCards(card, count);
     this.recordCards(singular_card_name, count);
   }
+
+  this.idFor = function(cardName) {
+    return this.idPrefix + "_" + toIdString(cardName);
   }
+}
+
+function newTrashPlayer() {
+  var t = new Player('Trash', i);
+  t.card_counts = {};
+  t.classFor = "trash";
+  t.deck_size = 0;
+  t.score = 0;
+  return t;
+}
 
 function stateStrings() {
   var state = '';
@@ -344,6 +395,12 @@ function maybeHandleTurnChange(node) {
       console.log("Failed to get player from: " + node.innerText);
     }
 
+    if (last_player.icon == undefined) {
+      var imgs = node.getElementsByTagName("img");
+      if (imgs.length > 0)
+        last_player.setIcon(imgs[0]);
+    }
+    
     possessed_turn = text.match(/\(possessed by .+\)/);
 
     if (debug_mode) {
@@ -532,7 +589,11 @@ function handleGainOrTrash(player, elems, text, multiplier) {
     if (elems[elem].innerText != undefined) {
       var card = elems[elem].innerText;
       var count = getCardCount(card, text);
-      player.gainCard(elems[elem], multiplier * count);
+      var num = multiplier * count;
+      player.gainCard(elems[elem], num);
+      if (num < 0) {
+        trashPlayer.gainCard(elems[elem], -num);
+      }
     }
   }
 }
@@ -680,10 +741,98 @@ function getScores() {
   return scores;
 }
 
-function updateScores() {
-  if (points_spot == undefined) return;
-  points_spot.innerHTML = getScores();
+function addRow(tab, playerClass, innerHTML) {
+  var r = document.createElement("tr");
+  r.setAttribute("class", playerClass);
+  tab.appendChild(r);
+  r.innerHTML = innerHTML;
+  return r;
+}
+
+function setupCardCountsForPlayer($this, player, cardName) {
+  var cellId = player.idFor(cardName);
+  if (!document.getElementById(cellId)) {
+    var cell = $('<td id="' + cellId + '">' + displayCardCount(player.card_counts[cardName]) + '</td>')
+        .addClass("playerCardCountCol").addClass(player.classFor);
+    $this.append(cell);
+  }
+}
+
+function setupPerPlayerCardCounts(region) {
+  var classSelector = '.' + region + '-column';
+  $(classSelector + ' .hr:empty').append('<td colspan=0></td>');
+  $(classSelector + ' .supplycard').each(function() {
+    var $this = $(this);
+
+    var cardName = $this.attr('cardname');
+    for (var playerName in players) {
+      setupCardCountsForPlayer($this, players[playerName], cardName);
     }
+    setupCardCountsForPlayer($this, trashPlayer, cardName);
+  });
+}
+
+function displayCardCount(count) {
+  return (count == 0 || count == undefined ? '-' : count);
+}
+
+function toIdString(name) {
+  return name.replace(/[^a-zA-Z]/gi, "").toLowerCase();
+}
+
+function updateScores() {
+  if (player_spot == undefined) return;
+
+  if (rewritingTree > 0) return;
+
+  try {
+    rewritingTree++;
+
+    var tab = player_spot.firstElementChild;
+    var area = null;
+    area = tab.firstElementChild.firstElementChild.firstElementChild;
+    if (area != null && area.id != "playerData") {
+      var nrow = tab.insertRow(0);
+      area = nrow.insertCell();
+      nrow.setAttribute("align", "right");
+      area.id = "playerData";
+      area.setAttribute("colspan", "2");
+    }
+
+    while (area.firstChild != undefined) {
+      area.removeChild(area.firstChild);
+    }
+    var ptab = document.createElement("table");
+    ptab.setAttribute("align", "right");
+    area.appendChild(ptab);
+    for (var playerName in players) {
+      var countBefore = ptab.childNodes.length;
+      var player = players[playerName];
+      var row1 = addRow(ptab, player.classFor,
+          '<td id="' + player.idFor("active") + '" class="activePlayerData" rowspan="0"></td>' +
+              '<td class="playerDataName" rowspan="0">' + playerName + '</td>' +
+              '<td class="playerDataKey"> Score:</td>' + '<td class="playerDataValue">' + player.getScore() + '</td>');
+      var activeCell = row1.firstElementChild;
+      var playerCell = activeCell.nextElementSibling;
+      if (player.icon != undefined) {
+        playerCell.insertBefore(player.icon.cloneNode(true), playerCell.firstChild);
+      }
+      addRow(ptab, player.classFor,
+          '<td class="playerDataKey">Deck:</td>' + '<td class="playerDataValue">' + player.getDeckString() + '</td>');
+      var numRows = ptab.childNodes.length - countBefore;
+      activeCell.setAttribute("rowSpan", numRows);
+      playerCell.setAttribute("rowSpan", numRows);
+    }
+    
+    setupPerPlayerCardCounts('kingdom');
+    setupPerPlayerCardCounts('basic');
+  } catch (e) {
+    console.log(e);
+    // This can happen if the tree isn't fully formed yet, so wait until later
+  } finally {
+    rewritingTree--;
+  }
+}
 
 function getDecks() {
   var decks = "Cards: ";
@@ -694,8 +843,8 @@ function getDecks() {
 }
 
 function updateDeck() {
-  if (deck_spot == undefined) return;
-  deck_spot.innerHTML = getDecks();
+//  if (deck_spot == undefined) return;
+//  deck_spot.innerHTML = getDecks();
 }
 
 function initialize(doc) {
@@ -715,11 +864,6 @@ function initialize(doc) {
   player_rewrites = new Object();
   player_re = "";
   player_count = 0;
-
-  if (localStorage["always_display"] != "f") {
-    updateScores();
-    updateDeck();
-  }
 
   // Figure out what turn we are. We'll use that to figure out how long to wait
   // before announcing the extension.
@@ -750,13 +894,18 @@ function initialize(doc) {
       arr[i] = rewritten;
     }
     // Initialize the player.
-    players[arr[i]] = new Player(arr[i]);
+    players[arr[i]] = new Player(arr[i], playerNum++);
 
     if (arr[i] != "You") {
       other_player_names.push(RegExp.quote(arr[i]));
     }
   }
   player_re = '(' + other_player_names.join('|') + ')';
+
+  if (localStorage["always_display"] != "f") {
+    updateScores();
+    updateDeck();
+  }
 
   var wait_time = 200 * Math.floor(Math.random() * 10 + 5);
   if (self_index != -1) {
@@ -1024,7 +1173,6 @@ function restoreHistory(node) {
 
 function inLobby() {
   // In the lobby there is no real supply region -- it's empty
-  var player_spot = document.getElementById("supply");
   return (player_spot == undefined || player_spot.childElementCount == 0);
 }
 
@@ -1048,6 +1196,10 @@ function handle(doc) {
           window.localStorage.setItem("next_log_line_num", next_log_line_num);
         }
       }
+    }
+
+    if (doc.id == "supply") {
+      player_spot = doc;
     }
 
     if (doc.parentNode.id == "supply") {

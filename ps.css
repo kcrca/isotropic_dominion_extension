@@ -1,0 +1,108 @@
+.playerEven, .playerEven * {
+    background: #e7fefe;
+}
+
+.playerOdd, .playerOdd * {
+    background: #feefd3;
+}
+
+.you, .you * {
+	background-color: #dbf8db;
+}
+.trash, .trash * {
+    background: #f2f2f2;
+}
+
+#playerData, #playerData * {
+    vertical-align: top;
+    text-align: right;
+}
+
+#playerData table {
+    position: relative !important;
+}
+
+#playerData td {
+    margin: 0;
+    padding: 0 0.5em;
+}
+
+.playerCardCountCol {
+    padding: 0 0.25em;
+    width: 1.5em;
+}
+
+#playerData img {
+    padding-right: 1ex;
+    vertical-align: top;
+    float: left;
+}
+
+.playerDataName {
+    font-weight: bold;
+}
+
+.playerDataKey {
+    font-style: italic;
+}
+
+.kingdom-column > *, .basic-column > * {
+    display: table-row;
+}
+
+.kingdom-column > * > *, .basic-column > * > * {
+    display: table-cell;
+}
+
+/* Cause the prices + count display for basic cards to be vertical just like for kingdom cards */
+.imbasic > .imprice {
+    display: inline-block;
+}
+
+html {
+    height: 100%;
+}
+
+#body {
+    display: table;
+    height: 100%;
+    margin: 0 !important;
+}
+
+#game {
+    display: table-row !important;
+    width: 100%;
+    height: 100%;
+}
+
+#supply {
+    position: static !important;
+    display: table-cell !important;
+    width: auto !important;
+    left: inherit !important;
+    bottom: inherit !important;
+    vertical-align: bottom;
+}
+
+#supply > table {
+    bottom: inherit !important;
+    position: static !important;
+}
+
+#right {
+    padding-left: 1em;
+    margin-left: auto !important;
+    vertical-align: bottom;
+    width: 100%;
+    display: table-cell;
+}
+
+#log {
+    height: auto !important;
+    overflow-y: auto;
+}
+
+#log > .logline > div[style] {
+    height: 0 !important;
+}
+
