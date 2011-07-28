@@ -9,6 +9,9 @@ var player_re = "";
 // Count of the number of players in the game.
 var player_count = 0;
 
+// The node that can tell us which mode (text vs. image) we are in
+var mode_node;
+
 // psuedo-player for Trash card counts
 var trashPlayer = newTrashPlayer();
 
@@ -365,7 +368,6 @@ function ActiveData() {
   this.prefixes = {coins: '$', potions: '◉'};
   
   this.changeField = function(key, delta) {
-    if (delta == 0) return;
     this[key] += delta;
     this.displayField(key);
   }
@@ -467,26 +469,29 @@ function placeActivePlayerData() {
   if (cell == undefined)
     return;
 
-  if (activePlayerDataTable == undefined) {
-    activePlayerDataTable = document.createElement("table");
-    addRow(activePlayerDataTable, undefined,
-        '<td class="playerDataKey">Actions:</td>' + '<td id="active_actions" class="playerDataValue"></td>');
-    addRow(activePlayerDataTable, undefined,
-        '<td class="playerDataKey">Buys:</td>' + '<td id="active_buys" class="playerDataValue"></td>');
-    addRow(activePlayerDataTable, undefined,
-        '<td class="playerDataKey">Coins:</td>' + '<td id="active_coins" class="playerDataValue"></td>');
-    $('#supply .supplycard[cardname="Potion"]').each(function() {gameHasPotions = true});
-    if (gameHasPotions) {
-      addRow(activePlayerDataTable, undefined,
-          '<td class="playerDataKey">Potions:</td>' + '<td id="active_potions" class="playerDataValue"></td>');
-    }
-    addRow(activePlayerDataTable, undefined,
-        '<td class="playerDataKey">Played:</td>' + '<td id="active_played" class="playerDataValue"></td>');
-  }
-  activeData.display();
-
   try {
     rewritingTree++;
+
+    if (activePlayerDataTable == undefined) {
+      activePlayerDataTable = document.createElement("table");
+      addRow(activePlayerDataTable, undefined,
+          '<td class="playerDataKey">Actions:</td>' + '<td id="active_actions" class="playerDataValue"></td>');
+      addRow(activePlayerDataTable, undefined,
+          '<td class="playerDataKey">Buys:</td>' + '<td id="active_buys" class="playerDataValue"></td>');
+      addRow(activePlayerDataTable, undefined,
+          '<td class="playerDataKey">Coins:</td>' + '<td id="active_coins" class="playerDataValue"></td>');
+      $('#supply .supplycard[cardname="Potion"]').each(function() {
+        gameHasPotions = true
+      });
+      if (gameHasPotions) {
+        addRow(activePlayerDataTable, undefined,
+            '<td class="playerDataKey">Potions:</td>' + '<td id="active_potions" class="playerDataValue"></td>');
+      }
+      addRow(activePlayerDataTable, undefined,
+          '<td class="playerDataKey">Played:</td>' + '<td id="active_played" class="playerDataValue"></td>');
+    }
+    activeData.display();
+
     if (cell.firstElementChild != activePlayerDataTable) {
       cell.setAttribute("currentAt", new Date() + "");
       cell.appendChild(activePlayerDataTable);
@@ -954,26 +959,22 @@ function toIdString(name) {
 
 function updateScores() {
   if (player_spot == undefined) return;
+  placeActivePlayerData();
+}
 
-  if (rewritingTree > 0) return;
-
+function setupPlayerArea() {
   try {
+    alert("OK");
+    
     rewritingTree++;
 
     var tab = player_spot.firstElementChild;
-    var area = null;
-    area = tab.firstElementChild.firstElementChild.firstElementChild;
-    if (area != null && area.id != "playerData") {
-      var nrow = tab.insertRow(0);
-      area = nrow.insertCell();
-      nrow.setAttribute("align", "right");
-      area.id = "playerData";
-      area.setAttribute("colspan", "2");
-    }
+    var nrow = tab.insertRow(0);
+    var area = nrow.insertCell();
+    nrow.setAttribute("align", "right");
+    area.id = "playerData";    
+    area.setAttribute("colspan", "2");
 
-    while (area.firstChild != undefined) {
-      area.removeChild(area.firstChild);
-    }
     var ptab = document.createElement("table");
     ptab.setAttribute("align", "right");
     area.appendChild(ptab);
@@ -996,13 +997,8 @@ function updateScores() {
       playerCell.setAttribute("rowSpan", numRows);
     }
     
-    placeActivePlayerData();
-
     setupPerPlayerCardCounts('kingdom');
     setupPerPlayerCardCounts('basic');
-  } catch (e) {
-    console.log(e);
-    // This can happen if the tree isn't fully formed yet, so wait until later
   } finally {
     rewritingTree--;
   }
@@ -1077,6 +1073,8 @@ function initialize(doc) {
     }
   }
   player_re = '(' + other_player_names.join('|') + ')';
+
+  setupPlayerArea();
 
   var wait_time = 200 * Math.floor(Math.random() * 10 + 5);
   if (self_index != -1) {
@@ -1360,6 +1358,13 @@ function handle(doc) {
         doc.innerText.indexOf("Say") == 0) {
       deck_spot = doc.children[5];
       points_spot = doc.children[6];
+    }
+    
+    if (doc.constructor == HTMLAnchorElement) {
+      var href = doc.getAttribute("href");
+      if (href && href.indexOf("/mode/") >= 0) {
+        mode_node = doc;
+      }
     }
 
     if (!started) {
