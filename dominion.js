@@ -964,8 +964,6 @@ function updateScores() {
 
 function setupPlayerArea() {
   try {
-    alert("OK");
-    
     rewritingTree++;
 
     var tab = player_spot.firstElementChild;
