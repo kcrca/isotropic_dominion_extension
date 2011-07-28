@@ -22,6 +22,7 @@ var points_spot;
 var player_spot;
 
 var started = false;
+var solitaire = null;
 var introduced = false;
 var i_introduced = false;
 var disabled = false;
@@ -38,6 +39,8 @@ var debug_mode = false;
 var last_player = null;
 var last_reveal_player = null;
 var last_reveal_card = null;
+
+var game_offer = null;
 
 var next_log_line_num = 1; // number for generating log line ID's
 
@@ -742,13 +745,35 @@ function handleGainOrTrash(player, elems, text, multiplier) {
   }
 }
 
+function isGameStart(nodeText) {
+  if (solitaire == null) {
+    if (game_offer != null) {
+      solitaire = game_offer.innerText.match(/this game solitaire\?/) != null;
+      window.localStorage.setItem("solitaire", solitaire);
+    } else {
+      solitaire = eval(window.localStorage.getItem("solitaire"));
+    }
+  }
+
+  if (solitaire == undefined)
+    return false;
+
+  if (solitaire) {
+    return nodeText.match(/ turn 1 —$/);
+  } else {
+    return nodeText.indexOf("Turn order") != 0;
+  }
+}
+
 function maybeHandleGameStart(node) {
   var nodeText = node.innerText;
-  if (nodeText == null || nodeText.indexOf("Turn order") != 0)
+  if (nodeText == null || !isGameStart(nodeText))
     return false;
   initialize(node);
   ensureLogNodeSetup(node);
-  return true;
+  
+  // If this is a solitaire game, the turn start is also the "turn change' entry, so keep on processing to handle that
+  return !solitaire;
 }
 
 function nextLogId() {
@@ -1024,7 +1049,7 @@ function initialize(doc) {
   // rewrite them and then all the text parsing works as normal.
   var p = "(?:([^,]+), )";    // an optional player
   var pl = "(?:([^,]+),? )";  // the last player (might not have a comma)
-  var re = new RegExp("Turn order is "+p+"?"+p+"?"+p+"?"+pl+"and then (.+).");
+  var re = (solitaire ? /.* (You)r turn 1 .*/i : new RegExp("Turn order is "+p+"?"+p+"?"+p+"?"+pl+"and then (.+)."));
   var arr = doc.innerText.match(re);
   if (arr == null) {
     handleError("Couldn't parse: " + doc.innerText);
@@ -1035,7 +1060,7 @@ function initialize(doc) {
     if (arr[i] == undefined) continue;
 
     player_count++;
-    if (arr[i] == "you") {
+    if (arr[i].match(/^you$/i)) {
       self_index = player_count;
       arr[i] = "You";
     }
@@ -1144,6 +1169,9 @@ function handleGameEnd(doc) {
       deck_spot.innerHTML = "exit";
       points_spot.innerHTML = "faq";
 
+      solitaire = undefined;
+      window.localStorage.clear();
+
       // Collect information about the game.
       var href = doc.childNodes[node].href;
       var game_id_str = href.substring(href.lastIndexOf("/") + 1);
@@ -1228,8 +1256,8 @@ function maybeStartOfGame(node) {
     return;
   }
 
-  // The first line of actual text is either "Turn order" or something in the middle of the game
-  if (nodeText.indexOf("Turn order") == 0) {
+  // The first line of actual text is either the game starting value or something in the middle of the game
+  if (isGameStart(nodeText)) {
     // The game is starting, so put in the initial blank entries and clear out any local storage
     console.log("--- starting game ---" + "\n");
     started = true;
@@ -1332,6 +1360,21 @@ function handle(doc) {
         doc.innerText.indexOf("Say") == 0) {
       deck_spot = doc.children[5];
       points_spot = doc.children[6];
+    }
+
+    if (!started) {
+      var choices = document.getElementById("choices");
+      if (choices != null && choices.hasChildNodes()) {
+        game_offer = undefined;
+        var spans = choices.getElementsByTagName("SPAN");
+        for (var i = 0; i < spans.length; i++) {
+          var txt = spans[i].innerText;
+          if (txt.indexOf("play this game ") == 0) {
+            game_offer = spans[i];
+            break;
+          }
+        }
+      }
     }
 
     if (doc.className && doc.className.indexOf("logline") >= 0) {
