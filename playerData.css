@@ -64,18 +64,28 @@ html {
 }
 
 #body {
-    display: table;
     height: 100%;
     margin: 0 !important;
 }
 
 #game {
-    display: table-row !important;
     width: 100%;
     height: 100%;
 }
 
-#supply {
+.imageMode .logline {
+    background: yellow;
+}
+
+#body.imageMode {
+    display: table;
+}
+
+.imageMode #game {
+    display: table-row !important;
+}
+
+.imageMode #supply {
     position: static !important;
     display: table-cell !important;
     width: auto !important;
@@ -84,7 +94,7 @@ html {
     vertical-align: bottom;
 }
 
-#supply > table {
+.imageMode #supply > table {
     bottom: inherit !important;
     position: static !important;
 }
@@ -100,9 +110,20 @@ html {
 #log {
     height: auto !important;
     overflow-y: auto;
+    margin-left: 2em;
 }
 
 #log > .logline > div[style] {
     height: 0 !important;
 }
+
+#playerDataArranger, #logContainer {
+    height: 100%;
+    width: 100%;
+}
+
+/*
+ * Styles that apply only to image mode -- where needed they require a parent node with the id "imageMode". Classes
+ and ID's that exist only in image mode don't need that qualification
+ */
 

@@ -9,8 +9,8 @@ var player_re = "";
 // Count of the number of players in the game.
 var player_count = 0;
 
-// The node that can tell us which mode (text vs. image) we are in
-var mode_node;
+// Are we in text mode (vs. image mode) in the UI?
+var text_mode;
 
 // psuedo-player for Trash card counts
 var trashPlayer = newTrashPlayer();
@@ -501,6 +501,15 @@ function placeActivePlayerData() {
   }
 }
 
+function removeActivePlayerData() {
+  if (!activePlayerDataTable)
+    return;
+  var parent = activePlayerDataTable.parentNode;
+  if (parent != null)
+    parent.removeChild(activePlayerDataTable);
+  activePlayerDataTable = undefined;
+}
+
 function maybeHandleTurnChange(node) {
   var text = node.innerText;
   if (text.indexOf("—") != -1) {
@@ -754,19 +763,16 @@ function isGameStart(nodeText) {
   if (solitaire == null) {
     if (game_offer != null) {
       solitaire = game_offer.innerText.match(/this game solitaire\?/) != null;
-      window.localStorage.setItem("solitaire", solitaire);
-    } else {
-      solitaire = eval(window.localStorage.getItem("solitaire"));
     }
+    if (solitaire == null)
+      return false;
   }
 
-  if (solitaire == undefined)
-    return false;
 
   if (solitaire) {
     return nodeText.match(/ turn 1 —$/);
   } else {
-    return nodeText.indexOf("Turn order") != 0;
+    return nodeText.indexOf("Turn order") >= 0;
   }
 }
 
@@ -920,7 +926,8 @@ function getScores() {
 
 function addRow(tab, playerClass, innerHTML) {
   var r = document.createElement("tr");
-  r.setAttribute("class", playerClass);
+  if (playerClass)
+    r.setAttribute("class", playerClass);
   tab.appendChild(r);
   r.innerHTML = innerHTML;
   return r;
@@ -958,24 +965,19 @@ function toIdString(name) {
 }
 
 function updateScores() {
-  if (player_spot == undefined) return;
-  placeActivePlayerData();
+//  if (player_spot == undefined) return;
+//  placeActivePlayerData();
 }
 
 function setupPlayerArea() {
   try {
     rewritingTree++;
 
-    var tab = player_spot.firstElementChild;
-    var nrow = tab.insertRow(0);
-    var area = nrow.insertCell();
-    nrow.setAttribute("align", "right");
-    area.id = "playerData";    
-    area.setAttribute("colspan", "2");
-
     var ptab = document.createElement("table");
-    ptab.setAttribute("align", "right");
-    area.appendChild(ptab);
+    ptab.id = "playerData";
+    if (!text_mode) {
+      ptab.setAttribute("align", "right");
+    }
     for (var playerName in players) {
       var countBefore = ptab.childNodes.length;
       var player = players[playerName];
@@ -994,12 +996,40 @@ function setupPlayerArea() {
       activeCell.setAttribute("rowSpan", numRows);
       playerCell.setAttribute("rowSpan", numRows);
     }
-    
+
     setupPerPlayerCardCounts('kingdom');
     setupPerPlayerCardCounts('basic');
+
+    if (text_mode) {
+      var outerTable = document.createElement("table");
+      outerTable.id = "playerDataArranger";
+      var row = addRow(outerTable, null, '<td id="playerDataContainer" valign="bottom"></td>' +
+          '<td id="logContainer" valign="bottom"></td>');
+      row.firstChild.appendChild(ptab);
+      row.lastChild.appendChild(document.getElementById("log"));;
+      var game = document.getElementById("game");
+      game.insertBefore(outerTable, game.firstElementChild);
+    } else {
+      var tab = player_spot.firstElementChild;
+      var nrow = tab.insertRow(0);
+      var area = nrow.insertCell();
+      nrow.setAttribute("align", "right");
+      area.id = "playerData";
+      area.setAttribute("colspan", "2");
+      area.appendChild(ptab);
+    }
   } finally {
     rewritingTree--;
   }
+}
+
+function removePlayerArea() {
+  var ptab = document.getElementById("playerData");
+  if (ptab != null && ptab.parentNode != null) {
+    removeActivePlayerData();
+    ptab.parentNode.removeChild(ptab);
+  }
+  activePlayerDataTable = null;
 }
 
 function getDecks() {
@@ -1165,8 +1195,13 @@ function handleGameEnd(doc) {
       deck_spot.innerHTML = "exit";
       points_spot.innerHTML = "faq";
 
-      solitaire = undefined;
-      window.localStorage.clear();
+      localStorage.removeItem("log");
+      localStorage.removeItem("offer");
+      solitaire = null;
+      game_offer = null;
+      text_mode = undefined;
+      removePlayerArea();
+      unsetGUIMode();
 
       // Collect information about the game.
       var href = doc.childNodes[node].href;
@@ -1258,7 +1293,7 @@ function maybeStartOfGame(node) {
     console.log("--- starting game ---" + "\n");
     started = true;
     next_log_line_num = 1;
-    window.localStorage.removeItem("log");
+    localStorage.removeItem("log");
     while (pending_logs.length > 0) {
       handleLogEntry(pending_logs.shift());
     }
@@ -1292,10 +1327,17 @@ function logEntryForGame(node) {
   return started;
 }
 
+function restoreOffer() {
+  var offer = document.createElement("span");
+  offer.innerHTML = localStorage["offer"];
+  return offer;
+}
+
 function restoreHistory(node) {
   // The first log line is no the first line of the game, so restore the log from history
   // Of course, there must be a log history to restore
-  var logHistory = window.localStorage.getItem("log");
+  var logHistory = localStorage["log"];
+  game_offer = restoreOffer();
   if (logHistory == undefined || logHistory.length == 0)
     return;
 
@@ -1346,6 +1388,93 @@ function inLobby() {
   return (player_spot == undefined || player_spot.childElementCount == 0);
 }
 
+function unsetGUIMode() {
+  document.firstChild.id = "";
+  $("#body").removeClass("textMode").removeClass("imageMode");
+}
+
+function setGUIMode(node) {
+  var href = node.getAttribute("href");
+  console.log("href = " + href + "\n");
+  // The link is to the "text" mode when it's in image mode and vice versa
+  text_mode = href.indexOf("text") < 0;
+  console.log("text_mode = " + text_mode + "\n");
+
+  // setting the html id lets us write css selectors that distinguish between the modes
+  $("#body").addClass(text_mode ? "textMode" : "imageMode")
+  
+  if (!text_mode) {
+//// TODO: Get this working: Image mode requires a bunch of extra css, it should be loaded as a css from the manifest
+//// (See insertCSS() code in background.js)
+////    chrome.extension.sendRequest({type: 'imageSetup'}, function (response) {
+////      console.log("response = " + response + "\n");
+////    });
+//// For now we're just putting it in a string.
+//    var head = document.getElementById("head");
+//    head.innerHTML += '<style type="text/css">' +
+//			'.kingdom-column > *, .basic-column > * {' +
+//			'    display: table-row;' +
+//			'}' +
+//			'' +
+//			'.kingdom-column > * > *, .basic-column > * > * {' +
+//			'    display: table-cell;' +
+//			'}' +
+//			'' +
+//			'/* Cause the prices + count display for basic cards to be vertical just like for kingdom cards */' +
+//			'.imbasic > .imprice {' +
+//			'    display: inline-block;' +
+//			'}' +
+//			'' +
+//			'html {' +
+//			'    height: 100%;' +
+//			'}' +
+//			'' +
+//			'#body {' +
+//			'    display: table;' +
+//			'    height: 100%;' +
+//			'    margin: 0 !important;' +
+//			'}' +
+//			'' +
+//			'#game {' +
+//			'    display: table-row !important;' +
+//			'    width: 100%;' +
+//			'    height: 100%;' +
+//			'}' +
+//			'' +
+//			'#supply {' +
+//			'    position: static !important;' +
+//			'    display: table-cell !important;' +
+//			'    width: auto !important;' +
+//			'    left: inherit !important;' +
+//			'    bottom: inherit !important;' +
+//			'    vertical-align: bottom;' +
+//			'}' +
+//			'' +
+//			'#supply > table {' +
+//			'    bottom: inherit !important;' +
+//			'    position: static !important;' +
+//			'}' +
+//			'' +
+//			'#right {' +
+//			'    padding-left: 1em;' +
+//			'    margin-left: auto !important;' +
+//			'    vertical-align: bottom;' +
+//			'    width: 100%;' +
+//			'    display: table-cell;' +
+//			'}' +
+//			'' +
+//			'#log {' +
+//			'    height: auto !important;' +
+//			'    overflow-y: auto;' +
+//			'}' +
+//			'' +
+//			'#log > .logline > div[style] {' +
+//			'    height: 0 !important;' +
+//			'}' +
+//		    '</style>';
+  }
+}
+
 function handle(doc) {
   if (rewritingTree > 0) {
     return;
@@ -1354,26 +1483,21 @@ function handle(doc) {
   try {
     if (doc.constructor == HTMLDivElement &&
         doc.innerText.indexOf("Say") == 0) {
-      deck_spot = doc.children[5];
-      points_spot = doc.children[6];
+      var links = doc.getElementsByTagName("a");
+      setGUIMode(links[0]);
+      deck_spot = links[1];
+      points_spot = links[2];
     }
     
-    if (doc.constructor == HTMLAnchorElement) {
-      var href = doc.getAttribute("href");
-      if (href && href.indexOf("/mode/") >= 0) {
-        mode_node = doc;
-      }
-    }
-
     if (!started) {
       var choices = document.getElementById("choices");
       if (choices != null && choices.hasChildNodes()) {
-        game_offer = undefined;
         var spans = choices.getElementsByTagName("SPAN");
         for (var i = 0; i < spans.length; i++) {
           var txt = spans[i].innerText;
           if (txt.indexOf("play this game ") == 0) {
             game_offer = spans[i];
+            localStorage["offer"] = game_offer.innerHTML; // preserve it -- this is critical when restoring the log
             break;
           }
         }
@@ -1384,8 +1508,7 @@ function handle(doc) {
       if (logEntryForGame(doc)) {
         handleLogEntry(doc);
         if (started) {
-          window.localStorage.setItem("log", doc.parentElement.innerHTML);
-          window.localStorage.setItem("next_log_line_num", next_log_line_num);
+          localStorage["log"] = doc.parentElement.innerHTML;
         }
       }
     }

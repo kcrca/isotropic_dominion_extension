@@ -2,7 +2,7 @@
    "content_scripts": [
      {
        "js": [ "jquery.js", "card_list.js", "dominion.js" ],
-       "css": [ "ps.css" ],
+       "css": [ "playerData.css" ],
        "matches": [ "http://dominion.isotropic.org/play" ]
      },
      {
