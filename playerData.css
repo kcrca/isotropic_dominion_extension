@@ -63,23 +63,21 @@ html {
     height: 100%;
 }
 
-#body {
+.playing #body {
     height: 100%;
     margin: 0 !important;
 }
 
-#game {
+.playing #game {
     width: 100%;
     height: 100%;
-}
-
-.imageMode .logline {
-    background: yellow;
 }
 
 #body.imageMode {
     display: table;
 }
+
+
 
 .imageMode #game {
     display: table-row !important;
@@ -99,7 +97,7 @@ html {
     position: static !important;
 }
 
-#right {
+.playing #right {
     padding-left: 1em;
     margin-left: auto !important;
     vertical-align: bottom;
@@ -107,13 +105,13 @@ html {
     display: table-cell;
 }
 
-#log {
+.playing #log {
     height: auto !important;
     overflow-y: auto;
     margin-left: 2em;
 }
 
-#log > .logline > div[style] {
+.playing #log > .logline > div[style] {
     height: 0 !important;
 }
 

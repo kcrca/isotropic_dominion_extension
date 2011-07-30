@@ -23,6 +23,7 @@ var activeData;
 var deck_spot;
 var points_spot;
 var player_spot;
+var gui_mode_spot;
 
 var started = false;
 var solitaire = null;
@@ -493,7 +494,6 @@ function placeActivePlayerData() {
     activeData.display();
 
     if (cell.firstElementChild != activePlayerDataTable) {
-      cell.setAttribute("currentAt", new Date() + "");
       cell.appendChild(activePlayerDataTable);
     }
   } finally {
@@ -965,34 +965,37 @@ function toIdString(name) {
 }
 
 function updateScores() {
-//  if (player_spot == undefined) return;
-//  placeActivePlayerData();
+  rewriteTree(function() {
+    $("#" + last_player.idFor("score")).text(last_player.getScore());
+  });
 }
 
 function setupPlayerArea() {
   try {
     rewritingTree++;
 
-    var ptab = document.createElement("table");
-    ptab.id = "playerData";
+    var dataTable = document.createElement("table");
+    dataTable.id = "playerData";
     if (!text_mode) {
-      ptab.setAttribute("align", "right");
+      dataTable.setAttribute("align", "right");
     }
     for (var playerName in players) {
-      var countBefore = ptab.childNodes.length;
+      var countBefore = dataTable.childNodes.length;
       var player = players[playerName];
-      var row1 = addRow(ptab, player.classFor,
+      var row1 = addRow(dataTable, player.classFor,
           '<td id="' + player.idFor("active") + '" class="activePlayerData" rowspan="0"></td>' +
               '<td class="playerDataName" rowspan="0">' + playerName + '</td>' +
-              '<td class="playerDataKey"> Score:</td>' + '<td class="playerDataValue">' + player.getScore() + '</td>');
+              '<td class="playerDataKey"> Score:</td>' + '<td id="' + player.idFor("score") +
+              '" class="playerDataValue">' + player.getScore() + '</td>');
       var activeCell = row1.firstElementChild;
       var playerCell = activeCell.nextElementSibling;
       if (player.icon != undefined) {
         playerCell.insertBefore(player.icon.cloneNode(true), playerCell.firstChild);
       }
-      addRow(ptab, player.classFor,
-          '<td class="playerDataKey">Deck:</td>' + '<td class="playerDataValue">' + player.getDeckString() + '</td>');
-      var numRows = ptab.childNodes.length - countBefore;
+      addRow(dataTable, player.classFor,
+          '<td class="playerDataKey">Deck:</td>' + '<td id="' + player.idFor("deck") + '" class="playerDataValue">' +
+              player.getDeckString() + '</td>');
+      var numRows = dataTable.childNodes.length - countBefore;
       activeCell.setAttribute("rowSpan", numRows);
       playerCell.setAttribute("rowSpan", numRows);
     }
@@ -1005,8 +1008,8 @@ function setupPlayerArea() {
       outerTable.id = "playerDataArranger";
       var row = addRow(outerTable, null, '<td id="playerDataContainer" valign="bottom"></td>' +
           '<td id="logContainer" valign="bottom"></td>');
-      row.firstChild.appendChild(ptab);
-      row.lastChild.appendChild(document.getElementById("log"));;
+      row.firstChild.appendChild(dataTable);
+      row.lastChild.appendChild(document.getElementById("log"));
       var game = document.getElementById("game");
       game.insertBefore(outerTable, game.firstElementChild);
     } else {
@@ -1016,7 +1019,7 @@ function setupPlayerArea() {
       nrow.setAttribute("align", "right");
       area.id = "playerData";
       area.setAttribute("colspan", "2");
-      area.appendChild(ptab);
+      area.appendChild(dataTable);
     }
   } finally {
     rewritingTree--;
@@ -1041,8 +1044,9 @@ function getDecks() {
 }
 
 function updateDeck() {
-//  if (deck_spot == undefined) return;
-//  deck_spot.innerHTML = getDecks();
+  rewriteTree(function() {
+    $("#" + last_player.idFor("deck")).text(last_player.getDeckString() + "");
+  });
 }
 
 function initialize(doc) {
@@ -1063,6 +1067,7 @@ function initialize(doc) {
   player_re = "";
   player_count = 0;
 
+  setGUIMode();
   activeData = new ActiveData();
 
   // Figure out what turn we are. We'll use that to figure out how long to wait
@@ -1390,88 +1395,24 @@ function inLobby() {
 
 function unsetGUIMode() {
   document.firstChild.id = "";
-  $("#body").removeClass("textMode").removeClass("imageMode");
+  $("#body").removeClass("textMode").removeClass("imageMode").removeClass("playing");
 }
 
-function setGUIMode(node) {
-  var href = node.getAttribute("href");
-  console.log("href = " + href + "\n");
+function setGUIMode() {
+  var href = gui_mode_spot.getAttribute("href");
   // The link is to the "text" mode when it's in image mode and vice versa
   text_mode = href.indexOf("text") < 0;
-  console.log("text_mode = " + text_mode + "\n");
 
   // setting the html id lets us write css selectors that distinguish between the modes
-  $("#body").addClass(text_mode ? "textMode" : "imageMode")
-  
-  if (!text_mode) {
-//// TODO: Get this working: Image mode requires a bunch of extra css, it should be loaded as a css from the manifest
-//// (See insertCSS() code in background.js)
-////    chrome.extension.sendRequest({type: 'imageSetup'}, function (response) {
-////      console.log("response = " + response + "\n");
-////    });
-//// For now we're just putting it in a string.
-//    var head = document.getElementById("head");
-//    head.innerHTML += '<style type="text/css">' +
-//			'.kingdom-column > *, .basic-column > * {' +
-//			'    display: table-row;' +
-//			'}' +
-//			'' +
-//			'.kingdom-column > * > *, .basic-column > * > * {' +
-//			'    display: table-cell;' +
-//			'}' +
-//			'' +
-//			'/* Cause the prices + count display for basic cards to be vertical just like for kingdom cards */' +
-//			'.imbasic > .imprice {' +
-//			'    display: inline-block;' +
-//			'}' +
-//			'' +
-//			'html {' +
-//			'    height: 100%;' +
-//			'}' +
-//			'' +
-//			'#body {' +
-//			'    display: table;' +
-//			'    height: 100%;' +
-//			'    margin: 0 !important;' +
-//			'}' +
-//			'' +
-//			'#game {' +
-//			'    display: table-row !important;' +
-//			'    width: 100%;' +
-//			'    height: 100%;' +
-//			'}' +
-//			'' +
-//			'#supply {' +
-//			'    position: static !important;' +
-//			'    display: table-cell !important;' +
-//			'    width: auto !important;' +
-//			'    left: inherit !important;' +
-//			'    bottom: inherit !important;' +
-//			'    vertical-align: bottom;' +
-//			'}' +
-//			'' +
-//			'#supply > table {' +
-//			'    bottom: inherit !important;' +
-//			'    position: static !important;' +
-//			'}' +
-//			'' +
-//			'#right {' +
-//			'    padding-left: 1em;' +
-//			'    margin-left: auto !important;' +
-//			'    vertical-align: bottom;' +
-//			'    width: 100%;' +
-//			'    display: table-cell;' +
-//			'}' +
-//			'' +
-//			'#log {' +
-//			'    height: auto !important;' +
-//			'    overflow-y: auto;' +
-//			'}' +
-//			'' +
-//			'#log > .logline > div[style] {' +
-//			'    height: 0 !important;' +
-//			'}' +
-//		    '</style>';
+  $("#body").addClass("playing").addClass(text_mode ? "textMode" : "imageMode");  
+}
+
+function rewriteTree(func) {
+  try {
+    rewritingTree++;
+    func();
+  } finally {
+    rewritingTree--;
   }
 }
 
@@ -1484,7 +1425,7 @@ function handle(doc) {
     if (doc.constructor == HTMLDivElement &&
         doc.innerText.indexOf("Say") == 0) {
       var links = doc.getElementsByTagName("a");
-      setGUIMode(links[0]);
+      gui_mode_spot = links[0];
       deck_spot = links[1];
       points_spot = links[2];
     }
