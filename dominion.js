@@ -352,8 +352,8 @@ function Player(name, num) {
     this.recordCards(singular_card_name, count);
   }
 
-  this.idFor = function(cardName) {
-    return this.idPrefix + "_" + toIdString(cardName);
+  this.idFor = function(fieldName) {
+    return this.idPrefix + "_" + toIdString(fieldName);
   }
 }
 
@@ -933,27 +933,57 @@ function addRow(tab, playerClass, innerHTML) {
   return r;
 }
 
-function setupCardCountsForPlayer($this, player, cardName) {
+function cardCountCellsForPlayer(player, cardName) {
   var cellId = player.idFor(cardName);
   if (!document.getElementById(cellId)) {
-    var cell = $('<td id="' + cellId + '">' + displayCardCount(player.card_counts[cardName]) + '</td>')
+    return $('<td id="' + cellId + '">' + displayCardCount(player.card_counts[cardName]) + '</td>')
         .addClass("playerCardCountCol").addClass(player.classFor);
-    $this.append(cell);
+  } else {
+    return null;
   }
 }
 
-function setupPerPlayerCardCounts(region) {
+function setupPerPlayerTextCardCounts() {
+  var toAdd = player_count + 1; // the extra is for the trash player
+  $("#supply > table > tbody > tr > td[colspan]").each(function() {
+    var $this = $(this);
+    var origSpanStr = $this.attr("colspan");
+    var origSpan = parseInt(origSpanStr);
+    $this.attr("colspan", (origSpan + toAdd) + "");
+  });
+  $(".txcardname").each(function() {
+    var $this = $(this);
+    var cardName = $this.children("[cardname]").first().attr('cardname');
+    var $insertAfter = $this.next();
+    allPlayers(function(player) {
+      var cell = cardCountCellsForPlayer(player, cardName);
+      if (cell != null) {
+        $insertAfter.after(cell);
+        $insertAfter = cell;
+      }
+    });
+  });
+}
+
+function setupPerPlayerImageCardCounts(region) {
   var classSelector = '.' + region + '-column';
-  $(classSelector + ' .hr:empty').append('<td colspan=0></td>');
+  $(classSelector + ' .hr:empty').append('<td colspan=0></td>'); // make "hr" rows span all columns
   $(classSelector + ' .supplycard').each(function() {
     var $this = $(this);
-
     var cardName = $this.attr('cardname');
-    for (var playerName in players) {
-      setupCardCountsForPlayer($this, players[playerName], cardName);
-    }
-    setupCardCountsForPlayer($this, trashPlayer, cardName);
+    allPlayers(function(player) {
+      var cell = cardCountCellsForPlayer(player, cardName);
+      if (cell != null)
+        $this.append(cell);
+    });
   });
+}
+
+function allPlayers(func) {
+  for (var playerName in players) {
+    func(players[playerName]);
+  }
+  func(trashPlayer);
 }
 
 function displayCardCount(count) {
@@ -965,6 +995,7 @@ function toIdString(name) {
 }
 
 function updateScores() {
+  if (last_player == null) return;
   rewriteTree(function() {
     $("#" + last_player.idFor("score")).text(last_player.getScore());
   });
@@ -1000,8 +1031,12 @@ function setupPlayerArea() {
       playerCell.setAttribute("rowSpan", numRows);
     }
 
-    setupPerPlayerCardCounts('kingdom');
-    setupPerPlayerCardCounts('basic');
+    if (text_mode) {
+      setupPerPlayerTextCardCounts();
+    } else {
+      setupPerPlayerImageCardCounts('kingdom');
+      setupPerPlayerImageCardCounts('basic');
+    }
 
     if (text_mode) {
       var outerTable = document.createElement("table");
@@ -1044,6 +1079,7 @@ function getDecks() {
 }
 
 function updateDeck() {
+  if (last_player == null) return;
   rewriteTree(function() {
     $("#" + last_player.idFor("deck")).text(last_player.getDeckString() + "");
   });

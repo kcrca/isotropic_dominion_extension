@@ -1,3 +1,7 @@
+/*
+ * Styles that apply to both text and image mode -- where needed they require a parent node with the id "playing".
+ */
+
 .playerEven, .playerEven * {
     background: #e7fefe;
 }
@@ -77,7 +81,10 @@ html {
     display: table;
 }
 
-
+/*
+ * Styles that apply only to image mode -- where needed they require a parent node with the id "imageMode".
+ * Classes and ID's that exist only in image mode don't need that qualification
+ */
 
 .imageMode #game {
     display: table-row !important;
@@ -115,13 +122,16 @@ html {
     height: 0 !important;
 }
 
+/*
+ * Styles that apply only to image mode -- where needed they require a parent node with the id "imageMode".
+ * Classes and ID's that exist only in image mode don't need that qualification
+ */
+
 #playerDataArranger, #logContainer {
     height: 100%;
     width: 100%;
 }
 
-/*
- * Styles that apply only to image mode -- where needed they require a parent node with the id "imageMode". Classes
- and ID's that exist only in image mode don't need that qualification
- */
-
+.avail {
+    text-align: right;
+}
