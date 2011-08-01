@@ -15,8 +15,7 @@ var text_mode;
 // psuedo-player for Trash card counts
 var trashPlayer = newTrashPlayer();
 
-// table for active player's data
-var activePlayerDataTable;
+// Object for active player's data.
 var activeData;
 
 // Places to print number of cards and points.
@@ -477,8 +476,10 @@ function placeActivePlayerData() {
   try {
     rewritingTree++;
 
+    var activePlayerDataTable = document.getElementById("activePlayerDataTable");
     if (activePlayerDataTable == undefined) {
       activePlayerDataTable = document.createElement("table");
+      activePlayerDataTable.id = "activePlayerDataTable";
       addRow(activePlayerDataTable, undefined,
           '<td class="playerDataKey">Actions:</td>' + '<td id="active_actions" class="playerDataValue"></td>');
       addRow(activePlayerDataTable, undefined,
@@ -506,12 +507,12 @@ function placeActivePlayerData() {
 }
 
 function removeActivePlayerData() {
-  if (!activePlayerDataTable)
-    return;
+  var activePlayerDataTable = document.getElementById("activePlayerDataTable");
+  if (!activePlayerDataTable) return;
+
   var parent = activePlayerDataTable.parentNode;
   if (parent != null)
     parent.removeChild(activePlayerDataTable);
-  activePlayerDataTable = undefined;
 }
 
 function maybeHandleTurnChange(node) {
@@ -535,6 +536,7 @@ function maybeHandleTurnChange(node) {
     }
 
     activeData.reset();
+    maybeSetupPlayerArea();
     placeActivePlayerData();
     
     if (last_player.icon == undefined) {
@@ -1000,12 +1002,15 @@ function toIdString(name) {
 
 function updateScores() {
   if (last_player == null) return;
+  maybeSetupPlayerArea();
   rewriteTree(function() {
     $("#" + last_player.idFor("score")).text(last_player.getScore());
   });
 }
 
-function setupPlayerArea() {
+function maybeSetupPlayerArea() {
+  if (document.getElementById("playerData")) return;
+  
   try {
     rewritingTree++;
 
@@ -1060,6 +1065,8 @@ function setupPlayerArea() {
       area.setAttribute("colspan", "2");
       area.appendChild(dataTable);
     }
+
+    placeActivePlayerData();
   } finally {
     rewritingTree--;
   }
@@ -1071,7 +1078,6 @@ function removePlayerArea() {
     removeActivePlayerData();
     ptab.parentNode.removeChild(ptab);
   }
-  activePlayerDataTable = null;
 }
 
 function getDecks() {
@@ -1155,8 +1161,6 @@ function initialize(doc) {
     }
   }
   player_re = '(' + other_player_names.join('|') + ')';
-
-  setupPlayerArea();
 
   // Assume it's already introduced if it's rewriting the tree for a reload.
   // Otherwise setup to maybe introduce the extension.
