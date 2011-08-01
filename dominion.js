@@ -967,7 +967,10 @@ function setupPerPlayerTextCardCounts() {
 
 function setupPerPlayerImageCardCounts(region) {
   var classSelector = '.' + region + '-column';
-  $(classSelector + ' .hr:empty').append('<td colspan=0></td>'); // make "hr" rows span all columns
+
+  // make "hr" rows span all columns
+  $(classSelector + ' .hr:empty').append('<td colspan="' + (1 + player_count + 1) + '"></td>');
+
   $(classSelector + ' .supplycard').each(function() {
     var $this = $(this);
     var cardName = $this.attr('cardname');
