@@ -1174,11 +1174,6 @@ function initialize(doc) {
     disabled = true;
   }
 
-  if (!disabled && localStorage["always_display"] != "f") {
-    updateScores();
-    updateDeck();
-  }
-
   // Figure out what turn we are. We'll use that to figure out how long to wait
   // before announcing the extension.
   var self_index = -1;
@@ -1215,6 +1210,11 @@ function initialize(doc) {
     }
   }
   player_re = '(' + other_player_names.join('|') + ')';
+
+  if (!disabled && localStorage["always_display"] != "f") {
+    updateScores();
+    updateDeck();
+  }
 
   // Assume it's already introduced if it's rewriting the tree for a reload.
   // Otherwise setup to maybe introduce the extension.
