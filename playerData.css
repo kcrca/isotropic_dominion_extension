@@ -85,6 +85,11 @@
     display: table-cell;
 }
 
+.resigned, .resigned * {
+    background: black !important;
+    color: white !important;
+}
+
 /* Cause the prices + count display for basic cards to be vertical just like for kingdom cards */
 .imbasic > .imprice {
     display: inline-block;

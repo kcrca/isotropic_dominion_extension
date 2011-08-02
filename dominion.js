@@ -189,20 +189,24 @@ function Player(name, num) {
 
   this.otherCards = {};
 
-  this.num = num;
-
   if (isTrash) {
     this.idPrefix = "trash";
   } else {
     this.idPrefix = "player" + num;
   }
+
+  this.idFor = function(fieldName) {
+    return this.idPrefix + "_" + toIdString(fieldName);
+  };
+
   if (name == "You") {
-    this.classFor = "you";
+    this.classFor = "you" ;
   } else if (isTrash) {
-    this.classFor = "trash";
+    this.classFor = "trash" ;
   } else {
     this.classFor = "player" + (num % 2 == 0 ? "Even" : "Odd");
   }
+  this.classFor += ' ' + this.idFor("data");
 
   // Map from special counts (such as number of gardens) to count.
   if (isTrash) {
@@ -214,6 +218,7 @@ function Player(name, num) {
   }
 
   this.setIcon = function(imgNode) {
+    if (imgNode == null) return;
     this.icon = imgNode.cloneNode(true);
     this.icon.removeAttribute("class");
     this.icon.setAttribute("align", "top");
@@ -400,8 +405,8 @@ function Player(name, num) {
     }
   }
 
-  this.idFor = function(fieldName) {
-    return this.idPrefix + "_" + toIdString(fieldName);
+  this.setResigned = function() {
+    $("." + this.idFor("data")).addClass("resigned");
   }
 }
 
@@ -559,6 +564,12 @@ function removeActivePlayerData() {
   var parent = activePlayerDataTable.parentNode;
   if (parent != null)
     parent.removeChild(activePlayerDataTable);
+}
+
+function maybeHandleResignation(node) {
+  if (node.innerText.match(/ resigns from the game\.$/)) {
+    last_player.setResigned();
+  }
 }
 
 function maybeHandleTurnChange(node) {
@@ -861,6 +872,7 @@ function handleLogEntry(node) {
   maybeRewriteName(node);
 
   if (maybeHandleTurnChange(node)) return;
+  if (maybeHandleResignation(node)) return;
 
   // Make sure this isn't a duplicate possession entry.
   if (node.className.indexOf("logline") < 0) return;
@@ -1072,7 +1084,6 @@ function maybeSetupPlayerArea() {
     //!! Include sub-score areas for each 'extra' type (Duke, Fairgrounds, ...)
     //!! Show how much each 'extra' type would be worth (Duke, Fairgrounds, ...)
     //!! Color code the log entries for each player?
-    //!! Mark resigned players in the area
     //!! Put counting options in a pop-up window or something
     for (var playerName in players) {
       var countBefore = dataTable.childNodes.length;
@@ -1176,7 +1187,7 @@ function findPlayerIcons() {
         seenFirst = true;
       } else {
         var matches = n.textContent
-            .match(/^(?:[\s.,]|\band\b)*(.*?)[\s.,?>]*$/);
+            .match(/^(?:[\s.,]|\band\b)*(.*?)(?:[\s.,?>]|\band\b)*$/);
         var playerName = matches[1];
         var player = players[playerName];
         if (player == null) {
