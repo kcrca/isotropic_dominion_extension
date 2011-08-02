@@ -2,6 +2,14 @@
  * Styles that apply to both text and image mode -- where needed they require a parent node with the id "playing".
  */
 
+/* !! The behavior of the log area is right, but it isn't full height at the start. */
+
+/* !! At the end of the game, the text of the log area overlaps the card counts. */
+
+/* !! The card name display inside the span should be nowrap. */
+
+/* !! The card count column widths are different for basic and kingdom cards. */
+
 .playerEven, .playerEven * {
     background: #e7fefe;
 }

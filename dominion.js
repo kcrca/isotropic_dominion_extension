@@ -1052,6 +1052,13 @@ function maybeSetupPlayerArea() {
     if (!text_mode) {
       dataTable.setAttribute("align", "right");
     }
+    //!! Show how far through the deck each player is
+    //!! Include sub-score areas for each 'extra' type (Duke, Fairgrounds, ...)
+    //!! Show how much each 'extra' type would be worth (Duke, Fairgrounds, ...)
+    //!! Color code the log entries for each player?
+    //!! Mark resigned players in the area
+    //!! Do something more clear to mark the current player (make active area for others white?)
+    //!! Put counting options in a pop-up window or something
     for (var playerName in players) {
       var countBefore = dataTable.childNodes.length;
       var player = players[playerName];
