@@ -86,7 +86,7 @@
 }
 
 .resigned, .resigned * {
-    background: black !important;
+    background: #333333 !important;
     color: white !important;
 }
 
