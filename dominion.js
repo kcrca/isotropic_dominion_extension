@@ -496,8 +496,8 @@ function findTrailingPlayer(text) {
 }
 
 function placeActivePlayerData() {
-  if (last_player == null)
-    return;
+  if (disabled) return;
+  if (last_player == null) return;
   
   var playerID = last_player.idFor("active");
   var cell = document.getElementById(playerID);
@@ -1041,8 +1041,9 @@ function updateScores() {
 }
 
 function maybeSetupPlayerArea() {
+  if (disabled) return;
   if (document.getElementById("playerData")) return;
-  
+
   try {
     rewritingTree++;
 
@@ -1119,6 +1120,7 @@ function removePlayerArea() {
     removeActivePlayerData();
     ptab.parentNode.removeChild(ptab);
   }
+  $(".playerCardCountCol").remove();
 }
 
 function getDecks() {
@@ -1263,8 +1265,7 @@ function handleChatText(speaker, text) {
   if (localStorage["allow_disable"] != "f" && text == " !disable") {
     localStorage.setItem("disabled", "t");
     disabled = true;
-    deck_spot.innerHTML = "exit";
-    points_spot.innerHTML = "faq";
+    stopCounting();
     writeText(">> Point counter disabled.");
   }
 
@@ -1295,22 +1296,25 @@ function settingsString() {
   return JSON.stringify(settings);
 }
 
+function stopCounting() {
+  deck_spot.innerHTML = "exit";
+  points_spot.innerHTML = "faq";
+
+  localStorage.removeItem("log");
+  localStorage.removeItem("offer");
+  solitaire = null;
+  game_offer = null;
+  text_mode = undefined;
+  removePlayerArea();
+  unsetGUIMode();
+}
+
 function handleGameEnd(doc) {
   for (var node in doc.childNodes) {
     if (doc.childNodes[node].innerText == "game log") {
       // Reset exit / faq at end of game.
       started = false;
-      deck_spot.innerHTML = "exit";
-      points_spot.innerHTML = "faq";
-
-      localStorage.removeItem("log");
-      localStorage.removeItem("offer");
-      solitaire = null;
-      game_offer = null;
-      text_mode = undefined;
-      removePlayerArea();
-      unsetGUIMode();
-
+      stopCounting();
       // Collect information about the game.
       var href = doc.childNodes[node].href;
       var game_id_str = href.substring(href.lastIndexOf("/") + 1);
