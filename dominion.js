@@ -1291,6 +1291,8 @@ function handleChatText(speaker, text) {
     localStorage.setItem("disabled", "t");
     disabled = true;
     stopCounting();
+    removePlayerArea();
+    unsetGUIMode();
     writeText(">> Point counter disabled.");
   }
 
@@ -1330,8 +1332,6 @@ function stopCounting() {
   solitaire = null;
   game_offer = null;
   text_mode = undefined;
-  removePlayerArea();
-  unsetGUIMode();
 }
 
 function handleGameEnd(doc) {
