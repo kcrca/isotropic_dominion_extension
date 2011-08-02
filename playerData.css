@@ -4,8 +4,6 @@
 
 /* !! The behavior of the log area is right, but it isn't full height at the start. */
 
-/* !! The card name display inside the span should be nowrap. */
-
 /* !! The card count column widths are different for basic and kingdom cards. */
 
 .playerEven, .playerEven * {
@@ -50,11 +48,15 @@
     text-align: right;
 }
 
-.playerExtraCards:empty {
+.playerOtherCards:empty {
     height: 0;
     padding: 0;
     margin: 0;
     border: 0;
+}
+
+.playerOtherCards {
+    text-align: left !important;
 }
 
 #playerData img {
@@ -104,6 +106,10 @@ html {
 
 #body.imageMode {
     display: table;
+}
+
+.card-none {
+    white-space: nowrap;
 }
 
 /*

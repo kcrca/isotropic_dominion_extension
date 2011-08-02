@@ -183,7 +183,7 @@ function Player(name, num) {
 
   var isTrash = name == "Trash";
 
-  this.extraCards = {};
+  this.otherCards = {};
 
   this.num = num;
 
@@ -353,25 +353,25 @@ function Player(name, num) {
     }
   }
 
-  this.addExtraCard = function(card, count) {
+  this.addOtherCard = function(card, count) {
     if (count > 0) {
-      this.extraCards[card.innerText] = card.outerHTML;
+      this.otherCards[card.innerText] = card.outerHTML;
     } else {
-      delete this.extraCards[card.innerText];
+      delete this.otherCards[card.innerText];
     }
   }
 
-  this.extraCardsString = function() {
-    var extraCards = '';
-    for (cardName in this.extraCards) {
-      if (extraCards.length == 0) {
-        extraCards = '<span class="playerDataKey">Extra Cards:</span>';
+  this.otherCardsString = function() {
+    var otherCards = '';
+    for (cardName in this.otherCards) {
+      if (otherCards.length == 0) {
+        otherCards = '<span class="playerDataKey">Other Cards: </span>';
       } else {
-        extraCards += ", ";
+        otherCards += ", ";
       }
-      extraCards += this.extraCards[cardName];
+      otherCards += this.otherCards[cardName];
     }
-    return extraCards;
+    return otherCards;
   }
 
   this.gainCard = function(card, count) {
@@ -392,7 +392,7 @@ function Player(name, num) {
     this.recordSpecialCards(card, count);
     this.recordCards(singular_card_name, count);
     if (!supplied_cards[singular_card_name]) {
-      this.addExtraCard(card, count);
+      this.addOtherCard(card, count);
     }
   }
 
@@ -1049,7 +1049,7 @@ function updateScores() {
   maybeSetupPlayerArea();
   rewriteTree(function() {
     $("#" + last_player.idFor("score")).text(last_player.getScore());
-    $("#" + last_player.idFor("extraCards")).html(last_player.extraCardsString());
+    $("#" + last_player.idFor("otherCards")).html(last_player.otherCardsString());
   });
 }
 
@@ -1091,9 +1091,9 @@ function maybeSetupPlayerArea() {
               player.idFor("deck") + '" class="playerDataValue">' +
               player.getDeckString() + '</td>');
       addRow(dataTable, player.classFor,
-          '<td id="' + player.idFor("extraCards") +
-              '" class="playerExtraCards" colspan="3">' +
-              player.extraCardsString() + '</td>');
+          '<td id="' + player.idFor("otherCards") +
+              '" class="playerOtherCards" colspan="3">' +
+              player.otherCardsString() + '</td>');
       var numRows = dataTable.childNodes.length - countBefore;
       playerCell.setAttribute("rowSpan", numRows - 1);
       activeCell.setAttribute("rowSpan", numRows);
