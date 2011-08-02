@@ -87,11 +87,21 @@ for (i = 0; i < card_list.length; i++) {
   cardName = card_list[i];
   card_map[cardName.Singular] = cardName;
   card_map[cardName.Plural] = cardName;
-  cardName.getActionCount = function() { return parseInt(this.Actions); };
-  cardName.getBuyCount = function() { return parseInt(this.Buys); };
-  cardName.getCoinCount = function() { return (this.Coins == "?" || this.Coins == "P" ? 0 : parseInt(this.Coins)); };
-  cardName.getPotionCount = function() { return (this.Coins == "P" ? 1 : 0); };
-  cardName.isAction = function() { return this.Action != "0"; }
+  cardName.getActionCount = function() {
+    return parseInt(this.Actions);
+  };
+  cardName.getBuyCount = function() {
+    return parseInt(this.Buys);
+  };
+  cardName.getCoinCount = function() {
+    return (this.Coins == "?" || this.Coins == "P" ? 0 : parseInt(this.Coins));
+  };
+  cardName.getPotionCount = function() {
+    return (this.Coins == "P" ? 1 : 0);
+  };
+  cardName.isAction = function() {
+    return this.Action != "0";
+  }
 }
 
 var gameHasPotions = false;
@@ -439,7 +449,8 @@ function ActiveData() {
       return;
     }
 
-    this.changeField('played', count); // this comes first because the value of some cards depends on it
+    // Changing 'played' comes first because the values of some cards rely on it
+    this.changeField('played', count); 
     this.changeField('actions', count * card.getActionCount());
     if (userAction && card.isAction()) // consume the action
       this.changeField('actions', -count);
@@ -507,30 +518,30 @@ function placeActivePlayerData() {
   try {
     rewritingTree++;
 
-    var activePlayerDataTable = document.getElementById("activePlayerDataTable");
-    if (activePlayerDataTable == undefined) {
-      activePlayerDataTable = document.createElement("table");
-      activePlayerDataTable.id = "activePlayerDataTable";
-      addRow(activePlayerDataTable, undefined,
-          '<td class="playerDataKey">Actions:</td>' + '<td id="active_actions" class="playerDataValue"></td>');
-      addRow(activePlayerDataTable, undefined,
-          '<td class="playerDataKey">Buys:</td>' + '<td id="active_buys" class="playerDataValue"></td>');
-      addRow(activePlayerDataTable, undefined,
-          '<td class="playerDataKey">Coins:</td>' + '<td id="active_coins" class="playerDataValue"></td>');
+    var dataTable = document.getElementById("activePlayerDataTable");
+    if (dataTable == undefined) {
+      dataTable = document.createElement("table");
+      dataTable.id = "activePlayerDataTable";
+      addRow(dataTable, undefined, '<td class="playerDataKey">Actions:</td>' +
+          '<td id="active_actions" class="playerDataValue"></td>');
+      addRow(dataTable, undefined, '<td class="playerDataKey">Buys:</td>' +
+          '<td id="active_buys" class="playerDataValue"></td>');
+      addRow(dataTable, undefined, '<td class="playerDataKey">Coins:</td>' +
+          '<td id="active_coins" class="playerDataValue"></td>');
       $('#supply .supplycard[cardname="Potion"]').each(function() {
         gameHasPotions = true
       });
       if (gameHasPotions) {
-        addRow(activePlayerDataTable, undefined,
-            '<td class="playerDataKey">Potions:</td>' + '<td id="active_potions" class="playerDataValue"></td>');
+        addRow(dataTable, undefined, '<td class="playerDataKey">Potions:</td>' +
+            '<td id="active_potions" class="playerDataValue"></td>');
       }
-      addRow(activePlayerDataTable, undefined,
-          '<td class="playerDataKey">Played:</td>' + '<td id="active_played" class="playerDataValue"></td>');
+      addRow(dataTable, undefined, '<td class="playerDataKey">Played:</td>' +
+          '<td id="active_played" class="playerDataValue"></td>');
     }
     activeData.display();
 
-    if (cell.firstElementChild != activePlayerDataTable) {
-      cell.appendChild(activePlayerDataTable);
+    if (cell.firstElementChild != dataTable) {
+      cell.appendChild(dataTable);
     }
   } finally {
     rewritingTree--;
@@ -821,7 +832,8 @@ function maybeHandleGameStart(node) {
   initialize(node);
   ensureLogNodeSetup(node);
   
-  // If this is a solitaire game, the turn start is also the "turn change' entry, so keep on processing to handle that
+  // If this is a solitaire game, the turn start is also the "turn change'
+  // entry, so keep on processing to handle that
   return !solitaire;
 }
 
@@ -1000,12 +1012,13 @@ function setupPerPlayerTextCardCounts() {
 }
 
 function setupPerPlayerImageCardCounts(region) {
-  var classSelector = '.' + region + '-column';
+  var selector = '.' + region + '-column';
 
   // make "hr" rows span all columns
-  $(classSelector + ' .hr:empty').append('<td colspan="' + (1 + player_count + 1) + '"></td>');
+  var numPlayers = 1 + player_count + 1;
+  $(selector + ' .hr:empty').append('<td colspan="' + numPlayers + '"></td>');
 
-  $(classSelector + ' .supplycard').each(function() {
+  $(selector + ' .supplycard').each(function() {
     var $this = $(this);
     var cardName = $this.attr('cardname');
     allPlayers(function(player) {
@@ -1181,7 +1194,13 @@ function initialize(doc) {
   // rewrite them and then all the text parsing works as normal.
   var p = "(?:([^,]+), )";    // an optional player
   var pl = "(?:([^,]+),? )";  // the last player (might not have a comma)
-  var re = (solitaire ? /.* (You)r turn 1 .*/i : new RegExp("Turn order is "+p+"?"+p+"?"+p+"?"+pl+"and then (.+)."));
+  var re;
+  if (solitaire) {
+    re = /.* (You)r turn 1 .*/i;
+  } else {
+    re = new RegExp("Turn order is " + p + "?" + p + "?" + p + "?" + pl +
+        "and then (.+).");
+  }
   var arr = doc.innerText.match(re);
   if (arr == null) {
     handleError("Couldn't parse: " + doc.innerText);
@@ -1222,8 +1241,8 @@ function initialize(doc) {
     if (self_index != -1) {
       wait_time = 300 * self_index;
     }
-    console.log("Waiting " + wait_time + " to introduce " +
-        "(index is: " + self_index + ").");
+    console.log("Waiting " + wait_time + " to introduce " + "(index is: " +
+        self_index + ").");
     setTimeout("maybeIntroducePlugin()", wait_time);
   }
 }
@@ -1505,15 +1524,16 @@ function inLobby() {
 
 function unsetGUIMode() {
   document.firstChild.id = "";
-  $("#body").removeClass("textMode").removeClass("imageMode").removeClass("playing");
+  $("#body").removeClass("textMode").removeClass("imageMode")
+      .removeClass("playing");
 }
 
 function setGUIMode() {
   var href = gui_mode_spot.getAttribute("href");
-  // The link is to the "text" mode when it's in image mode and vice versa
+  // The link is to the "text" mode when it's in image mode and vice versa.
   text_mode = href.indexOf("text") < 0;
 
-  // setting the html id lets us write css selectors that distinguish between the modes
+  // Setting the class enables css selectors that distinguish between the modes.
   $("#body").addClass("playing").addClass(text_mode ? "textMode" : "imageMode");  
 }
 
@@ -1548,7 +1568,8 @@ function handle(doc) {
           var txt = spans[i].innerText;
           if (txt.indexOf("play this game ") == 0) {
             game_offer = spans[i];
-            localStorage["offer"] = game_offer.innerHTML; // preserve it -- this is critical when restoring the log
+            // Preserve the offer. This is critical when restoring the log.
+            localStorage["offer"] = game_offer.innerHTML;
             break;
           }
         }
