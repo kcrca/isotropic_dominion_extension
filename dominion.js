@@ -1056,7 +1056,6 @@ function maybeSetupPlayerArea() {
     //!! Show how much each 'extra' type would be worth (Duke, Fairgrounds, ...)
     //!! Color code the log entries for each player?
     //!! Mark resigned players in the area
-    //!! Do something more clear to mark the current player (make active area for others white?)
     //!! Put counting options in a pop-up window or something
     for (var playerName in players) {
       var countBefore = dataTable.childNodes.length;
