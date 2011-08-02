@@ -127,6 +127,10 @@ html {
     position: static !important;
 }
 
+.imageMode #playerData {
+    border-bottom: black 1px groove;
+}
+
 .playing #right {
     padding-left: 1em;
     margin-left: auto !important;

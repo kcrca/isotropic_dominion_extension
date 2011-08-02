@@ -1048,7 +1048,6 @@ function maybeSetupPlayerArea() {
     rewritingTree++;
 
     var dataTable = document.createElement("table");
-    dataTable.id = "playerData";
     if (!text_mode) {
       dataTable.setAttribute("align", "right");
     }
@@ -1096,6 +1095,7 @@ function maybeSetupPlayerArea() {
     }
 
     if (text_mode) {
+      dataTable.id = "playerData";
       var outerTable = document.createElement("table");
       outerTable.id = "playerDataArranger";
       var row = addRow(outerTable, null,
@@ -1109,8 +1109,8 @@ function maybeSetupPlayerArea() {
       var tab = player_spot.firstElementChild;
       var nrow = tab.insertRow(0);
       var area = nrow.insertCell();
-      nrow.setAttribute("align", "right");
       area.id = "playerData";
+      nrow.setAttribute("align", "right");
       area.setAttribute("colspan", "2");
       area.appendChild(dataTable);
     }
