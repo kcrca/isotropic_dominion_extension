@@ -6,19 +6,33 @@
 
 /* !! The card count column widths are different for basic and kingdom cards. */
 
-.playerEven, .playerEven * {
-    background: #e7fefe;
-}
-
-.playerOdd, .playerOdd * {
-    background: #feefd3;
-}
-
 .you, .you * {
 	background-color: #dbf8db;
 }
+
+.playerClass1, .playerClass1 * {
+    background: #fdfed3;
+}
+
+.playerClass2, .playerClass2 * {
+    background: #feefd3;
+}
+
+.playerClass3, .playerClass3 * {
+    background: #e7fefe;
+}
+
+.playerClass4, .playerClass4 * {
+    background: #fee5fe;
+}
+
 .trash, .trash * {
     background: #f2f2f2;
+}
+
+.resigned, .resigned * {
+    background: #5e5e5e;
+    color: white !important;
 }
 
 #playerData, #playerData * {
@@ -83,11 +97,6 @@
 
 .kingdom-column > * > *, .basic-column > * > * {
     display: table-cell;
-}
-
-.resigned, .resigned * {
-    background: #333333 !important;
-    color: white !important;
 }
 
 /* Cause the prices + count display for basic cards to be vertical just like for kingdom cards */

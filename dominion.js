@@ -28,6 +28,9 @@ var points_spot;
 var player_spot;
 var gui_mode_spot;
 
+// How many different player classes are supported?
+var PLAYER_CLASS_COUNT = 4;
+
 var started = false;
 var solitaire = null;
 var introduced = false;
@@ -204,7 +207,7 @@ function Player(name, num) {
   } else if (isTrash) {
     this.classFor = "trash" ;
   } else {
-    this.classFor = "player" + (num % 2 == 0 ? "Even" : "Odd");
+    this.classFor = "playerClass" + ((num - 1) % PLAYER_CLASS_COUNT + 1);
   }
   this.classFor += ' ' + this.idFor("data");
 
@@ -595,6 +598,7 @@ function maybeHandleTurnChange(node) {
     activeData.reset();
     maybeSetupPlayerArea();
     placeActivePlayerData();
+    $(node).addClass(last_player.classFor);
     
     if (last_player.icon == undefined) {
       var imgs = node.getElementsByTagName("img");
