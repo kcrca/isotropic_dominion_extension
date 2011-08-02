@@ -47,6 +47,10 @@ var last_player = null;
 var last_reveal_player = null;
 var last_reveal_card = null;
 
+// The player's own icon
+var my_icon = null;
+
+// The DOM node that contains the most recent game offer
 var game_offer = null;
 
 // Number for generating log line IDs.
@@ -1157,6 +1161,34 @@ function updateDeck() {
   });
 }
 
+function findPlayerIcons() {
+  players['You'].setIcon(my_icon);
+
+  // Look up other player icons from the game offer
+  var img = null;
+  var seenFirst = false;
+  for (var n = game_offer.firstChild; n != null; n = n.nextSibling) {
+    if (n.constructor == HTMLImageElement) {
+      img = n;
+    } else if (n.nodeType == 3) {
+      // "3" means a text node.
+      if (!seenFirst) {
+        seenFirst = true;
+      } else {
+        var matches = n.textContent
+            .match(/^(?:[\s.,]|\band\b)*(.*?)[\s.,?>]*$/);
+        var playerName = matches[1];
+        var player = players[playerName];
+        if (player == null) {
+          alert("unknown player: " + playerName + "\n");
+        } else {
+          player.setIcon(img);
+        }
+      }
+    }
+  }
+}
+
 function initialize(doc) {
   started = true;
   introduced = false;
@@ -1229,30 +1261,7 @@ function initialize(doc) {
     
   }
   player_re = '(' + other_player_names.join('|') + ')';
-
-  // Look up other player icons from the game offer
-  var img = null;
-  var seenFirst = false;
-  for (var n = game_offer.firstChild; n != null; n = n.nextSibling) {
-    if (n.constructor == HTMLImageElement) {
-      img = n;
-    } else if (n.nodeType == 3) {
-      // "3" means a text node.
-      if (!seenFirst) {
-        seenFirst = true;
-      } else {
-        var m = n.textContent.match(/^(?:[\s.,]|\band\b)*(.*?)[\s.,?>]*$/);
-        var name = m[1];
-        var player = players[name];
-        if (player == null) {
-          alert("unknown player: " + name + "\n");
-        } else {
-          player.setIcon(img);
-        }
-      }
-    }
-  }
-
+  findPlayerIcons();
   if (!disabled && localStorage["always_display"] != "f") {
     updateScores();
     updateDeck();
@@ -1705,6 +1714,8 @@ function enterLobby() {
 
   $('#tracker').attr('checked', true).attr('disabled', true)
   $('#autotracker').val('yes').attr('disabled', true);
+  
+  my_icon = $('#log img').first().get(0);
 }
 setTimeout("enterLobby()", 600);
 
