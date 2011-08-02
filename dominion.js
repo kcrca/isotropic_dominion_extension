@@ -18,6 +18,10 @@ var trashPlayer = newTrashPlayer();
 // Object for active player's data.
 var activeData;
 
+// Map that contains the cards in the supply piles; other cards need to be shown
+// shown in other ways.
+var supplied_cards;
+
 // Places to print number of cards and points.
 var deck_spot;
 var points_spot;
@@ -71,23 +75,23 @@ RegExp.quote = function(str) {
 // Keep a map from plural to singular for cards that need it.
 var plural_map = {};
 for (var i = 0; i < card_list.length; ++i) {
-  var card = card_list[i];
-  if (card['Plural'] != card['Singular']) {
-    plural_map[card['Plural']] = card['Singular'];
+  var cardName = card_list[i];
+  if (cardName['Plural'] != cardName['Singular']) {
+    plural_map[cardName['Plural']] = cardName['Singular'];
   }
 }
 
 // Keep a map from card name (singular or plural) to card description
 var card_map = {};
 for (i = 0; i < card_list.length; i++) {
-  card = card_list[i];
-  card_map[card.Singular] = card;
-  card_map[card.Plural] = card;
-  card.getActionCount = function() { return parseInt(this.Actions); };
-  card.getBuyCount = function() { return parseInt(this.Buys); };
-  card.getCoinCount = function() { return (this.Coins == "?" || this.Coins == "P" ? 0 : parseInt(this.Coins)); };
-  card.getPotionCount = function() { return (this.Coins == "P" ? 1 : 0); };
-  card.isAction = function() { return this.Action != "0"; }
+  cardName = card_list[i];
+  card_map[cardName.Singular] = cardName;
+  card_map[cardName.Plural] = cardName;
+  cardName.getActionCount = function() { return parseInt(this.Actions); };
+  cardName.getBuyCount = function() { return parseInt(this.Buys); };
+  cardName.getCoinCount = function() { return (this.Coins == "?" || this.Coins == "P" ? 0 : parseInt(this.Coins)); };
+  cardName.getPotionCount = function() { return (this.Coins == "P" ? 1 : 0); };
+  cardName.isAction = function() { return this.Action != "0"; }
 }
 
 var gameHasPotions = false;
@@ -169,7 +173,10 @@ function Player(name, num) {
 
   var isTrash = name == "Trash";
 
+  this.extraCards = {};
+
   this.num = num;
+
   if (isTrash) {
     this.idPrefix = "trash";
   } else {
@@ -336,6 +343,27 @@ function Player(name, num) {
     }
   }
 
+  this.addExtraCard = function(card, count) {
+    if (count > 0) {
+      this.extraCards[card.innerText] = card.outerHTML;
+    } else {
+      delete this.extraCards[card.innerText];
+    }
+  }
+
+  this.extraCardsString = function() {
+    var extraCards = '';
+    for (cardName in this.extraCards) {
+      if (extraCards.length == 0) {
+        extraCards = '<span class="playerDataKey">Extra Cards:</span>';
+      } else {
+        extraCards += ", ";
+      }
+      extraCards += this.extraCards[cardName];
+    }
+    return extraCards;
+  }
+
   this.gainCard = function(card, count) {
     if (debug_mode) {
       $('#log').children().eq(-1).before(
@@ -353,6 +381,9 @@ function Player(name, num) {
     this.changeScore(pointsForCard(singular_card_name) * count);
     this.recordSpecialCards(card, count);
     this.recordCards(singular_card_name, count);
+    if (!supplied_cards[singular_card_name]) {
+      this.addExtraCard(card, count);
+    }
   }
 
   this.idFor = function(fieldName) {
@@ -1005,6 +1036,7 @@ function updateScores() {
   maybeSetupPlayerArea();
   rewriteTree(function() {
     $("#" + last_player.idFor("score")).text(last_player.getScore());
+    $("#" + last_player.idFor("extraCards")).html(last_player.extraCardsString());
   });
 }
 
@@ -1023,21 +1055,29 @@ function maybeSetupPlayerArea() {
       var countBefore = dataTable.childNodes.length;
       var player = players[playerName];
       var row1 = addRow(dataTable, player.classFor,
-          '<td id="' + player.idFor("active") + '" class="activePlayerData" rowspan="0"></td>' +
+          '<td id="' + player.idFor("active") +
+              '" class="activePlayerData" rowspan="0"></td>' +
               '<td class="playerDataName" rowspan="0">' + playerName + '</td>' +
-              '<td class="playerDataKey"> Score:</td>' + '<td id="' + player.idFor("score") +
-              '" class="playerDataValue">' + player.getScore() + '</td>');
+              '<td class="playerDataKey"> Score:</td>' + '<td id="' +
+              player.idFor("score") + '" class="playerDataValue">' +
+              player.getScore() + '</td>');
       var activeCell = row1.firstElementChild;
       var playerCell = activeCell.nextElementSibling;
       if (player.icon != undefined) {
-        playerCell.insertBefore(player.icon.cloneNode(true), playerCell.firstChild);
+        playerCell.insertBefore(player.icon.cloneNode(true),
+            playerCell.firstChild);
       }
       addRow(dataTable, player.classFor,
-          '<td class="playerDataKey">Deck:</td>' + '<td id="' + player.idFor("deck") + '" class="playerDataValue">' +
+          '<td class="playerDataKey">Deck:</td>' + '<td id="' +
+              player.idFor("deck") + '" class="playerDataValue">' +
               player.getDeckString() + '</td>');
+      addRow(dataTable, player.classFor,
+          '<td id="' + player.idFor("extraCards") +
+              '" class="playerExtraCards" colspan="3">' +
+              player.extraCardsString() + '</td>');
       var numRows = dataTable.childNodes.length - countBefore;
+      playerCell.setAttribute("rowSpan", numRows - 1);
       activeCell.setAttribute("rowSpan", numRows);
-      playerCell.setAttribute("rowSpan", numRows);
     }
 
     if (text_mode) {
@@ -1050,8 +1090,9 @@ function maybeSetupPlayerArea() {
     if (text_mode) {
       var outerTable = document.createElement("table");
       outerTable.id = "playerDataArranger";
-      var row = addRow(outerTable, null, '<td id="playerDataContainer" valign="bottom"></td>' +
-          '<td id="logContainer" valign="bottom"></td>');
+      var row = addRow(outerTable, null,
+          '<td id="playerDataContainer" valign="bottom"></td>' +
+              '<td id="logContainer" valign="bottom"></td>');
       row.firstChild.appendChild(dataTable);
       row.lastChild.appendChild(document.getElementById("log"));
       var game = document.getElementById("game");
@@ -1115,6 +1156,10 @@ function initialize(doc) {
 
   setGUIMode();
   activeData = new ActiveData();
+  supplied_cards = {};
+  $("[cardname]").each(function() {
+    supplied_cards[$(this).attr("cardname")] = true;
+  });
 
   if (localStorage.getItem("disabled")) {
     disabled = true;

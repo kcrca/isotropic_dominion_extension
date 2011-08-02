@@ -24,16 +24,31 @@
 
 #playerData table {
     position: relative !important;
+    border-collapse: collapse;
+    margin: 0.1em 0.5em;
 }
 
 #playerData td {
     margin: 0;
-    padding: 0 0.5em;
+    padding: 0.1em 0.5em;
+}
+
+.playerDataKey {
+    white-space: nowrap;
+    text-align: right;
 }
 
 .playerCardCountCol {
     padding: 0 0.25em;
     width: 1.5em;
+    text-align: right;
+}
+
+.playerExtraCards:empty {
+    height: 0;
+    padding: 0;
+    margin: 0;
+    border: 0;
 }
 
 #playerData img {
