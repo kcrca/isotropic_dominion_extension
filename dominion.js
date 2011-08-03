@@ -1377,6 +1377,7 @@ function stopCounting() {
 
   localStorage.removeItem("log");
   localStorage.removeItem("offer");
+  localStorage.removeItem('solitaire');
   solitaire = null;
   game_offer = null;
   text_mode = undefined;
@@ -1484,6 +1485,7 @@ function maybeStartOfGame(node) {
     window.localStorage.removeItem("log");
     window.localStorage.removeItem("disabled");
   } else {
+    disabled = window.localStorage.getItem("disabled") ==  "t";
     restoreHistory(node);
   }
   started = true;
