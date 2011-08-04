@@ -13,7 +13,7 @@ var player_count = 0;
 var text_mode;
 
 // psuedo-player for Trash card counts
-var trashPlayer = newTrashPlayer();
+var trashPlayer;
 
 // Object for active player's data.
 var activeData;
@@ -203,9 +203,9 @@ function Player(name, num) {
   };
 
   if (name == "You") {
-    this.classFor = "you" ;
+    this.classFor = "you";
   } else if (isTrash) {
-    this.classFor = "trash" ;
+    this.classFor = "trash";
   } else {
     this.classFor = "playerClass" + ((num - 1) % PLAYER_CLASS_COUNT + 1);
   }
@@ -350,8 +350,8 @@ function Player(name, num) {
     var types = card.className.split("-").slice(1);
     for (type_i in types) {
       var type = types[type_i];
-      if (type == "none" || type == "duration" ||
-          type == "action" || type == "reaction") {
+      if (type == "none" || type == "duration" || type == "action" ||
+          type == "reaction") {
         this.changeSpecialCount("Actions", count);
       } else if (type == "curse") {
         this.changeSpecialCount("Curse", count);
@@ -388,9 +388,8 @@ function Player(name, num) {
 
   this.gainCard = function(card, count) {
     if (debug_mode) {
-      $('#log').children().eq(-1).before(
-          '<div class="gain_debug">*** ' + name + " gains " +
-          count + " " + card.innerText + "</div>");
+      $('#log').children().eq(-1).before('<div class="gain_debug">*** ' + name +
+          " gains " + count + " " + card.innerText + "</div>");
     }
     // You can't gain or trash cards while possessed.
     if (possessed_turn && this == last_player) return;
@@ -421,14 +420,14 @@ function ActiveData() {
     this.potions = 0;
     this.played = 0;
   };
-  
+
   this.prefixes = {coins: '$', potions: '◉'};
-  
+
   this.changeField = function(key, delta) {
     this[key] += delta;
     this.displayField(key);
   }
-  
+
   this.displayField = function(key) {
     if (key == 'potions' && !gameHasPotions) return;
     var prefix = this.prefixes[key];
@@ -462,7 +461,7 @@ function ActiveData() {
     }
 
     // Changing 'played' comes first because the values of some cards rely on it
-    this.changeField('played', count); 
+    this.changeField('played', count);
     this.changeField('actions', count * card.getActionCount());
     if (userAction && card.isAction()) // consume the action
       this.changeField('actions', -count);
@@ -487,9 +486,8 @@ function stateStrings() {
   var state = '';
   for (var player in players) {
     player = players[player];
-    state += '<b>' + player.name + "</b>: " +
-        player.getScore() + " points [deck size is " +
-        player.getDeckString() + "] - " +
+    state += '<b>' + player.name + "</b>: " + player.getScore() +
+        " points [deck size is " + player.getDeckString() + "] - " +
         JSON.stringify(player.special_counts) + "<br>" +
         JSON.stringify(player.card_counts) + "<br>";
   }
@@ -521,7 +519,7 @@ function findTrailingPlayer(text) {
 function placeActivePlayerData() {
   if (disabled) return;
   if (last_player == null) return;
-  
+
   var playerID = last_player.idFor("active");
   var cell = document.getElementById(playerID);
   if (cell == undefined)
@@ -599,13 +597,13 @@ function maybeHandleTurnChange(node) {
     maybeSetupPlayerArea();
     placeActivePlayerData();
     $(node).addClass(last_player.classFor);
-    
+
     if (last_player.icon == undefined) {
       var imgs = node.getElementsByTagName("img");
       if (imgs.length > 0)
         last_player.setIcon(imgs[0]);
     }
-    
+
     possessed_turn = text.match(/\(possessed by .+\)/);
 
     if (debug_mode) {
@@ -619,7 +617,7 @@ function maybeHandleTurnChange(node) {
 }
 
 function adjustActive(key, spec) {
-  if (spec != null) 
+  if (spec != null)
     activeData.changeField(key, parseInt(spec[1]));
 }
 
@@ -777,7 +775,8 @@ function maybeHandleOffensiveTrash(elems, text_arr, text) {
       return true;
     }
 
-    var arr = text.match(new RegExp("trash(?:es)? (?:one of )?" + player_re + "'s"));
+    var arr = text.match(new RegExp("trash(?:es)? (?:one of )?" + player_re +
+        "'s"));
     if (arr && arr.length == 2) {
       getPlayer(arr[1]).gainCard(elems[0], -1);
       return true;
@@ -835,7 +834,6 @@ function isGameStart(nodeText) {
       return false;
   }
 
-
   if (solitaire) {
     return nodeText.match(/ turn 1 —$/);
   } else {
@@ -850,7 +848,7 @@ function maybeHandleGameStart(node) {
   }
   initialize(node);
   ensureLogNodeSetup(node);
-  
+
   // If this is a solitaire game, the turn start is also the "turn change'
   // entry, so keep on processing to handle that
   return !solitaire;
@@ -956,7 +954,7 @@ function handleLogEntry(node) {
     if (possessed_turn && this == last_player) return;
     if (player_count != 2) {
       maybeAnnounceFailure(">> Warning: Masquerade with more than 2 players " +
-                           "causes inaccurate score counting.");
+          "causes inaccurate score counting.");
     }
     player.gainCard(card, -1);
     var other_player = findTrailingPlayer(node.innerText);
@@ -1087,7 +1085,6 @@ function maybeSetupPlayerArea() {
     //!! Show how far through the deck each player is
     //!! Include sub-score areas for each 'extra' type (Duke, Fairgrounds, ...)
     //!! Show how much each 'extra' type would be worth (Duke, Fairgrounds, ...)
-    //!! Color code the log entries for each player?
     //!! Put counting options in a pop-up window or something
     for (var playerName in players) {
       var countBefore = dataTable.childNodes.length;
@@ -1221,6 +1218,7 @@ function initialize(doc) {
   player_rewrites = new Object();
   player_re = "";
   player_count = 0;
+  trashPlayer = newTrashPlayer();
 
   setGUIMode();
   activeData = new ActiveData();
@@ -1273,7 +1271,7 @@ function initialize(doc) {
     if (arr[i] != "You") {
       other_player_names.push(RegExp.quote(arr[i]));
     }
-    
+
   }
   player_re = '(' + other_player_names.join('|') + ')';
   findPlayerIcons();
@@ -1411,7 +1409,8 @@ function handleGameEnd(doc) {
           if (arr && arr.length == 2) {
             var score = ("" + players[player].getScore()).replace(/^.*=/, "");
             if (score.indexOf("+") != -1) {
-              score = ("" + players[player].getScore()).replace(/^([0-9]+)\+.*/, "$1");
+              score = ("" + players[player].getScore()).replace(/^([0-9]+)\+.*/,
+                  "$1");
             }
             if (has_correct_score && arr[1] != score) {
               has_correct_score = false;
@@ -1424,14 +1423,14 @@ function handleGameEnd(doc) {
 
       // Post the game information to app-engine for later use for tests, etc.
       chrome.extension.sendRequest({
-          type: "log",
-          game_id: game_id_str,
-          reporter: name,
-          correct_score: has_correct_score,
-          state_strings: optional_state_strings,
-          log: document.body.innerHTML,
-          version: extension_version,
-          settings: settingsString() });
+        type: "log",
+        game_id: game_id_str,
+        reporter: name,
+        correct_score: has_correct_score,
+        state_strings: optional_state_strings,
+        log: document.body.innerHTML,
+        version: extension_version,
+        settings: settingsString() });
       break;
     }
   }
@@ -1453,8 +1452,7 @@ function reinsert(ev) {
   var node = ev.target;
   var next = node.nextElementSibling;
   var prev = node.previousElementSibling;
-  var duplicated = (next != undefined && next.id == node.id) ||
-                   (prev != undefined && prev.id == node.id);
+  var duplicated = (next != undefined && next.id == node.id) || (prev != undefined && prev.id == node.id);
   if (!duplicated) {
     var copy = node.cloneNode(true);
     // The "fading" of old log messages reduces opacity to near zero; clear that
@@ -1485,7 +1483,7 @@ function maybeStartOfGame(node) {
     window.localStorage.removeItem("log");
     window.localStorage.removeItem("disabled");
   } else {
-    disabled = window.localStorage.getItem("disabled") ==  "t";
+    disabled = window.localStorage.getItem("disabled") == "t";
     restoreHistory(node);
   }
   started = true;
@@ -1584,7 +1582,7 @@ function setGUIMode() {
   text_mode = href.indexOf("text") < 0;
 
   // Setting the class enables css selectors that distinguish between the modes.
-  $("#body").addClass("playing").addClass(text_mode ? "textMode" : "imageMode");  
+  $("#body").addClass("playing").addClass(text_mode ? "textMode" : "imageMode");
 }
 
 function rewriteTree(func) {
@@ -1609,7 +1607,7 @@ function handle(doc) {
       deck_spot = links[1];
       points_spot = links[2];
     }
-    
+
     if (!started) {
       var choices = document.getElementById("choices");
       if (choices != null && choices.hasChildNodes()) {
@@ -1660,7 +1658,7 @@ function handle(doc) {
 
     if (doc.parentNode.id == "chat" && doc.childNodes.length > 2) {
       handleChatText(doc.childNodes[1].innerText.slice(0, -1),
-                     doc.childNodes[2].nodeValue);
+          doc.childNodes[2].nodeValue);
     }
 
     if (localStorage["always_display"] != "f") {
@@ -1669,8 +1667,7 @@ function handle(doc) {
         updateDeck();
       }
     }
-  }
-  catch (err) {
+  } catch (err) {
     console.log(doc);
     var error = '';
     if (doc.innerText != undefined) {
@@ -1679,7 +1676,6 @@ function handle(doc) {
     handleError("Javascript exception: " + debugString(err));
   }
 }
-
 
 //
 // Chat status handling.
@@ -1695,8 +1691,8 @@ function buildStatusMessage() {
 }
 
 function enterLobby() {
-  if (localStorage["status_announce"] == "t" &&
-      $('#lobby').length != 0 && $('#lobby').css('display') != "none") {
+  if (localStorage["status_announce"] == "t" && $('#lobby').length != 0 &&
+      $('#lobby').css('display') != "none") {
     // Set the original status message.
     writeText(buildStatusMessage());
 
@@ -1731,7 +1727,7 @@ function enterLobby() {
 
   $('#tracker').attr('checked', true).attr('disabled', true)
   $('#autotracker').val('yes').attr('disabled', true);
-  
+
   my_icon = $('#log img').first().get(0);
 }
 setTimeout("enterLobby()", 600);
