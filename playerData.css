@@ -1,5 +1,7 @@
 /*
- * Styles that apply to both text and image mode -- where needed they require a parent node with the id "playing".
+ * Styles that apply to both text and image mode -- where needed (to avoid
+ * any problems in the lobby usually) they require a parent node with the id
+ * "playing".
  */
 
 /* !! The behavior of the log area is right, but it isn't full height at the start. */
@@ -91,6 +93,10 @@
     background: white;
 }
 
+td.kingdom-column, td.basic-column {
+    width: auto !important;
+}
+
 .kingdom-column > *, .basic-column > * {
     display: table-row;
 }
@@ -127,8 +133,9 @@ html {
 }
 
 /*
- * Styles that apply only to image mode -- where needed they require a parent node with the id "imageMode".
- * Classes and ID's that exist only in image mode don't need that qualification
+ * Styles that apply only to image mode -- where needed they require a parent
+ * node with the id "imageMode". Classes and ID's that exist only in image mode
+ * don't need that qualification.
  */
 
 .imageMode #game {
@@ -172,8 +179,9 @@ html {
 }
 
 /*
- * Styles that apply only to image mode -- where needed they require a parent node with the id "imageMode".
- * Classes and ID's that exist only in image mode don't need that qualification
+ * Styles that apply only to image mode -- where needed they require a parent
+ * node with the id "imageMode". Classes and ID's that exist only in image mode
+ * don't need that qualification.
  */
 
 #playerDataArranger, #logContainer {
