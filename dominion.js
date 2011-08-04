@@ -1135,6 +1135,10 @@ function maybeSetupPlayerArea() {
       game.insertBefore(outerTable, game.firstElementChild);
     } else {
       var tab = player_spot.firstElementChild;
+      if (tab == null) {
+        // This can happen at the end of a game when returning to the lobby
+        return;
+      }
       var nrow = tab.insertRow(0);
       var area = nrow.insertCell();
       area.id = "playerData";
