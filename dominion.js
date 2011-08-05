@@ -409,6 +409,10 @@ function Player(name, num) {
 
   this.setResigned = function() {
     $("." + this.idFor("data")).addClass("resigned");
+    this.resigned = true;
+    if (this.classFor.indexOf("resigned") < 0) {
+      this.classFor += " resigned";
+    }
   }
 }
 
@@ -548,11 +552,11 @@ function placeActivePlayerData() {
       addRow(dataTable, undefined, '<td class="playerDataKey">Played:</td>' +
           '<td id="active_played" class="playerDataValue"></td>');
     }
-    activeData.display();
 
     if (cell.firstElementChild != dataTable) {
       cell.appendChild(dataTable);
     }
+    activeData.display();
   } finally {
     rewritingTree--;
   }
@@ -820,6 +824,7 @@ function handleGainOrTrash(player, elems, text, multiplier) {
       player.gainCard(elems[elem], num);
       if (num < 0) {
         trashPlayer.gainCard(elems[elem], -num);
+        updateDeck(trashPlayer);
       }
     }
   }
@@ -948,6 +953,7 @@ function handleLogEntry(node) {
     var count = getCardCount(card_text, node.innerText);
     player.gainCard(card, count);
     activeData.changeField('buy', -count);
+    activeData.display();
   } else if (action.indexOf("pass") == 0) {
     possessed_turn_backup = possessed_turn;
     possessed_turn = false;
@@ -1117,9 +1123,10 @@ function maybeSetupPlayerArea() {
     addRow(dataTable, trashPlayer.classFor,
         '<td id="' + trashPlayer.idFor("active") +
             '" class="activePlayerData" rowspan="0"></td>' +
-            '<td class="playerDataName" rowspan="0">' + trashPlayer.name + '</td>' +
-            '<td class="playerDataKey"> Score:</td>' + '<td id="' + trashPlayer.idFor("score") + '" class="playerDataValue">' +
-            trashPlayer.getScore() + '</td>');
+            '<td class="playerDataName" rowspan="0">' + trashPlayer.name +
+            '</td>' + '<td class="playerDataKey"> Cards:</td>' + '<td id="' +
+            trashPlayer.idFor("deck") + '" class="playerDataValue">' +
+            trashPlayer.getDeckString() + '</td>');
 
     if (text_mode) {
       setupPerPlayerTextCardCounts();
@@ -1176,14 +1183,17 @@ function getDecks() {
   return decks;
 }
 
-function updateDeck() {
-  if (last_player == null) return;
+function updateDeck(player) {
+  player = player || last_player;
+  if (player == null) return;
   rewriteTree(function() {
-    $("#" + last_player.idFor("deck")).text(last_player.getDeckString() + "");
+    $("#" + player.idFor("deck")).text(player.getDeckString() + "");
   });
 }
 
 function findPlayerIcons() {
+  maybeRewriteName(game_offer);
+
   players['You'].setIcon(my_icon);
 
   // Look up other player icons from the game offer
@@ -1197,13 +1207,11 @@ function findPlayerIcons() {
       if (!seenFirst) {
         seenFirst = true;
       } else {
-        var matches = n.textContent
-            .match(/^(?:[\s.,]|\band\b)*(.*?)(?:[\s.,?>]|\band\b)*$/);
-        var playerName = matches[1];
+        var matches = n.textContent.match(/[^,?\s]+/);
+        if (matches == null) continue;
+        var playerName = matches[0];
         var player = players[playerName];
-        if (player == null) {
-          alert("unknown player: " + playerName + "\n");
-        } else {
+        if (player != null) {
           player.setIcon(img);
         }
       }
