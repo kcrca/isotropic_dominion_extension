@@ -225,7 +225,7 @@ function Player(name, num) {
     this.icon = imgNode.cloneNode(true);
     this.icon.removeAttribute("class");
     this.icon.setAttribute("align", "top");
-  }
+  };
 
   this.getScore = function() {
     var score_str = this.score;
@@ -371,7 +371,7 @@ function Player(name, num) {
     } else {
       delete this.otherCards[card.innerText];
     }
-  }
+  };
 
   this.otherCardsString = function() {
     var otherCards = '';
@@ -384,7 +384,7 @@ function Player(name, num) {
       otherCards += this.otherCards[cardName];
     }
     return otherCards;
-  }
+  };
 
   this.gainCard = function(card, count) {
     if (debug_mode) {
@@ -413,7 +413,7 @@ function Player(name, num) {
     if (this.classFor.indexOf("resigned") < 0) {
       this.classFor += " resigned";
     }
-  }
+  };
 }
 
 function ActiveData() {
@@ -430,14 +430,14 @@ function ActiveData() {
   this.changeField = function(key, delta) {
     this[key] += delta;
     this.displayField(key);
-  }
+  };
 
   this.displayField = function(key) {
     if (key == 'potions' && !gameHasPotions) return;
     var prefix = this.prefixes[key];
     prefix = prefix || '';
     $('#active_' + key).text(prefix + this[key]);
-  }
+  };
 
   this.display = function() {
     this.displayField('actions');
@@ -948,7 +948,6 @@ function handleLogEntry(node) {
 
   var player = getPlayer(text[0]);
   var action = text[1];
-  var delta = 0;
   if (action.indexOf("buy") == 0) {
     var count = getCardCount(card_text, node.innerText);
     player.gainCard(card, count);
