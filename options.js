@@ -11,7 +11,6 @@ function setupOption(default_value, name) {
 function loadOptions() {
   setupOption("t", "allow_disable");
   setupOption("f", "status_announce");
-  setupOption("t", "always_display");
 }
 
 function generateOptionButton(name, value, desc) {
@@ -52,12 +51,7 @@ element.innerHTML =
                  "Mandatory if disabling is not allowed.",
                  "status_announce",
                  "Post in status message.",
-                 "Do not post in status message.") +
-  generateOption("Always display counts / points?",
-                 "",
-                 "always_display",
-                 "Replace exit/faq with scores.",
-                 "Only display in chat box from !status command.");
+                 "Do not post in status message.");
 
 document.body.appendChild(element);
 loadOptions();

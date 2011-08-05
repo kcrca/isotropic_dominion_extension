@@ -1114,6 +1114,12 @@ function maybeSetupPlayerArea() {
       playerCell.setAttribute("rowSpan", numRows - 1);
       activeCell.setAttribute("rowSpan", numRows);
     }
+    addRow(dataTable, trashPlayer.classFor,
+        '<td id="' + trashPlayer.idFor("active") +
+            '" class="activePlayerData" rowspan="0"></td>' +
+            '<td class="playerDataName" rowspan="0">' + trashPlayer.name + '</td>' +
+            '<td class="playerDataKey"> Score:</td>' + '<td id="' + trashPlayer.idFor("score") + '" class="playerDataValue">' +
+            trashPlayer.getScore() + '</td>');
 
     if (text_mode) {
       setupPerPlayerTextCardCounts();
@@ -1279,7 +1285,7 @@ function initialize(doc) {
   }
   player_re = '(' + other_player_names.join('|') + ')';
   findPlayerIcons();
-  if (!disabled && localStorage["always_display"] != "f") {
+  if (!disabled) {
     updateScores();
     updateDeck();
   }
@@ -1365,7 +1371,6 @@ function addSetting(setting, output) {
 function settingsString() {
   var settings = new Object();
   addSetting("debug", settings);
-  addSetting("always_display", settings);
   addSetting("allow_disable", settings);
   addSetting("name", settings);
   addSetting("status_announce", settings);
@@ -1665,11 +1670,9 @@ function handle(doc) {
           doc.childNodes[2].nodeValue);
     }
 
-    if (localStorage["always_display"] != "f") {
-      if (!disabled) {
-        updateScores();
-        updateDeck();
-      }
+    if (!disabled) {
+      updateScores();
+      updateDeck();
     }
   } catch (err) {
     console.log(doc);
