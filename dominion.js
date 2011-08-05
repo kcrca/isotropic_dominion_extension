@@ -1005,7 +1005,8 @@ function addRow(tab, playerClass, innerHTML) {
 function cardCountCellsForPlayer(player, cardName) {
   var cellId = player.idFor(cardName);
   if (!document.getElementById(cellId)) {
-    return $('<td id="' + cellId + '">' + displayCardCount(player.card_counts[cardName]) + '</td>')
+    return $('<td id="' + cellId + '">' +
+        displayCardCount(player.card_counts[cardName]) + '</td>')
         .addClass("playerCardCountCol").addClass(player.classFor);
   } else {
     return null;
@@ -1072,7 +1073,8 @@ function updateScores() {
   maybeSetupPlayerArea();
   rewriteTree(function() {
     $("#" + last_player.idFor("score")).text(last_player.getScore());
-    $("#" + last_player.idFor("otherCards")).html(last_player.otherCardsString());
+    $("#" + last_player.idFor("otherCards")).html(last_player
+        .otherCardsString());
   });
 }
 
@@ -1468,7 +1470,8 @@ function reinsert(ev) {
   var node = ev.target;
   var next = node.nextElementSibling;
   var prev = node.previousElementSibling;
-  var duplicated = (next != undefined && next.id == node.id) || (prev != undefined && prev.id == node.id);
+  var duplicated = (next != undefined && next.id == node.id) ||
+      (prev != undefined && prev.id == node.id);
   if (!duplicated) {
     var copy = node.cloneNode(true);
     // The "fading" of old log messages reduces opacity to near zero; clear that
@@ -1712,7 +1715,8 @@ function enterLobby() {
 
     // Handle updating status message as needed.
     $('#entry').css('display', 'none');
-    $('#entry').after('<input id="fake_entry" class="entry" style="width: 350px;">');
+    $('#entry')
+        .after('<input id="fake_entry" class="entry" style="width: 350px;">');
     $('#fake_entry').keyup(function(event) {
       var value = $('#fake_entry').val();
       var re = new RegExp("^/me(?: (.*))?$");
