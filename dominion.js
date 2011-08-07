@@ -188,11 +188,11 @@ function Player(name, num) {
   this.deck_size = 10;
   this.icon = undefined;
 
-  var isTrash = name == "Trash";
+  this.isTrash = name == "Trash";
 
   this.otherCards = {};
 
-  if (isTrash) {
+  if (this.isTrash) {
     this.idPrefix = "trash";
   } else {
     this.idPrefix = "player" + num;
@@ -204,7 +204,7 @@ function Player(name, num) {
 
   if (name == "You") {
     this.classFor = "you";
-  } else if (isTrash) {
+  } else if (this.isTrash) {
     this.classFor = "trash";
   } else {
     this.classFor = "playerClass" + ((num - 1) % PLAYER_CLASS_COUNT + 1);
@@ -212,7 +212,7 @@ function Player(name, num) {
   this.classFor += ' ' + this.idFor("data");
 
   // Map from special counts (such as number of gardens) to count.
-  if (isTrash) {
+  if (this.isTrash) {
     this.special_counts = {};
     this.card_counts = {};
   } else {
@@ -386,13 +386,14 @@ function Player(name, num) {
     return otherCards;
   };
 
-  this.gainCard = function(card, count) {
+  this.gainCard = function(card, count, toTrash) {
+    toTrash = toTrash == undefined ? !possessed_turn : false;
     if (debug_mode) {
       $('#log').children().eq(-1).before('<div class="gain_debug">*** ' + name +
           " gains " + count + " " + card.innerText + "</div>");
     }
     // You can't gain or trash cards while possessed.
-    if (possessed_turn && this == last_player) return;
+    if (possessed_turn && (this == last_player || this.isTrash)) return;
 
     last_gain_player = this;
     count = parseInt(count);
@@ -404,6 +405,10 @@ function Player(name, num) {
     this.recordCards(singular_card_name, count);
     if (!supplied_cards[singular_card_name]) {
       this.addOtherCard(card, count);
+    }
+    if (!this.isTrash && count < 0 && toTrash) {
+      trashPlayer.gainCard(card, -count);
+      updateDeck(trashPlayer);
     }
   }
 
@@ -436,7 +441,10 @@ function ActiveData() {
     if (key == 'potions' && !gameHasPotions) return;
     var prefix = this.prefixes[key];
     prefix = prefix || '';
-    $('#active_' + key).text(prefix + this[key]);
+    var thisPlayer = this;
+    rewriteTree(function() {
+      $('#active_' + key).text(prefix + thisPlayer[key]);
+    });
   };
 
   this.display = function() {
@@ -671,12 +679,12 @@ function maybeReturnToSupply(text) {
 
   var ret = false;
   if (text.indexOf("it to the supply") != -1) {
-    last_player.gainCard(last_reveal_card, -1);
+    last_player.gainCard(last_reveal_card, -1, false);
     ret = true;
   } else {
     var arr = text.match("([0-9]*) copies to the supply");
     if (arr && arr.length == 2) {
-      last_player.gainCard(last_reveal_card, -arr[1]);
+      last_player.gainCard(last_reveal_card, -arr[1], false);
       ret = true;
     }
   }
@@ -821,10 +829,10 @@ function handleGainOrTrash(player, elems, text, multiplier) {
       var card = elems[elem].innerText;
       var count = getCardCount(card, text);
       var num = multiplier * count;
-      player.gainCard(elems[elem], num);
-      if (num < 0) {
-        trashPlayer.gainCard(elems[elem], -num);
-        updateDeck(trashPlayer);
+      if (possessed_turn && num < 0) {
+        // Skip trashing any cards during possession
+      } else {
+        player.gainCard(elems[elem], num);
       }
     }
   }
@@ -961,7 +969,7 @@ function handleLogEntry(node) {
       maybeAnnounceFailure(">> Warning: Masquerade with more than 2 players " +
           "causes inaccurate score counting.");
     }
-    player.gainCard(card, -1);
+    player.gainCard(card, -1, false);
     var other_player = findTrailingPlayer(node.innerText);
     if (other_player == null) {
       handleError("Could not find trailing player from: " + node.innerText);
@@ -977,7 +985,7 @@ function handleLogEntry(node) {
     if (other_player == null) {
       handleError("Could not find trailing player from: " + node.innerText);
     } else {
-      other_player.gainCard(card, -1);
+      other_player.gainCard(card, -1, false);
     }
     possessed_turn = possessed_turn_backup;
   } else if (action.indexOf("reveal") == 0) {
