@@ -387,7 +387,7 @@ function Player(name, num) {
   };
 
   this.gainCard = function(card, count, toTrash) {
-    toTrash = toTrash == undefined ? !possessed_turn : false;
+    toTrash = toTrash == undefined ? true : toTrash;
     if (debug_mode) {
       $('#log').children().eq(-1).before('<div class="gain_debug">*** ' + name +
           " gains " + count + " " + card.innerText + "</div>");
@@ -674,23 +674,16 @@ function handleScoping(text_arr, text) {
 }
 
 function maybeReturnToSupply(text) {
-  possessed_turn_backup = possessed_turn;
-  possessed_turn = false;
-
-  var ret = false;
-  if (text.indexOf("it to the supply") != -1) {
-    last_player.gainCard(last_reveal_card, -1, false);
-    ret = true;
-  } else {
-    var arr = text.match("([0-9]*) copies to the supply");
-    if (arr && arr.length == 2) {
-      last_player.gainCard(last_reveal_card, -arr[1], false);
-      ret = true;
+  unpossessed(function () {
+    if (text.indexOf("it to the supply") != -1) {
+      last_player.gainCard(last_reveal_card, -1, false);
+    } else {
+      var arr = text.match("([0-9]*) copies to the supply");
+      if (arr && arr.length == 2) {
+        last_player.gainCard(last_reveal_card, -arr[1], false);
+      }
     }
-  }
-
-  possessed_turn = possessed_turn_backup;
-  return false;
+  });
 }
 
 function maybeHandleExplorer(elems, text) {
@@ -878,10 +871,30 @@ function ensureLogNodeSetup(node) {
   node.addEventListener("DOMNodeRemovedFromDocument", reinsert);
 }
 
+function unpossessed(action) {
+  var possessed_turn_backup = possessed_turn;
+  try {
+    possessed_turn = false;
+    action();
+  } finally {
+    possessed_turn = possessed_turn_backup;
+  }
+}
+
 function handleLogEntry(node) {
   if (maybeHandleGameStart(node)) return;
 
   if (!started) return;
+
+  // When someone is possessed, log entries with "possessed-log" are what
+  // describe the "possession". The other (normal) log entries describe the
+  // actual game effect. So we ignore the "possessed" entries because they
+  // are what is being commanded, not what is actually happening to the cards.
+  // (For example, if you possess Alice, then in "possessed-log" entries, it
+  // says "You play a Silver", but the actual game effect is as if Alice played
+  // the Silver (that is, Alice, as a player, gets $2 more to work with, it's
+  // just that you, not Alice, are deciding what to do with that $2).
+  if (possessed_turn && $(node).hasClass("possessed-log")) return;
 
   ensureLogNodeSetup(node);
   maybeRewriteName(node);
@@ -902,7 +915,7 @@ function handleLogEntry(node) {
 
   elems = node.getElementsByTagName("span");
   if (elems.length == 0) {
-    if (maybeReturnToSupply(node.innerText)) return;
+    maybeReturnToSupply(node.innerText);
     return;
   }
 
@@ -957,37 +970,38 @@ function handleLogEntry(node) {
   var player = getPlayer(text[0]);
   var action = text[1];
   if (action.indexOf("buy") == 0) {
-    var count = getCardCount(card_text, node.innerText);
-    player.gainCard(card, count);
-    activeData.changeField('buy', -count);
-    activeData.display();
+    // In possessed turns, it isn't who buys something, it's who "gains" it
+    // (and who gains it is stated in a separate log entry).
+    if (!possessed_turn) {
+      var count = getCardCount(card_text, node.innerText);
+      player.gainCard(card, count);
+      activeData.changeField('buy', -count);
+      activeData.display();
+    }
   } else if (action.indexOf("pass") == 0) {
-    possessed_turn_backup = possessed_turn;
-    possessed_turn = false;
-    if (possessed_turn && this == last_player) return;
-    if (player_count != 2) {
-      maybeAnnounceFailure(">> Warning: Masquerade with more than 2 players " +
-          "causes inaccurate score counting.");
-    }
-    player.gainCard(card, -1, false);
-    var other_player = findTrailingPlayer(node.innerText);
-    if (other_player == null) {
-      handleError("Could not find trailing player from: " + node.innerText);
-    } else {
-      other_player.gainCard(card, 1);
-    }
-    possessed_turn = possessed_turn_backup;
+    unpossessed(function() {
+      if (player_count != 2) {
+        maybeAnnounceFailure(">> Warning: Masquerade with more than 2 players " +
+            "causes inaccurate score counting.");
+      }
+      player.gainCard(card, -1, false);
+      var other_player = findTrailingPlayer(node.innerText);
+      if (other_player == null) {
+        handleError("Could not find trailing player from: " + node.innerText);
+      } else {
+        other_player.gainCard(card, 1);
+      }
+    });
   } else if (action.indexOf("receive") == 0) {
-    possessed_turn_backup = possessed_turn;
-    possessed_turn = false;
-    player.gainCard(card, 1);
-    var other_player = findTrailingPlayer(node.innerText);
-    if (other_player == null) {
-      handleError("Could not find trailing player from: " + node.innerText);
-    } else {
-      other_player.gainCard(card, -1, false);
-    }
-    possessed_turn = possessed_turn_backup;
+    unpossessed(function() {
+      player.gainCard(card, 1);
+      var other_player = findTrailingPlayer(node.innerText);
+      if (other_player == null) {
+        handleError("Could not find trailing player from: " + node.innerText);
+      } else {
+        other_player.gainCard(card, -1, false);
+      }
+    });
   } else if (action.indexOf("reveal") == 0) {
     last_reveal_card = card;
   }
