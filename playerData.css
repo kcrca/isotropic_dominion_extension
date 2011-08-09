@@ -60,7 +60,7 @@
 
 .playerCardCountCol {
     padding: 0 0.25em;
-    width: 1.5em;
+    /*width: 1.5em;*/
     text-align: right;
 }
 
@@ -93,21 +93,8 @@
     background: white;
 }
 
-td.kingdom-column, td.basic-column {
-    width: auto !important;
-}
-
-.kingdom-column > *, .basic-column > * {
-    display: table-row;
-}
-
-.kingdom-column > * > *, .basic-column > * > * {
-    display: table-cell;
-}
-
-/* Cause the prices + count display for basic cards to be vertical just like for kingdom cards */
-.imbasic > .imprice {
-    display: inline-block;
+.textMode #supply td.trash + td:empty {
+    width: 1em;
 }
 
 html {
@@ -137,6 +124,23 @@ html {
  * node with the id "imageMode". Classes and ID's that exist only in image mode
  * don't need that qualification.
  */
+
+td.kingdom-column, td.basic-column {
+    width: auto !important;
+}
+
+.kingdom-column > *, .basic-column > * {
+    display: table-row;
+}
+
+.kingdom-column > * > *, .basic-column > * > * {
+    display: table-cell;
+}
+
+/* Cause the prices + count display for basic cards to be vertical just like for kingdom cards */
+.imbasic > .imprice {
+    display: inline-block;
+}
 
 .imageMode #game {
     display: table-row !important;
@@ -179,8 +183,8 @@ html {
 }
 
 /*
- * Styles that apply only to image mode -- where needed they require a parent
- * node with the id "imageMode". Classes and ID's that exist only in image mode
+ * Styles that apply only to text mode -- where needed they require a parent
+ * node with the id "textMode". Classes and ID's that exist only in text mode
  * don't need that qualification.
  */
 
@@ -191,4 +195,13 @@ html {
 
 .avail {
     text-align: right;
+    padding-right: 0.5em !important;
+}
+
+.price {
+    white-space: nowrap;
+}
+
+.textMode #supply td.trash + td:empty {
+    width: 2em;
 }

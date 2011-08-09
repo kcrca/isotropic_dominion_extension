@@ -79,19 +79,10 @@ RegExp.quote = function(str) {
   return str.replace(/([.?*+^$[\]\\(){}-])/g, "\\$1");
 };
 
-// Keep a map from plural to singular for cards that need it.
-var plural_map = {};
-for (var i = 0; i < card_list.length; ++i) {
-  var cardName = card_list[i];
-  if (cardName['Plural'] != cardName['Singular']) {
-    plural_map[cardName['Plural']] = cardName['Singular'];
-  }
-}
-
-// Keep a map from card name (singular or plural) to card description
+// Keep a map from all card names (singular or plural) to the card object.
 var card_map = {};
-for (i = 0; i < card_list.length; i++) {
-  cardName = card_list[i];
+for (var i = 0; i < card_list.length; i++) {
+  var cardName = card_list[i];
   card_map[cardName.Singular] = cardName;
   card_map[cardName.Plural] = cardName;
   cardName.getActionCount = function() {
@@ -190,6 +181,7 @@ function Player(name, num) {
 
   this.isTrash = name == "Trash";
 
+  // The set of "other" cards -- ones that aren't in the suppy piles
   this.otherCards = {};
 
   if (this.isTrash) {
@@ -198,28 +190,34 @@ function Player(name, num) {
     this.idPrefix = "player" + num;
   }
 
-  this.idFor = function(fieldName) {
-    return this.idPrefix + "_" + toIdString(fieldName);
+  // Return the player-specific name for a general category. This is typically
+  // used for DOM node ID but can also be used as a DOM class name.
+  this.idFor = function(category) {
+    return this.idPrefix + "_" + toIdString(category);
   };
 
+  // Define the general player class used for CSS styling
   if (name == "You") {
     this.classFor = "you";
   } else if (this.isTrash) {
     this.classFor = "trash";
   } else {
+    // CSS cycles through PLAYER_CLASS_COUNT display classes
     this.classFor = "playerClass" + ((num - 1) % PLAYER_CLASS_COUNT + 1);
   }
+  // The CSS class is always the general player styling class plus the data
+  // for this specific player.
   this.classFor += ' ' + this.idFor("data");
 
   // Map from special counts (such as number of gardens) to count.
-  if (this.isTrash) {
-    this.special_counts = {};
-    this.card_counts = {};
-  } else {
+  this.special_counts = {};
+  this.card_counts = {};
+  if (!this.isTrash) {
     this.special_counts = { "Treasure" : 7, "Victory" : 3, "Uniques" : 2 };
     this.card_counts = { "Copper" : 7, "Estate" : 3 };
   }
 
+  // Remember the img node for the player's icon
   this.setIcon = function(imgNode) {
     if (imgNode == null) return;
     this.icon = imgNode.cloneNode(true);
@@ -276,8 +274,10 @@ function Player(name, num) {
 
   this.getDeckString = function() {
     var str = this.deck_size;
-    var need_action_string = (show_action_count && this.special_counts["Actions"]);
-    var need_unique_string = (show_unique_count && this.special_counts["Uniques"]);
+    var need_action_string = (show_action_count &&
+        this.special_counts["Actions"]);
+    var need_unique_string = (show_unique_count &&
+        this.special_counts["Uniques"]);
     var need_duchy_string = (show_duchy_count && this.special_counts["Duchy"]);
     if (need_action_string || need_unique_string || need_duchy_string) {
       var special_types = [];
@@ -316,7 +316,8 @@ function Player(name, num) {
 
     if (this.card_counts[name] <= 0) {
       if (this.card_counts[name] < 0) {
-        handleError("Card count for " + name + " is negative (" + this.card_counts[name] + ")");
+        handleError("Card count for " + name + " is negative (" +
+            this.card_counts[name] + ")");
       }
       delete this.card_counts[name];
       this.special_counts["Uniques"] -= 1;
@@ -325,7 +326,7 @@ function Player(name, num) {
     var cardId = this.idFor(name);
     var cardCountCell = document.getElementById(cardId);
     if (cardCountCell) {
-      cardCountCell.innerText = displayCardCount(this.card_counts[name]);
+      cardCountCell.innerText = cardCountString(this.card_counts[name]);
     }
   }
 
@@ -360,11 +361,14 @@ function Player(name, num) {
       } else if (type == "treasure") {
         this.changeSpecialCount("Treasure", count);
       } else {
-        handleError("Unknown card class: " + card.className + " for " + card.innerText);
+        handleError("Unknown card class: " + card.className + " for " +
+            card.innerText);
       }
     }
   }
 
+  // Add an "other" card. These always are unique, so count really should always
+  // be either +1 or -1.
   this.addOtherCard = function(card, count) {
     if (count > 0) {
       this.otherCards[card.innerText] = card.outerHTML;
@@ -373,7 +377,8 @@ function Player(name, num) {
     }
   };
 
-  this.otherCardsString = function() {
+  // Return HTML string to display the "other" cards this player has.
+  this.otherCardsHTML = function() {
     var otherCards = '';
     for (cardName in this.otherCards) {
       if (otherCards.length == 0) {
@@ -386,8 +391,8 @@ function Player(name, num) {
     return otherCards;
   };
 
-  this.gainCard = function(card, count, toTrash) {
-    toTrash = toTrash == undefined ? true : toTrash;
+  this.gainCard = function(card, count, trashing) {
+    trashing = trashing == undefined ? true : trashing;
     if (debug_mode) {
       $('#log').children().eq(-1).before('<div class="gain_debug">*** ' + name +
           " gains " + count + " " + card.innerText + "</div>");
@@ -406,37 +411,60 @@ function Player(name, num) {
     if (!supplied_cards[singular_card_name]) {
       this.addOtherCard(card, count);
     }
-    if (!this.isTrash && count < 0 && toTrash) {
+
+    // If the count is going down, usually this is trashing a card.
+    if (!this.isTrash && count < 0 && trashing) {
       trashPlayer.gainCard(card, -count);
       updateDeck(trashPlayer);
     }
   }
 
+  // This player has resigned; remember it.
   this.setResigned = function() {
+    if (this.resigned) return;
+
+    // In addition to other classes, this is now in the "resigned" class.
+    this.classFor += " resigned";
     $("." + this.idFor("data")).addClass("resigned");
     this.resigned = true;
-    if (this.classFor.indexOf("resigned") < 0) {
-      this.classFor += " resigned";
-    }
   };
 }
 
+// This object holds on to the active data for a single player.
 function ActiveData() {
-  this.reset = function() {
-    this.actions = 1;
-    this.buys = 1;
-    this.coins = 0;
-    this.potions = 0;
-    this.played = 0;
-  };
+  // Declare all active data fields and their default values here.
+  this.actions = 1;
+  this.buys = 1;
+  this.coins = 0;
+  this.potions = 0;
+  this.played = 0;
 
+  // The default value of each field is held in 'fields', and the keys of
+  // 'fields' is therefore the list of fields.
+  this.fields = {};
+  for (var key in this) {
+    if (typeof(this[key]) != 'function') {
+      this.fields[key] = this[key];
+    }
+  }
+
+  // Now we can add other values which are not active data fields.
   this.prefixes = {coins: '$', potions: '◉'};
 
+  // Reset all fields to their default values.
+  this.reset = function() {
+    for (var f in this.fields) {
+      this[f] = this.fields[f];
+    }
+  };
+
+  // Change the value of a specific field.
   this.changeField = function(key, delta) {
     this[key] += delta;
     this.displayField(key);
   };
 
+  // Update the display of a specific field.
   this.displayField = function(key) {
     if (key == 'potions' && !gameHasPotions) return;
     var prefix = this.prefixes[key];
@@ -447,15 +475,16 @@ function ActiveData() {
     });
   };
 
+  // Update the display of all fields.
   this.display = function() {
-    this.displayField('actions');
-    this.displayField('buys');
-    this.displayField('coins');
-    this.displayField('potions');
-    this.displayField('played');
+    for (var f in this.fields) {
+      this.displayField(f);
+    }
   };
 
-  this.playsCard = function(countIndicator, cardName, userAction) {
+  // Account for all the effects of playing a specific card.
+  this.cardHasBeenPlayed = function(countIndicator, cardName, userAction) {
+    // Convert the "count" string to a number; may be digits or "a', "the", etc.
     var count = NaN;
     try {
       count = parseInt(countIndicator);
@@ -472,7 +501,7 @@ function ActiveData() {
       return;
     }
 
-    // Changing 'played' comes first because the values of some cards rely on it
+    // Change 'played' field first because the values of some cards rely on it
     this.changeField('played', count);
     this.changeField('actions', count * card.getActionCount());
     if (userAction && card.isAction()) // consume the action
@@ -481,10 +510,9 @@ function ActiveData() {
     this.changeField('coins', count * card.getCoinCount());
     this.changeField('potions', count * card.getPotionCount());
   };
-
-  this.reset();
 }
 
+// Create a new "player" whose "deck" is the trash.
 function newTrashPlayer() {
   var t = new Player('Trash', i);
   t.card_counts = {};
@@ -507,8 +535,7 @@ function stateStrings() {
 }
 
 function getSingularCardName(name) {
-  if (plural_map[name] == undefined) return name;
-  return plural_map[name];
+  return card_map[name].Singular;
 }
 
 function getPlayer(name) {
@@ -518,28 +545,26 @@ function getPlayer(name) {
 
 function findTrailingPlayer(text) {
   var arr = text.match(/ ([^\s.]+)\.[\s]*$/);
-  if (arr == null) {
-    handleError("Couldn't find trailing player: '" + text + "'");
-    return null;
-  }
-  if (arr.length == 2) {
+  if (arr != null && arr.length == 2) {
     return getPlayer(arr[1]);
   }
+  handleError("Could not find trailing player from: " + text);
   return null;
 }
 
+// At the start of each turn, place the active player data display in the
+// proper place for the current player.
 function placeActivePlayerData() {
   if (disabled) return;
   if (last_player == null) return;
 
+  // Each player has a place for its active data, we just look it up here.
   var playerID = last_player.idFor("active");
   var cell = document.getElementById(playerID);
   if (cell == undefined)
     return;
 
-  try {
-    rewritingTree++;
-
+  rewriteTree(function () {
     var dataTable = document.getElementById("activePlayerDataTable");
     if (dataTable == undefined) {
       dataTable = document.createElement("table");
@@ -562,27 +587,31 @@ function placeActivePlayerData() {
     }
 
     if (cell.firstElementChild != dataTable) {
+      // This will move it from wherever it is currently.
       cell.appendChild(dataTable);
     }
     activeData.display();
-  } finally {
-    rewritingTree--;
+  });
+}
+
+// Remove the active player data from the page.
+function removeActivePlayerData() {
+  var dataTable = document.getElementById("activePlayerDataTable");
+  if (!dataTable) return;
+
+  var parent = dataTable.parentNode;
+  if (parent != null) {
+    parent.removeChild(dataTable);
   }
 }
 
-function removeActivePlayerData() {
-  var activePlayerDataTable = document.getElementById("activePlayerDataTable");
-  if (!activePlayerDataTable) return;
-
-  var parent = activePlayerDataTable.parentNode;
-  if (parent != null)
-    parent.removeChild(activePlayerDataTable);
-}
-
+// Check to see if the node shows that a player resigned.
 function maybeHandleResignation(node) {
   if (node.innerText.match(/ resigns from the game\.$/)) {
     last_player.setResigned();
+    return true;
   }
+  return false;
 }
 
 function maybeHandleTurnChange(node) {
@@ -606,10 +635,12 @@ function maybeHandleTurnChange(node) {
     }
 
     activeData.reset();
-    maybeSetupPlayerArea();
+    maybeSetupPerPlayerInfo();
     placeActivePlayerData();
+    // The start of the turn is styled to match the player's data area.
     $(node).addClass(last_player.classFor);
 
+    // If we don't know the icon, look it up from this turn start.
     if (last_player.icon == undefined) {
       var imgs = node.getElementsByTagName("img");
       if (imgs.length > 0)
@@ -628,12 +659,18 @@ function maybeHandleTurnChange(node) {
   return false;
 }
 
+// Adjust the value of a piece of active player data if there is a specification
+// for the number by which to adjust it.
 function adjustActive(key, spec) {
-  if (spec != null)
+  if (spec != null) {
     activeData.changeField(key, parseInt(spec[1]));
+  }
 }
 
+// If appropriate, adjust active data values. Return 'true' if there is no
+// possibility of other useful data to be handled in this log line.
 function maybeHandleActiveCounts(elems, text) {
+  // Handle lines like "You play a Foo", or "You play a Silver and 2 Coppers."
   if (text.match(/ plays? /)) {
     var parts = text.split(/,|,?\s+and\b/);
     var elemNum = 0;
@@ -641,10 +678,12 @@ function maybeHandleActiveCounts(elems, text) {
       var match = /\b(an?|the|[0-9]+) (.*)/.exec(parts[i]);
       if (match == null) continue;
       var cardName = elems[elemNum++].innerText;
-      activeData.playsCard(match[1], cardName, !text.match(/^\.\.\. /));
+      activeData.cardHasBeenPlayed(match[1], cardName, !text.match(/^\.\.\. /));
     }
     return elemNum > 0;
   }
+  
+  // Handle lines like "You get +1 buy and +$1."
   adjustActive('actions', /\+([0-9]+) action/.exec(text));
   adjustActive('buys', /\+([0-9]+) buy/.exec(text));
   adjustActive('coins', /\+\$([0-9]+)/.exec(text));
@@ -788,6 +827,7 @@ function maybeHandleOffensiveTrash(elems, text_arr, text) {
     }
     return false;
   }
+  return false;
 }
 
 function maybeHandleTournament(elems, text_arr, text) {
@@ -817,13 +857,13 @@ function getCardCount(card, text) {
 }
 
 function handleGainOrTrash(player, elems, text, multiplier) {
-  for (elem in elems) {
+  for (var elem in elems) {
     if (elems[elem].innerText != undefined) {
       var card = elems[elem].innerText;
       var count = getCardCount(card, text);
       var num = multiplier * count;
       if (possessed_turn && num < 0) {
-        // Skip trashing any cards during possession
+        // Skip trashing any cards during possession.
       } else {
         player.gainCard(elems[elem], num);
       }
@@ -831,11 +871,14 @@ function handleGainOrTrash(player, elems, text, multiplier) {
   }
 }
 
+// Check to see if this node text is the start of a game.
 function isGameStart(nodeText) {
+  // First we must know if this is a solitaire game or not.
   if (solitaire == null) {
     if (game_offer != null) {
       solitaire = game_offer.innerText.match(/this game solitaire\?/) != null;
     }
+    // If we haven't resolved the question, this can't yet be a game start.
     if (solitaire == null)
       return false;
   }
@@ -847,6 +890,7 @@ function isGameStart(nodeText) {
   }
 }
 
+// Handle this if it is the start of a game.
 function maybeHandleGameStart(node) {
   var nodeText = node.innerText;
   if (nodeText == null || !isGameStart(nodeText)) {
@@ -871,13 +915,16 @@ function ensureLogNodeSetup(node) {
   node.addEventListener("DOMNodeRemovedFromDocument", reinsert);
 }
 
+// Perform a function that should behave the same whether or not the current
+// player is posessed.
 function unpossessed(action) {
-  var possessed_turn_backup = possessed_turn;
+  // Remember the current state of possession.
+  var originallyPossessed = possessed_turn;
   try {
     possessed_turn = false;
     action();
   } finally {
-    possessed_turn = possessed_turn_backup;
+    possessed_turn = originallyPossessed;
   }
 }
 
@@ -886,6 +933,7 @@ function handleLogEntry(node) {
 
   if (!started) return;
 
+  // Ignore the purple log entries during posession.
   // When someone is possessed, log entries with "possessed-log" are what
   // describe the "possession". The other (normal) log entries describe the
   // actual game effect. So we ignore the "possessed" entries because they
@@ -913,7 +961,7 @@ function handleLogEntry(node) {
   // Gaining VP could happen in combination with other stuff.
   maybeHandleVp(node.innerText);
 
-  elems = node.getElementsByTagName("span");
+  var elems = node.getElementsByTagName("span");
   if (elems.length == 0) {
     maybeReturnToSupply(node.innerText);
     return;
@@ -981,14 +1029,12 @@ function handleLogEntry(node) {
   } else if (action.indexOf("pass") == 0) {
     unpossessed(function() {
       if (player_count != 2) {
-        maybeAnnounceFailure(">> Warning: Masquerade with more than 2 players " +
-            "causes inaccurate score counting.");
+        maybeAnnounceFailure(">> Warning: Masquerade with more than 2 " +
+            "players causes inaccurate score counting.");
       }
       player.gainCard(card, -1, false);
       var other_player = findTrailingPlayer(node.innerText);
-      if (other_player == null) {
-        handleError("Could not find trailing player from: " + node.innerText);
-      } else {
+      if (other_player != null) {
         other_player.gainCard(card, 1);
       }
     });
@@ -996,9 +1042,7 @@ function handleLogEntry(node) {
     unpossessed(function() {
       player.gainCard(card, 1);
       var other_player = findTrailingPlayer(node.innerText);
-      if (other_player == null) {
-        handleError("Could not find trailing player from: " + node.innerText);
-      } else {
+      if (other_player != null) {
         other_player.gainCard(card, -1, false);
       }
     });
@@ -1015,48 +1059,61 @@ function getScores() {
   return scores;
 }
 
-function addRow(tab, playerClass, innerHTML) {
+// Add a row to a table.
+function addRow(tab, rowClass, innerHTML) {
   var r = document.createElement("tr");
-  if (playerClass)
-    r.setAttribute("class", playerClass);
+  if (rowClass)
+    r.setAttribute("class", rowClass);
   tab.appendChild(r);
   r.innerHTML = innerHTML;
   return r;
 }
 
-function cardCountCellsForPlayer(player, cardName) {
+// Set up the card count cell for a given player+card combination in text mode.
+function setupCardCountCellForPlayer(player, cardName) {
   var cellId = player.idFor(cardName);
   if (!document.getElementById(cellId)) {
     return $('<td id="' + cellId + '">' +
-        displayCardCount(player.card_counts[cardName]) + '</td>')
+        cardCountString(player.card_counts[cardName]) + '</td>')
         .addClass("playerCardCountCol").addClass(player.classFor);
   } else {
     return null;
   }
 }
 
+// Set up the card count cells for all players (including the trash player) in
+// text mode.
 function setupPerPlayerTextCardCounts() {
-  var toAdd = player_count + 1; // the extra is for the trash player
-  $("#supply > table > tbody > tr > td[colspan]").each(function() {
-    var $this = $(this);
-    var origSpanStr = $this.attr("colspan");
-    var origSpan = parseInt(origSpanStr);
-    $this.attr("colspan", (origSpan + toAdd) + "");
-  });
+  // For each row in the supply table, add a column count cell for each player.
   $(".txcardname").each(function() {
     var $this = $(this);
     var cardName = $this.children("[cardname]").first().attr('cardname');
-    var $insertAfter = $this.next();
+    // Insert new cells after this one.
+    var insertAfter = $this.next();
     allPlayers(function(player) {
-      var cell = cardCountCellsForPlayer(player, cardName);
+      var cell = setupCardCountCellForPlayer(player, cardName);
       if (cell != null) {
-        $insertAfter.after(cell);
-        $insertAfter = cell;
+        insertAfter.after(cell);
+        insertAfter = cell;
       }
     });
   });
+
+  // Any row that spans a number of columns should span the added columns.
+  // Use the attribute "grown" to avoid adjusting the same thing multiple times.
+  var toAdd = player_count + 1; // the extra is for the trash player
+
+  $("#supply > table > tbody > tr > td[colspan]:not([grown])").each(function() {
+    var $this = $(this);
+    var origSpanStr = $this.attr('colspan');
+    var origSpan = parseInt(origSpanStr);
+    $this.attr('colspan', (origSpan + toAdd) + "");
+    $this.attr('grown', toAdd + "");
+  });
+
 }
 
+// Set up the per-player card counts in image mode for a given column.
 function setupPerPlayerImageCardCounts(region) {
   var selector = '.' + region + '-column';
 
@@ -1068,13 +1125,14 @@ function setupPerPlayerImageCardCounts(region) {
     var $this = $(this);
     var cardName = $this.attr('cardname');
     allPlayers(function(player) {
-      var cell = cardCountCellsForPlayer(player, cardName);
+      var cell = setupCardCountCellForPlayer(player, cardName);
       if (cell != null)
         $this.append(cell);
     });
   });
 }
 
+// Execute a function for all players, including the trash player.
 function allPlayers(func) {
   for (var playerName in players) {
     func(players[playerName]);
@@ -1082,74 +1140,108 @@ function allPlayers(func) {
   func(trashPlayer);
 }
 
-function displayCardCount(count) {
+// Return the string for a given card count. "0" is shown as "-".
+function cardCountString(count) {
   return (count == 0 || count == undefined ? '-' : count);
 }
 
+// Return the string used for DOM ID's for a given (card) name -- we
+// canonicalize it to be always lower case, stripping out non-letters.
 function toIdString(name) {
   return name.replace(/[^a-zA-Z]/gi, "").toLowerCase();
 }
 
 function updateScores() {
   if (last_player == null) return;
-  maybeSetupPlayerArea();
+  maybeSetupPerPlayerInfo();
   rewriteTree(function() {
     $("#" + last_player.idFor("score")).text(last_player.getScore());
-    $("#" + last_player.idFor("otherCards")).html(last_player
-        .otherCardsString());
+    $("#" + last_player.idFor("otherCards")).html(last_player.otherCardsHTML());
   });
 }
 
-function maybeSetupPlayerArea() {
-  if (disabled) return;
-  if (document.getElementById("playerData")) return;
-
-  try {
-    rewritingTree++;
-
-    var dataTable = document.createElement("table");
-    if (!text_mode) {
-      dataTable.setAttribute("align", "right");
-    }
-    //!! Show how far through the deck each player is
-    //!! Include sub-score areas for each 'extra' type (Duke, Fairgrounds, ...)
-    //!! Show how much each 'extra' type would be worth (Duke, Fairgrounds, ...)
-    //!! Put counting options in a pop-up window or something
-    for (var playerName in players) {
-      var countBefore = dataTable.childNodes.length;
-      var player = players[playerName];
-      var row1 = addRow(dataTable, player.classFor,
-          '<td id="' + player.idFor("active") +
-              '" class="activePlayerData" rowspan="0"></td>' +
-              '<td class="playerDataName" rowspan="0">' + playerName + '</td>' +
-              '<td class="playerDataKey"> Score:</td>' + '<td id="' +
-              player.idFor("score") + '" class="playerDataValue">' +
-              player.getScore() + '</td>');
-      var activeCell = row1.firstElementChild;
-      var playerCell = activeCell.nextElementSibling;
-      if (player.icon != undefined) {
-        playerCell.insertBefore(player.icon.cloneNode(true),
-            playerCell.firstChild);
-      }
-      addRow(dataTable, player.classFor,
-          '<td class="playerDataKey">Deck:</td>' + '<td id="' +
-              player.idFor("deck") + '" class="playerDataValue">' +
-              player.getDeckString() + '</td>');
-      addRow(dataTable, player.classFor,
-          '<td id="' + player.idFor("otherCards") +
-              '" class="playerOtherCards" colspan="3">' +
-              player.otherCardsString() + '</td>');
-      var numRows = dataTable.childNodes.length - countBefore;
-      playerCell.setAttribute("rowSpan", numRows - 1);
-      activeCell.setAttribute("rowSpan", numRows);
-    }
-    addRow(dataTable, trashPlayer.classFor,
-        '<td id="' + trashPlayer.idFor("active") +
+// If the player area does not exist, create it. For some reason, the table that
+// contains the player area is rebuilt during play (I think whenever a card is
+// bought).
+function setupPlayerArea() {
+  var ptab = document.createElement("table");
+  if (!text_mode) {
+    ptab.setAttribute("align", "right");
+  }
+  for (var playerName in players) {
+    var countBefore = ptab.childNodes.length;
+    var player = players[playerName];
+    var row1 = addRow(ptab, player.classFor,
+        '<td id="' + player.idFor("active") +
             '" class="activePlayerData" rowspan="0"></td>' +
-            '<td class="playerDataName" rowspan="0">' + trashPlayer.name +
-            '</td>' + '<td class="playerDataKey"> Cards:</td>' + '<td id="' +
-            trashPlayer.idFor("deck") + '" class="playerDataValue">' +
-            trashPlayer.getDeckString() + '</td>');
+            '<td class="playerDataName" rowspan="0">' + playerName + '</td>' +
+            '<td class="playerDataKey"> Score:</td>' + '<td id="' +
+            player.idFor("score") + '" class="playerDataValue">' +
+            player.getScore() + '</td>');
+    var activeCell = row1.firstElementChild;
+    var playerCell = activeCell.nextElementSibling;
+    if (player.icon != undefined) {
+      playerCell.insertBefore(player.icon.cloneNode(true),
+          playerCell.firstChild);
+    }
+    addRow(ptab, player.classFor,
+        '<td class="playerDataKey">Deck:</td>' + '<td id="' +
+            player.idFor("deck") + '" class="playerDataValue">' +
+            player.getDeckString() + '</td>');
+    addRow(ptab, player.classFor, '<td id="' + player.idFor("otherCards") +
+        '" class="playerOtherCards" colspan="3">' + player.otherCardsHTML() +
+        '</td>');
+    var numRows = ptab.childNodes.length - countBefore;
+    playerCell.setAttribute("rowSpan", numRows - 1);
+    activeCell.setAttribute("rowSpan", numRows);
+  }
+  addRow(ptab, trashPlayer.classFor, '<td id="' + trashPlayer.idFor("active") +
+      '" class="activePlayerData" rowspan="0"></td>' +
+      '<td class="playerDataName" rowspan="0">' + trashPlayer.name + '</td>' +
+      '<td class="playerDataKey"> Cards:</td>' + '<td id="' +
+      trashPlayer.idFor("deck") + '" class="playerDataValue">' +
+      trashPlayer.getDeckString() + '</td>');
+
+  if (text_mode) {
+    ptab.id = "playerData";
+    var outerTable = document.createElement("table");
+    outerTable.id = "playerDataArranger";
+    var row = addRow(outerTable, null,
+        '<td id="playerDataContainer" valign="bottom"></td>' +
+            '<td id="logContainer" valign="bottom"></td>');
+    row.firstChild.appendChild(ptab);
+    row.lastChild.appendChild(document.getElementById("log"));
+    var game = document.getElementById("game");
+    game.insertBefore(outerTable, game.firstElementChild);
+  } else {
+    var tab = player_spot.firstElementChild;
+    // tab can be null at the end of a game when returning to the lobby
+    if (tab != null) {
+      var nrow = tab.insertRow(0);
+      var area = nrow.insertCell();
+      area.id = "playerData";
+      nrow.setAttribute("align", "right");
+      area.setAttribute("colspan", "2");
+      area.appendChild(ptab);
+    }
+  }
+}
+
+// As needed, set up player data area and the per-card count columns.
+function maybeSetupPerPlayerInfo() {
+  if (disabled) return;
+
+  //!! Show how far through the deck each player is
+  //!! Include sub-score areas for each 'extra' type (Duke, Fairgrounds, ...)
+  //!! Show how much each 'extra' type would be worth (Duke, Fairgrounds, ...)
+  //!! Put counting options in a pop-up window or something
+  rewriteTree(function () {
+    // If the player area does not exist, create it. For some reason, the table
+    // that contains the player area is rebuilt during play (I think whenever a
+    // card is bought).
+    if (!document.getElementById("playerData")) {
+      setupPlayerArea();
+    }
 
     if (text_mode) {
       setupPerPlayerTextCardCounts();
@@ -1158,37 +1250,11 @@ function maybeSetupPlayerArea() {
       setupPerPlayerImageCardCounts('basic');
     }
 
-    if (text_mode) {
-      dataTable.id = "playerData";
-      var outerTable = document.createElement("table");
-      outerTable.id = "playerDataArranger";
-      var row = addRow(outerTable, null,
-          '<td id="playerDataContainer" valign="bottom"></td>' +
-              '<td id="logContainer" valign="bottom"></td>');
-      row.firstChild.appendChild(dataTable);
-      row.lastChild.appendChild(document.getElementById("log"));
-      var game = document.getElementById("game");
-      game.insertBefore(outerTable, game.firstElementChild);
-    } else {
-      var tab = player_spot.firstElementChild;
-      if (tab == null) {
-        // This can happen at the end of a game when returning to the lobby
-        return;
-      }
-      var nrow = tab.insertRow(0);
-      var area = nrow.insertCell();
-      area.id = "playerData";
-      nrow.setAttribute("align", "right");
-      area.setAttribute("colspan", "2");
-      area.appendChild(dataTable);
-    }
-
     placeActivePlayerData();
-  } finally {
-    rewritingTree--;
-  }
+  });
 }
 
+// Remove the player area, such as at the end of the game or if disabled.
 function removePlayerArea() {
   var ptab = document.getElementById("playerData");
   if (ptab != null && ptab.parentNode != null) {
@@ -1196,6 +1262,14 @@ function removePlayerArea() {
     ptab.parentNode.removeChild(ptab);
   }
   $(".playerCardCountCol").remove();
+
+  $('#supply td[grown]').each(function() {
+    var $this = $(this);
+    var grownBy = $this.attr('grown');
+    var colspan = $this.attr('colspan');
+    $this.attr('colspan', (parseInt(colspan) - parseInt(grownBy)));
+    $this.removeAttr('grown');
+  });
 }
 
 function getDecks() {
@@ -1214,6 +1288,7 @@ function updateDeck(player) {
   });
 }
 
+// Try to find out the player icons from historical data.
 function findPlayerIcons() {
   maybeRewriteName(game_offer);
 
@@ -1261,8 +1336,10 @@ function initialize(doc) {
   player_count = 0;
   trashPlayer = newTrashPlayer();
 
-  setGUIMode();
+  discoverGUIMode();
   activeData = new ActiveData();
+  
+  // Figure out which cards are in supply piles
   supplied_cards = {};
   $("[cardname]").each(function() {
     supplied_cards[$(this).attr("cardname")] = true;
@@ -1272,10 +1349,11 @@ function initialize(doc) {
     disabled = true;
   }
 
-  // Figure out what turn we are. We'll use that to figure out how long to wait
+  // Figure out which turn we are. We'll use that to figure out how long to wait
   // before announcing the extension.
   var self_index = -1;
 
+  //!! We need to also rewrite players named "you", "You", "Your", etc.
   // Hack: collect player names with spaces and apostrophes in them. We'll
   // rewrite them and then all the text parsing works as normal.
   var p = "(?:([^,]+), )";    // an optional player
@@ -1292,7 +1370,7 @@ function initialize(doc) {
     handleError("Couldn't parse: " + doc.innerText);
   }
   var other_player_names = [];
-  var playerNum = 1;
+  player_count = 0;
   for (var i = 1; i < arr.length; ++i) {
     if (arr[i] == undefined) continue;
 
@@ -1307,7 +1385,7 @@ function initialize(doc) {
       arr[i] = rewritten;
     }
     // Initialize the player.
-    players[arr[i]] = new Player(arr[i], playerNum++);
+    players[arr[i]] = new Player(arr[i], player_count);
 
     if (arr[i] != "You") {
       other_player_names.push(RegExp.quote(arr[i]));
@@ -1336,7 +1414,7 @@ function initialize(doc) {
 
 function maybeRewriteName(doc) {
   if (doc.innerHTML != undefined && doc.innerHTML != null) {
-    for (player in player_rewrites) {
+    for (var player in player_rewrites) {
       doc.innerHTML = doc.innerHTML.replace(player, player_rewrites[player]);
     }
   }
@@ -1378,8 +1456,6 @@ function handleChatText(speaker, text) {
     localStorage.setItem("disabled", "t");
     disabled = true;
     stopCounting();
-    removePlayerArea();
-    unsetGUIMode();
     writeText(">> Point counter disabled.");
   }
 
@@ -1419,6 +1495,8 @@ function stopCounting() {
   solitaire = null;
   game_offer = null;
   text_mode = undefined;
+  removePlayerArea();
+  forgetGUIMode();
 }
 
 function handleGameEnd(doc) {
@@ -1444,7 +1522,8 @@ function handleGameEnd(doc) {
           if (player_name == "You") {
             player_name = rewriteName(name);
           }
-          var re = new RegExp(RegExp.quote(player_name) + " has ([0-9]+) points");
+          var re = new RegExp(RegExp.quote(player_name) +
+              " has ([0-9]+) points");
           var arr = summary.match(re);
           if (arr && arr.length == 2) {
             var score = ("" + players[player].getScore()).replace(/^.*=/, "");
@@ -1498,27 +1577,21 @@ function reinsert(ev) {
     var copy = node.cloneNode(true);
     // The "fading" of old log messages reduces opacity to near zero; clear that
     copy.removeAttribute("style");
-    try {
-      rewritingTree++;
+    rewriteTree(function () {
       node.parentNode.insertBefore(copy, node);
-    } finally {
-      rewritingTree--;
-    }
+    });
   }
 }
 
+// If this connotes the start of the game, start it.
 function maybeStartOfGame(node) {
   var nodeText = node.innerText.trim();
   if (nodeText.length == 0) {
     return;
   }
 
-  // The first line of actual text is either "Turn order" or something in
-  // the middle of the game.
   if (isGameStart(nodeText)) {
-    // The game is starting, so put in the initial blank entries and clear
-    // out any local storage.
-    console.log("--- starting game ---" + "\n");
+    // The game is starting, so clear out any local storage.
     started = true;
     next_log_line_num = 1;
     window.localStorage.removeItem("log");
@@ -1542,12 +1615,14 @@ function logEntryForGame(node) {
   return started;
 }
 
+// Restore the game offer node.
 function restoreOffer() {
   var offer = document.createElement("span");
   offer.innerHTML = localStorage["offer"];
   return offer;
 }
 
+// Restore the game history from a stored log.
 function restoreHistory(node) {
   // The first log line is not the first line of the game, so restore the
   // log from history Of course, there must be a log history to restore.
@@ -1566,8 +1641,7 @@ function restoreHistory(node) {
   // Write all the entries from the history into the log up to (but not
   // including) the one that matches the newly added entry that triggered
   // the need to restore the history.
-  try {
-    rewritingTree++;
+  rewriteTree(function () {
     var logRegion = node.parentElement;
     // First, clear out anything that's currently there before the newly
     // added entry.
@@ -1601,9 +1675,7 @@ function restoreHistory(node) {
         handleLogEntry(line);
       }
     }
-  } finally {
-    rewritingTree--;
-  }
+  });
 }
 
 function inLobby() {
@@ -1611,13 +1683,19 @@ function inLobby() {
   return (player_spot == undefined || player_spot.childElementCount == 0);
 }
 
-function unsetGUIMode() {
+// Drop any state related to knowing text vs. image mode.
+function forgetGUIMode() {
   document.firstChild.id = "";
   $("#body").removeClass("textMode").removeClass("imageMode")
       .removeClass("playing");
 }
 
-function setGUIMode() {
+// Discover whether we are in text mode or image mode. The primary bit of state
+// that this sets is for the benefit of CSS: If we are in text mode, body tag
+// has the "textMode" class, otherwise it has the "imageMode" class. In both
+// cases it has the "playing" class, which allows CSS to tell the difference
+// between being in the lobby vs. playing an actual game.
+function discoverGUIMode() {
   var href = gui_mode_spot.getAttribute("href");
   // The link is to the "text" mode when it's in image mode and vice versa.
   text_mode = href.indexOf("text") < 0;
@@ -1626,6 +1704,8 @@ function setGUIMode() {
   $("#body").addClass("playing").addClass(text_mode ? "textMode" : "imageMode");
 }
 
+// Perform a function that rewrites the tree, suppressing the processing of all
+// change-related DOM events.
 function rewriteTree(func) {
   try {
     rewritingTree++;
@@ -1636,19 +1716,21 @@ function rewriteTree(func) {
 }
 
 function handle(doc) {
-  if (rewritingTree > 0) {
-    return;
-  }
+  // Ignore DOM events when we are rewritting the tree; see rewriteTree().
+  if (rewritingTree > 0) return;
 
   try {
+    // Detect the "Say" button so we can find some children
     if (doc.constructor == HTMLDivElement &&
         doc.innerText.indexOf("Say") == 0) {
+      // Pull out the links for future reference.
       var links = doc.getElementsByTagName("a");
       gui_mode_spot = links[0];
       deck_spot = links[1];
       points_spot = links[2];
     }
 
+    // If we haven't started, see if this is the start of a game.
     if (!started) {
       var choices = document.getElementById("choices");
       if (choices != null && choices.hasChildNodes()) {
@@ -1656,8 +1738,8 @@ function handle(doc) {
         for (var i = 0; i < spans.length; i++) {
           var txt = spans[i].innerText;
           if (txt.indexOf("play this game ") == 0) {
-            game_offer = spans[i];
             // Preserve the offer. This is critical when restoring the log.
+            game_offer = spans[i];
             localStorage["offer"] = game_offer.innerHTML;
             break;
           }
@@ -1665,6 +1747,7 @@ function handle(doc) {
       }
     }
 
+    // If this is a log line, process it to follow the game.
     if (doc.className && doc.className.indexOf("logline") >= 0) {
       if (logEntryForGame(doc)) {
         handleLogEntry(doc);
@@ -1674,15 +1757,17 @@ function handle(doc) {
       }
     }
 
+    // Remember the "supply" node for later use.
     if (doc.id == "supply") {
       player_spot = doc;
     }
 
+    // The child nodes of "supply" tell us whether certain cards are in play.
     if (doc.parentNode.id == "supply") {
       show_action_count = false;
       show_unique_count = false;
       show_duchy_count = false;
-      elems = doc.getElementsByTagName("span");
+      var elems = doc.getElementsByTagName("span");
       for (var elem in elems) {
         if (elems[elem].innerText == "Vineyard") show_action_count = true;
         if (elems[elem].innerText == "Fairgrounds") show_unique_count = true;
@@ -1690,18 +1775,22 @@ function handle(doc) {
       }
     }
 
+    // If the game hasn't started, everything after this is irrelevant.
     if (!started) return;
 
+    // If we're adding chioces, it may be the choices at the end of the game
     if (doc.constructor == HTMLDivElement && doc.parentNode.id == "choices") {
       handleGameEnd(doc);
       if (!started) return;
     }
 
+    // We follow the chat lines to see if it says something we should react to.
     if (doc.parentNode.id == "chat" && doc.childNodes.length > 2) {
       handleChatText(doc.childNodes[1].innerText.slice(0, -1),
           doc.childNodes[2].nodeValue);
     }
 
+    // Something was added, this is a good time to update the display.
     if (!disabled) {
       updateScores();
       updateDeck();
@@ -1770,6 +1859,7 @@ function enterLobby() {
 
   my_icon = $('#log img').first().get(0);
 }
+
 setTimeout("enterLobby()", 600);
 
 document.body.addEventListener('DOMNodeInserted', function(ev) {
