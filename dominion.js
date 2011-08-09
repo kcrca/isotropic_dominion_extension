@@ -181,7 +181,7 @@ function Player(name, num) {
 
   this.isTrash = name == "Trash";
 
-  // The set of "other" cards -- ones that aren't in the suppy piles
+  // The set of "other" cards -- ones that aren't in the supply piles
   this.otherCards = {};
 
   if (this.isTrash) {
@@ -210,12 +210,15 @@ function Player(name, num) {
   this.classFor += ' ' + this.idFor("data");
 
   // Map from special counts (such as number of gardens) to count.
-  this.special_counts = {};
-  this.card_counts = {};
+  this.special_counts = { "Treasure" : 7, "Victory" : 3, "Uniques" : 2 };
+  this.card_counts = { "Copper" : 7, "Estate" : 3 };
   this.cards_aside = {};
-  if (!this.isTrash) {
-    this.special_counts = { "Treasure" : 7, "Victory" : 3, "Uniques" : 2 };
-    this.card_counts = { "Copper" : 7, "Estate" : 3 };
+
+  if (this.isTrash) {
+    this.special_counts = {};
+    this.card_counts = {};
+    this.deck_size = 0;
+    this.score = 0;
   }
 
   // Remember the img node for the player's icon
@@ -432,7 +435,7 @@ function Player(name, num) {
     $("." + this.idFor("data")).addClass("resigned");
     this.resigned = true;
   };
-  
+
   this.setAside = function(elems) {
     for (var i = 0; i < elems.length; i++) {
       var card = elems[i];
@@ -446,13 +449,13 @@ function Player(name, num) {
       this.updateCardDisplay(cardName);
     }
   };
-  
+
   this.cardCountString = function(cardName) {
     var count = this.card_counts[cardName];
     if (count == undefined || count == 0) {
       return '-';
     }
-    
+
     var aside = this.cards_aside[cardName];
     if (aside == undefined || aside == 0) {
       return count + "";
@@ -545,15 +548,6 @@ function ActiveData() {
 }
 
 // Create a new "player" whose "deck" is the trash.
-function newTrashPlayer() {
-  var t = new Player('Trash', i);
-  t.card_counts = {};
-  t.classFor = "trash";
-  t.deck_size = 0;
-  t.score = 0;
-  return t;
-}
-
 function stateStrings() {
   var state = '';
   for (var player in players) {
@@ -1369,8 +1363,7 @@ function initialize(doc) {
   player_rewrites = new Object();
   player_re = "";
   player_count = 0;
-  trashPlayer = newTrashPlayer();
-
+  trashPlayer = new Player('Trash', i);
   discoverGUIMode();
   activeData = new ActiveData();
   
