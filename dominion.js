@@ -212,6 +212,7 @@ function Player(name, num) {
   // Map from special counts (such as number of gardens) to count.
   this.special_counts = {};
   this.card_counts = {};
+  this.cards_aside = {};
   if (!this.isTrash) {
     this.special_counts = { "Treasure" : 7, "Victory" : 3, "Uniques" : 2 };
     this.card_counts = { "Copper" : 7, "Estate" : 3 };
@@ -306,6 +307,14 @@ function Player(name, num) {
     this.special_counts[name] = this.special_counts[name] + delta;
   }
 
+  this.updateCardDisplay = function(name) {
+    var cardId = this.idFor(name);
+    var cardCountCell = document.getElementById(cardId);
+    if (cardCountCell) {
+      cardCountCell.innerHTML = this.cardCountString(name);
+    }
+  }
+
   this.recordCards = function(name, count) {
     if (this.card_counts[name] == undefined || this.card_counts[name] == 0) {
       this.card_counts[name] = count;
@@ -322,12 +331,7 @@ function Player(name, num) {
       delete this.card_counts[name];
       this.special_counts["Uniques"] -= 1;
     }
-
-    var cardId = this.idFor(name);
-    var cardCountCell = document.getElementById(cardId);
-    if (cardCountCell) {
-      cardCountCell.innerText = cardCountString(this.card_counts[name]);
-    }
+    this.updateCardDisplay(name);
   }
 
   this.recordSpecialCards = function(card, count) {
@@ -428,6 +432,34 @@ function Player(name, num) {
     $("." + this.idFor("data")).addClass("resigned");
     this.resigned = true;
   };
+  
+  this.setAside = function(elems) {
+    for (var i = 0; i < elems.length; i++) {
+      var card = elems[i];
+      var cardName = getSingularCardName(card.innerText);
+      if (!this.cards_aside[cardName]) {
+        this.cards_aside[cardName] = 1;
+      } else {
+        this.cards_aside[cardName]++;
+      }
+      this.deck_size--;
+      this.updateCardDisplay(cardName);
+    }
+  };
+  
+  this.cardCountString = function(cardName) {
+    var count = this.card_counts[cardName];
+    if (count == undefined || count == 0) {
+      return '-';
+    }
+    
+    var aside = this.cards_aside[cardName];
+    if (aside == undefined || aside == 0) {
+      return count + "";
+    } else {
+      return count + '(' + aside + '<span class="asideCountNum">i</span>)';
+    }
+  }
 }
 
 // This object holds on to the active data for a single player.
@@ -838,6 +870,14 @@ function maybeHandleTournament(elems, text_arr, text) {
   return false;
 }
 
+function maybeHandleIsland(elems, text_arr, text) {
+  if (text.match(/ set aside /)) {
+    getPlayer(text_arr[0]).setAside(elems);
+    return true;
+  }
+  return false;
+}
+
 function maybeHandleVp(text) {
   var re = new RegExp("[+]([0-9]+) ▼");
   var arr = text.match(re);
@@ -985,6 +1025,7 @@ function handleLogEntry(node) {
   if (maybeHandleSeaHag(elems, text, node.innerText)) return;
   if (maybeHandleOffensiveTrash(elems, text, node.innerText)) return;
   if (maybeHandleTournament(elems, text, node.innerText)) return;
+  if (maybeHandleIsland(elems, text, node.innerText)) return;
 
   if (text[0] == "trashing") {
     var player = last_player;
@@ -1073,9 +1114,8 @@ function addRow(tab, rowClass, innerHTML) {
 function setupCardCountCellForPlayer(player, cardName) {
   var cellId = player.idFor(cardName);
   if (!document.getElementById(cellId)) {
-    return $('<td id="' + cellId + '">' +
-        cardCountString(player.card_counts[cardName]) + '</td>')
-        .addClass("playerCardCountCol").addClass(player.classFor);
+    return $('<td id="' + cellId + '">' + player.cardCountString(cardName) +
+        '</td>').addClass("playerCardCountCol").addClass(player.classFor);
   } else {
     return null;
   }
@@ -1138,11 +1178,6 @@ function allPlayers(func) {
     func(players[playerName]);
   }
   func(trashPlayer);
-}
-
-// Return the string for a given card count. "0" is shown as "-".
-function cardCountString(count) {
-  return (count == 0 || count == undefined ? '-' : count);
 }
 
 // Return the string used for DOM ID's for a given (card) name -- we
