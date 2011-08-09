@@ -1456,6 +1456,7 @@ function handleChatText(speaker, text) {
     localStorage.setItem("disabled", "t");
     disabled = true;
     stopCounting();
+    removePlayerData();
     writeText(">> Point counter disabled.");
   }
 
@@ -1485,6 +1486,11 @@ function settingsString() {
   return JSON.stringify(settings);
 }
 
+function removePlayerData() {
+  removePlayerArea();
+  forgetGUIMode();
+}
+
 function stopCounting() {
   deck_spot.innerHTML = "exit";
   points_spot.innerHTML = "faq";
@@ -1495,18 +1501,17 @@ function stopCounting() {
   solitaire = null;
   game_offer = null;
   text_mode = undefined;
-  removePlayerArea();
-  forgetGUIMode();
 }
 
 function handleGameEnd(doc) {
   for (var node in doc.childNodes) {
-    if (doc.childNodes[node].innerText == "game log") {
+    var childNode = doc.childNodes[node];
+    if (childNode.innerText == "game log") {
       // Reset exit / faq at end of game.
       started = false;
       stopCounting();
       // Collect information about the game.
-      var href = doc.childNodes[node].href;
+      var href = childNode.href;
       var game_id_str = href.substring(href.lastIndexOf("/") + 1);
       var name = localStorage["name"];
       if (name == undefined || name == null) name = "Unknown";
@@ -1538,6 +1543,10 @@ function handleGameEnd(doc) {
             }
           }
         }
+      } else if (childNode.innerText = "return") {
+        childNode.addEventListener("DOMActivate", function() {
+          removePlayerData();
+        }, true);
       }
 
       // Post the game information to app-engine for later use for tests, etc.
