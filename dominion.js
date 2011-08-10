@@ -865,7 +865,7 @@ function maybeHandleTournament(elems, text_arr, text) {
 }
 
 function maybeHandleIsland(elems, text_arr, text) {
-  if (text.match(/ set aside /)) {
+  if (text.match(/ set(ting|s)? aside /)) {
     getPlayer(text_arr[0]).setAside(elems);
     return true;
   }
