@@ -32,7 +32,6 @@ var gui_mode_spot;
 var PLAYER_CLASS_COUNT = 4;
 
 var started = false;
-var solitaire = null;
 var introduced = false;
 var i_introduced = false;
 var disabled = false;
@@ -52,9 +51,6 @@ var last_reveal_card = null;
 
 // The player's own icon
 var my_icon = null;
-
-// The DOM node that contains the most recent game offer
-var game_offer = null;
 
 // Number for generating log line IDs.
 var next_log_line_num = 0;
@@ -274,7 +270,7 @@ function Player(name, num) {
       score_str = score_str + "=" + total_score;
     }
     return score_str;
-  }
+  };
 
   this.getDeckString = function() {
     var str = this.deck_size;
@@ -297,18 +293,18 @@ function Player(name, num) {
       str += '(' + special_types.join(", ") + ')';
     }
     return str;
-  }
+  };
 
   this.changeScore = function(points) {
     this.score = this.score + parseInt(points);
-  }
+  };
 
   this.changeSpecialCount = function(name, delta) {
     if (this.special_counts[name] == undefined) {
       this.special_counts[name] = 0;
     }
     this.special_counts[name] = this.special_counts[name] + delta;
-  }
+  };
 
   this.updateCardDisplay = function(name) {
     var cardId = this.idFor(name);
@@ -316,7 +312,7 @@ function Player(name, num) {
     if (cardCountCell) {
       cardCountCell.innerHTML = this.cardCountString(name);
     }
-  }
+  };
 
   this.recordCards = function(name, count) {
     if (this.card_counts[name] == undefined || this.card_counts[name] == 0) {
@@ -335,7 +331,7 @@ function Player(name, num) {
       this.special_counts["Uniques"] -= 1;
     }
     this.updateCardDisplay(name);
-  }
+  };
 
   this.recordSpecialCards = function(card, count) {
     var name = card.innerHTML;
@@ -372,7 +368,7 @@ function Player(name, num) {
             card.innerText);
       }
     }
-  }
+  };
 
   // Add an "other" card. These always are unique, so count really should always
   // be either +1 or -1.
@@ -424,7 +420,7 @@ function Player(name, num) {
       trashPlayer.gainCard(card, -count);
       updateDeck(trashPlayer);
     }
-  }
+  };
 
   // This player has resigned; remember it.
   this.setResigned = function() {
@@ -517,7 +513,11 @@ function ActiveData() {
     }
   };
 
-  // Account for all the effects of playing a specific card.
+  // Account for those effects of playing a specific card that are not
+  // explicitly echoed in the interface. For example, playing a card that gives
+  // +1 action is not handled here because the interface reports that there
+  // has been +1 action, but the coins from a treasure are not separately
+  // reported, so we handle it here.
   this.cardHasBeenPlayed = function(countIndicator, cardName, userAction) {
     // Convert the "count" string to a number; may be digits or "a', "the", etc.
     var count = NaN;
@@ -536,14 +536,17 @@ function ActiveData() {
       return;
     }
 
-    // Change 'played' field first because the values of some cards rely on it
+    // Change 'played' field first because the values of some cards rely on it.
     this.changeField('played', count);
-    this.changeField('actions', count * card.getActionCount());
-    if (userAction && card.isAction()) // consume the action
+    if (userAction && card.isAction()) {
+      // Consume the action for playing an action card.
       this.changeField('actions', -count);
-    this.changeField('buys', count * card.getBuyCount());
-    this.changeField('coins', count * card.getCoinCount());
-    this.changeField('potions', count * card.getPotionCount());
+    }
+    if (card.Treasure != "0") {
+      // The coins and potions from treasure cards are not reported.
+      this.changeField('coins', count * card.getCoinCount());
+      this.changeField('potions', count * card.getPotionCount());
+    }
   };
 }
 
@@ -905,37 +908,14 @@ function handleGainOrTrash(player, elems, text, multiplier) {
   }
 }
 
-// Check to see if this node text is the start of a game.
-function isGameStart(nodeText) {
-  // First we must know if this is a solitaire game or not.
-  if (solitaire == null) {
-    if (game_offer != null) {
-      solitaire = game_offer.innerText.match(/this game solitaire\?/) != null;
-    }
-    // If we haven't resolved the question, this can't yet be a game start.
-    if (solitaire == null)
-      return false;
-  }
-
-  if (solitaire) {
-    return nodeText.match(/ turn 1 —$/);
-  } else {
-    return nodeText.indexOf("Turn order") == 0;
-  }
-}
-
-// Handle this if it is the start of a game.
 function maybeHandleGameStart(node) {
   var nodeText = node.innerText;
-  if (nodeText == null || !isGameStart(nodeText)) {
+  if (nodeText == null || nodeText.indexOf("Turn order") != 0) {
     return false;
   }
   initialize(node);
   ensureLogNodeSetup(node);
-
-  // If this is a solitaire game, the turn start is also the "turn change'
-  // entry, so keep on processing to handle that
-  return !solitaire;
+  return true;
 }
 
 function nextLogId() {
@@ -1317,35 +1297,6 @@ function updateDeck(player) {
   });
 }
 
-// Try to find out the player icons from historical data.
-function findPlayerIcons() {
-  maybeRewriteName(game_offer);
-
-  players['You'].setIcon(my_icon);
-
-  // Look up other player icons from the game offer
-  var img = null;
-  var seenFirst = false;
-  for (var n = game_offer.firstChild; n != null; n = n.nextSibling) {
-    if (n.constructor == HTMLImageElement) {
-      img = n;
-    } else if (n.nodeType == 3) {
-      // "3" means a text node.
-      if (!seenFirst) {
-        seenFirst = true;
-      } else {
-        var matches = n.textContent.match(/[^,?\s]+/);
-        if (matches == null) continue;
-        var playerName = matches[0];
-        var player = players[playerName];
-        if (player != null) {
-          player.setIcon(img);
-        }
-      }
-    }
-  }
-}
-
 function initialize(doc) {
   started = true;
   introduced = false;
@@ -1386,13 +1337,7 @@ function initialize(doc) {
   // rewrite them and then all the text parsing works as normal.
   var p = "(?:([^,]+), )";    // an optional player
   var pl = "(?:([^,]+),? )";  // the last player (might not have a comma)
-  var re;
-  if (solitaire) {
-    re = /.* (You)r turn 1 .*/i;
-  } else {
-    re = new RegExp("Turn order is " + p + "?" + p + "?" + p + "?" + pl +
-        "and then (.+).");
-  }
+  var re = new RegExp("Turn order is "+p+"?"+p+"?"+p+"?"+pl+"and then (.+).");
   var arr = doc.innerText.match(re);
   if (arr == null) {
     handleError("Couldn't parse: " + doc.innerText);
@@ -1403,7 +1348,7 @@ function initialize(doc) {
     if (arr[i] == undefined) continue;
 
     player_count++;
-    if (arr[i].match(/^you$/i)) {
+    if (arr[i] == "you") {
       self_index = player_count;
       arr[i] = "You";
     }
@@ -1421,7 +1366,6 @@ function initialize(doc) {
 
   }
   player_re = '(' + other_player_names.join('|') + ')';
-  findPlayerIcons();
   if (!disabled) {
     updateScores();
     updateDeck();
@@ -1524,10 +1468,6 @@ function stopCounting() {
   points_spot.innerHTML = "faq";
 
   localStorage.removeItem("log");
-  localStorage.removeItem("offer");
-  localStorage.removeItem('solitaire');
-  solitaire = null;
-  game_offer = null;
   text_mode = undefined;
 }
 
@@ -1627,14 +1567,29 @@ function maybeStartOfGame(node) {
     return;
   }
 
-  if (isGameStart(nodeText)) {
-    // The game is starting, so clear out any local storage.
-    started = true;
-    next_log_line_num = 1;
-    window.localStorage.removeItem("log");
-    window.localStorage.removeItem("disabled");
+  if (localStorage.getItem("log") == undefined &&
+      nodeText.indexOf("Your turn 1 —") != -1) {
+    // We don't have a log but it's turn 1. This must be a solitaire game.
+    // Create a fake (and invisible) setup line. We'll get called back again
+    // with it.
+    console.log("Single player game.");
+    node = $('<div class="logline" style="display:none;">' +
+             'Turn order is you and then you.</div>)').insertBefore(node)[0];
+    return;
+  }
+
+  // The first line of actual text is either "Turn order" or something in
+  // the middle of the game.
+  if (nodeText.indexOf("Turn order") == 0) {
+    // The game is starting, so put in the initial blank entries and clear
+    // out any local storage.
+    console.log("--- starting game ---");
+    next_log_line_num = 0;
+    localStorage.removeItem("log");
+    localStorage.removeItem("disabled");
   } else {
-    disabled = window.localStorage.getItem("disabled") == "t";
+    console.log("--- replaying history ---");
+    disabled = localStorage.getItem("disabled") == "t";
     restoreHistory(node);
   }
   started = true;
@@ -1652,19 +1607,11 @@ function logEntryForGame(node) {
   return started;
 }
 
-// Restore the game offer node.
-function restoreOffer() {
-  var offer = document.createElement("span");
-  offer.innerHTML = localStorage["offer"];
-  return offer;
-}
-
 // Restore the game history from a stored log.
 function restoreHistory(node) {
   // The first log line is not the first line of the game, so restore the
-  // log from history Of course, there must be a log history to restore.
-  var logHistory = window.localStorage.getItem("log");
-  game_offer = restoreOffer();
+  // log from history. Of course, there must be a log history to restore.
+  var logHistory = localStorage.getItem("log");
   if (logHistory == undefined || logHistory.length == 0) {
     return;
   }
@@ -1767,29 +1714,11 @@ function handle(doc) {
       points_spot = links[2];
     }
 
-    // If we haven't started, see if this is the start of a game.
-    if (!started) {
-      var choices = document.getElementById("choices");
-      if (choices != null && choices.hasChildNodes()) {
-        var spans = choices.getElementsByTagName("SPAN");
-        for (var i = 0; i < spans.length; i++) {
-          var txt = spans[i].innerText;
-          if (txt.indexOf("play this game ") == 0) {
-            // Preserve the offer. This is critical when restoring the log.
-            game_offer = spans[i];
-            localStorage["offer"] = game_offer.innerHTML;
-            break;
-          }
-        }
-      }
-    }
-
-    // If this is a log line, process it to follow the game.
     if (doc.className && doc.className.indexOf("logline") >= 0) {
       if (logEntryForGame(doc)) {
         handleLogEntry(doc);
         if (started) {
-          window.localStorage.setItem("log", doc.parentElement.innerHTML);
+          localStorage.setItem("log", doc.parentElement.innerHTML);
         }
       }
     }
@@ -1891,7 +1820,7 @@ function enterLobby() {
     })
   }
 
-  $('#tracker').attr('checked', true).attr('disabled', true)
+  $('#tracker').attr('checked', true).attr('disabled', true);
   $('#autotracker').val('yes').attr('disabled', true);
 
   my_icon = $('#log img').first().get(0);
