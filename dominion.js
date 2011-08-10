@@ -78,24 +78,55 @@ RegExp.quote = function(str) {
 // Keep a map from all card names (singular or plural) to the card object.
 var card_map = {};
 for (var i = 0; i < card_list.length; i++) {
-  var cardName = card_list[i];
-  card_map[cardName.Singular] = cardName;
-  card_map[cardName.Plural] = cardName;
-  cardName.getActionCount = function() {
-    return parseInt(this.Actions);
+  var card_name = card_list[i];
+  card_map[card_name.Singular] = card_name;
+  card_map[card_name.Plural] = card_name;
+  card_name.isAction = function() {
+    return this.Action != "0";
   };
-  cardName.getBuyCount = function() {
-    return parseInt(this.Buys);
-  };
-  cardName.getCoinCount = function() {
+  card_name.getCoinCount = function() {
     return (this.Coins == "?" || this.Coins == "P" ? 0 : parseInt(this.Coins));
   };
-  cardName.getPotionCount = function() {
+  card_name.getPotionCount = function() {
     return (this.Coins == "P" ? 1 : 0);
   };
-  cardName.isAction = function() {
-    return this.Action != "0";
-  }
+  card_name.getCoinCost = function() {
+    var cost = this.Cost;
+    cost = (cost.charAt(0) == 'P' ? cost.substr(1) : cost);
+    return parseInt(cost);
+  };
+  card_name.getPotionCost = function() {
+    return (this.Cost.indexOf("P") >= 0 ? 1 : 0);
+  };
+  card_name.getCurrentCoinCost = function() {
+    // The current cost can be affected by cards in play, such as Quarry, so we
+    // have to look up the price in the interface.
+    var costStr;
+    var setCost = function() {
+      costStr = $(this).text();
+    };
+    var card = this;
+    if (text_mode) {
+      $('a[cardname="' + this.Singular + '"]').each(function() {
+        var price = $(this).closest('tr').find('.price').each(setCost);
+      });
+    } else {
+      $('.cardname > span').each(function() {
+        if ($(this).text() == card.Singular) {
+          $(this).closest('.supplycard').find('.imprice').each(setCost);
+        }
+      });
+    }
+    if (costStr) {
+      // The string has a leading '$' we need to skip.
+      return parseInt(costStr.substr(1));
+    }
+    return this.getCoinCost();
+  };
+  card_name.getCurrentPotionCost = function() {
+    // No card affects the potion cost, so we can just use the simple cost.
+    return this.getPotionCost();
+  };
 }
 
 var gameHasPotions = false;
@@ -383,13 +414,13 @@ function Player(name, num) {
   // Return HTML string to display the "other" cards this player has.
   this.otherCardsHTML = function() {
     var otherCards = '';
-    for (cardName in this.otherCards) {
+    for (var name in this.otherCards) {
       if (otherCards.length == 0) {
         otherCards = '<span class="playerDataKey">Other Cards: </span>';
       } else {
         otherCards += ", ";
       }
-      otherCards += this.otherCards[cardName];
+      otherCards += this.otherCards[name];
     }
     return otherCards;
   };
@@ -869,7 +900,10 @@ function maybeHandleTournament(elems, text_arr, text) {
 
 function maybeHandleIsland(elems, text_arr, text) {
   if (text.match(/ set(ting|s)? aside /)) {
-    getPlayer(text_arr[0]).setAside(elems);
+    var player = getPlayer(text_arr[0]);
+    if (player == null)
+      player = last_player;
+    player.setAside(elems);
     return true;
   }
   return false;
@@ -976,6 +1010,7 @@ function handleLogEntry(node) {
   maybeHandleVp(node.innerText);
 
   var elems = node.getElementsByTagName("span");
+  if (maybeHandleActiveCounts(elems, node.innerText)) return;
   if (elems.length == 0) {
     maybeReturnToSupply(node.innerText);
     return;
@@ -988,8 +1023,6 @@ function handleLogEntry(node) {
   }
   if (i == text.length) return;
   text = text.slice(i);
-
-  if (maybeHandleActiveCounts(elems, node.innerText)) return;
 
   if (maybeHandleMint(elems, node.innerText)) return;
   if (maybeHandleTradingPost(elems, node.innerText)) return;
@@ -1027,8 +1060,9 @@ function handleLogEntry(node) {
   if (elems.length > 1) return;
 
   // It's a single card action.
-  var card = elems[0];
-  var card_text = elems[0].innerText;
+  var card_elem = elems[0];
+  var card_name = elems[0].innerText;
+  var card = card_map[card_name];
 
   var player = getPlayer(text[0]);
   var action = text[1];
@@ -1036,10 +1070,11 @@ function handleLogEntry(node) {
     // In possessed turns, it isn't who buys something, it's who "gains" it
     // (and who gains it is stated in a separate log entry).
     if (!possessed_turn) {
-      var count = getCardCount(card_text, node.innerText);
-      player.gainCard(card, count);
-      activeData.changeField('buy', -count);
-      activeData.display();
+      var count = getCardCount(card_name, node.innerText);
+      player.gainCard(card_elem, count);
+      activeData.changeField('buys', -count);
+      activeData.changeField('coins', -card.getCurrentCoinCost());
+      activeData.changeField('potions', -card.getCurrentPotionCost());
     }
   } else if (action.indexOf("pass") == 0) {
     unpossessed(function() {
@@ -1047,22 +1082,22 @@ function handleLogEntry(node) {
         maybeAnnounceFailure(">> Warning: Masquerade with more than 2 " +
             "players causes inaccurate score counting.");
       }
-      player.gainCard(card, -1, false);
+      player.gainCard(card_elem, -1, false);
       var other_player = findTrailingPlayer(node.innerText);
       if (other_player != null) {
-        other_player.gainCard(card, 1);
+        other_player.gainCard(card_elem, 1);
       }
     });
   } else if (action.indexOf("receive") == 0) {
     unpossessed(function() {
-      player.gainCard(card, 1);
+      player.gainCard(card_elem, 1);
       var other_player = findTrailingPlayer(node.innerText);
       if (other_player != null) {
-        other_player.gainCard(card, -1, false);
+        other_player.gainCard(card_elem, -1, false);
       }
     });
   } else if (action.indexOf("reveal") == 0) {
-    last_reveal_card = card;
+    last_reveal_card = card_elem;
   }
 }
 
@@ -1337,7 +1372,7 @@ function initialize(doc) {
   // rewrite them and then all the text parsing works as normal.
   var p = "(?:([^,]+), )";    // an optional player
   var pl = "(?:([^,]+),? )";  // the last player (might not have a comma)
-  var re = new RegExp("Turn order is "+p+"?"+p+"?"+p+"?"+pl+"and then (.+).");
+  var re = new RegExp("Turn order is (?:(you)|"+p+"?"+p+"?"+p+"?"+pl+"and then (.+))\\.");
   var arr = doc.innerText.match(re);
   if (arr == null) {
     handleError("Couldn't parse: " + doc.innerText);
@@ -1574,7 +1609,7 @@ function maybeStartOfGame(node) {
     // with it.
     console.log("Single player game.");
     node = $('<div class="logline" style="display:none;">' +
-             'Turn order is you and then you.</div>)').insertBefore(node)[0];
+        'Turn order is you.</div>)').insertBefore(node)[0];
     return;
   }
 
@@ -1742,7 +1777,13 @@ function handle(doc) {
     }
 
     // If the game hasn't started, everything after this is irrelevant.
-    if (!started) return;
+    if (!started) {
+      // This is sometimes left around
+      if (document.getElementById("playerData") && inLobby()) {
+        removePlayerData();
+      }
+      return;
+    }
 
     // If we're adding chioces, it may be the choices at the end of the game
     if (doc.constructor == HTMLDivElement && doc.parentNode.id == "choices") {
