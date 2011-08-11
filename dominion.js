@@ -1261,8 +1261,9 @@ function setupPlayerArea() {
       trashPlayer.idFor("deck") + '" class="playerDataValue">' +
       trashPlayer.getDeckString() + '</td>');
 
+  var top;
   if (text_mode) {
-    ptab.id = "playerData";
+    top = ptab;
     var outerTable = document.createElement("table");
     outerTable.id = "playerDataArranger";
     var row = addRow(outerTable, null,
@@ -1270,6 +1271,7 @@ function setupPlayerArea() {
             '<td id="logContainer" valign="bottom"></td>');
     row.firstChild.appendChild(ptab);
     row.lastChild.appendChild(document.getElementById("log"));
+    row.lastChild.appendChild(document.getElementById("choices"));
     var game = document.getElementById("game");
     game.insertBefore(outerTable, game.firstElementChild);
   } else {
@@ -1278,12 +1280,27 @@ function setupPlayerArea() {
     if (tab != null) {
       var nrow = tab.insertRow(0);
       var area = nrow.insertCell();
-      area.id = "playerData";
+      top = area;
       nrow.setAttribute("align", "right");
       area.setAttribute("colspan", "2");
       area.appendChild(ptab);
     }
   }
+
+  top.id = 'playerData';
+  
+  // Admittedly this is a hack, but ...
+  // Every time you buy something, the supply area is entirely rebuilt, which
+  // throws away our player area. We can build it each time (and the code here
+  // will actually do that without this trick), but that's expensive and makes
+  // the display jerk around a lot as things pop in and out. So we smooth that
+  // out by the following event listener, which will re-insert the player data
+  // area into the tree whenever it is removed.
+  top.addEventListener('DOMNodeRemovedFromDocument', function(evt) {
+    if (evt.target == top && started) {
+      top.parentNode.insertBefore(top, top);
+    }
+  });
 }
 
 // As needed, set up player data area and the per-card count columns.
