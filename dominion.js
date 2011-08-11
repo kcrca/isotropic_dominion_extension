@@ -713,10 +713,25 @@ function maybeHandleTurnChange(node) {
       var details = " (" + getDecks() + " | " + getScores() + ")";
       node.innerHTML.replace(" —<br>", " " + details + " —<br>");
     }
+    
+    if (text_mode) {
+      // For some reason, during reload IDs get reinserted by the client.js, so
+      // we remove the duplicates.
+      stripDuplicateLogs();
+    }
 
     return true;
   }
   return false;
+}
+
+function stripDuplicateLogs() {
+  $('.logline').each(function() {
+    var $this = $(this);
+    if ($this[0].id == $this.next()[0].id) {
+      $this.remove();
+    }
+  })
 }
 
 // Adjust the value of a piece of active player data if there is a specification
