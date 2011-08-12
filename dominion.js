@@ -406,12 +406,17 @@ function Player(name, num) {
   };
 
   // Add an "other" card. These always are unique, so count really should always
-  // be either +1 or -1.
-  this.addOtherCard = function(card, count) {
+  // be either +1 or -1. Adding in the 'cardname' attribute means that hovering
+  // over the card will pop up the tooltip window about the card.
+  this.addOtherCard = function(cardElem, count) {
+    var cardName = cardElem.innerText;
     if (count > 0) {
-      this.otherCards[card.innerText] = card.outerHTML;
+      var addingAttr = cardElem.getAttribute('cardname') == undefined;
+      if (addingAttr) cardElem.setAttribute('cardname', cardName);
+      this.otherCards[cardName] = cardElem.outerHTML;
+      if (addingAttr) cardElem.removeAttribute('cardname');
     } else {
-      delete this.otherCards[card.innerText];
+      delete this.otherCards[cardName];
     }
   };
 
