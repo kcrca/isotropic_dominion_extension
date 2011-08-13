@@ -133,8 +133,6 @@ for (var i = 0; i < card_list.length; i++) {
   };
 }
 
-var gameHasPotions = false;
-
 function debugString(thing) {
   return JSON.stringify(thing);
 }
@@ -258,6 +256,14 @@ function Player(name, num) {
     this.icon = imgNode.cloneNode(true);
     this.icon.removeAttribute("class");
     this.icon.setAttribute("align", "top");
+  };
+
+  this.updateScore = function() {
+    fields.set('score', this.getScore());
+  };
+
+  this.updateDeck = function() {
+    fields.set('deck', this.getDeckString());
   };
 
   this.getScore = function() {
@@ -498,6 +504,53 @@ function Player(name, num) {
     } else {
       return count + '(' + aside + '<span class="asideCountNum">i</span>)';
     }
+  };
+
+  var ptab = $('#playerDataTable')[0];
+  var row1 = addRow(ptab, this.classFor, '<td id="' + this.idFor("active") +
+      '" class="activePlayerData" rowspan="1"></td>' + '<td id="' +
+      this.idFor('name') + '" class="playerDataName" rowspan="0">' + this.name +
+      '</td>');
+  row1.attr('id', this.idFor('firstRow'));
+
+  var activeCell = row1.children().first();
+  var playerCell = activeCell.next();
+  if (this.icon != undefined) {
+    playerCell().children().first().before(this.icon.cloneNode(true))
+  }
+  addRow(ptab, this.classFor, '<td id="' + this.idFor("otherCards") +
+      '" class="playerOtherCards" colspan="3">' + this.otherCardsHTML() +
+      '</td>');
+
+  var player = this;
+  var fieldInsertPos = function(field) {
+    if (!player.seenFirst) {
+      player.seenFirst = true;
+      return {toInsert: field.keyCell, after: $('#' + player.idFor('name'))};
+    }
+
+    function incrementRowspan(cell) {
+      var curSpan = cell.attr('rowspan');
+      cell.attr('rowspan', parseInt(curSpan) + 1);
+    }
+    incrementRowspan(activeCell);
+    incrementRowspan(playerCell);
+
+    var row = $('<tr/>').addClass(player.classFor).attr('id',
+        player.idFor('active'));
+    row.append(field.keyCell);
+
+    return {toInsert: row, after: $('#' + player.idFor('firstRow'))};
+  };
+
+  var fields = new FieldGroup({idSource: this, findInsert: fieldInsertPos,
+    keyClass: 'playerDataKey', valueClass: 'playerDataValue'});
+
+  if (!this.isTrash) {
+    fields.add('score', {initial: this.getScore()});
+    fields.add('deck', {initial: this.getDeckString()});
+  } else {
+    fields.add('deck', {label: "Cards", initial: this.getDeckString()});
   }
 }
 
@@ -663,7 +716,6 @@ function maybeHandleTurnChange(node) {
     }
 
     activeData.reset();
-    maybeSetupPerPlayerInfo();
     placeActivePlayerData();
     // The start of the turn is styled to match the player's data area.
     $(node).addClass(last_player.classFor);
@@ -681,7 +733,7 @@ function maybeHandleTurnChange(node) {
       var details = " (" + getDecks() + " | " + getScores() + ")";
       node.innerHTML.replace(" —<br>", " " + details + " —<br>");
     }
-    
+
     if (text_mode) {
       // For some reason, during reload IDs get reinserted by the client.js, so
       // we remove the duplicates.
@@ -725,7 +777,7 @@ function maybeHandleActiveCounts(elems, text) {
     }
     return elemNum > 0;
   }
-  
+
   // Handle lines like "You get +1 buy and +$1."
   adjustActive('actions', /\+([0-9]+) action/.exec(text));
   adjustActive('buys', /\+([0-9]+) buy/.exec(text));
@@ -1094,12 +1146,18 @@ function getScores() {
 
 // Add a row to a table.
 function addRow(tab, rowClass, innerHTML) {
-  var r = document.createElement("tr");
+  var r = $('<tr/>');
   if (rowClass)
-    r.setAttribute("class", rowClass);
-  tab.appendChild(r);
-  r.innerHTML = innerHTML;
+    r.addClass(rowClass);
+  $(tab).append(r);
+  r.html(innerHTML);
   return r;
+//  var r = document.createElement("tr");
+//  if (rowClass)
+//    r.setAttribute("class", rowClass);
+//  tab.appendChild(r);
+//  r.innerHTML = innerHTML;
+//  return r;
 }
 
 // Set up the card count cell for a given player+card combination in text mode.
@@ -1169,7 +1227,9 @@ function allPlayers(func) {
   for (var playerName in players) {
     func(players[playerName]);
   }
-  func(trashPlayer);
+  if (trashPlayer) {
+    func(trashPlayer);
+  }
 }
 
 // Return the string used for DOM ID's for a given (card) name -- we
@@ -1180,9 +1240,10 @@ function toIdString(name) {
 
 function updateScores() {
   if (last_player == null) return;
-  maybeSetupPerPlayerInfo();
   rewriteTree(function() {
-    $("#" + last_player.idFor("score")).text(last_player.getScore());
+    allPlayers(function(player) {
+      player.updateScore();
+    });
     $("#" + last_player.idFor("otherCards")).html(last_player.otherCardsHTML());
   });
 }
@@ -1195,48 +1256,15 @@ function setupPlayerArea() {
   if (!text_mode) {
     ptab.setAttribute("align", "right");
   }
-  for (var playerName in players) {
-    var countBefore = ptab.childNodes.length;
-    var player = players[playerName];
-    var row1 = addRow(ptab, player.classFor,
-        '<td id="' + player.idFor("active") +
-            '" class="activePlayerData" rowspan="0"></td>' +
-            '<td class="playerDataName" rowspan="0">' + playerName + '</td>' +
-            '<td class="playerDataKey"> Score:</td>' + '<td id="' +
-            player.idFor("score") + '" class="playerDataValue">' +
-            player.getScore() + '</td>');
-    var activeCell = row1.firstElementChild;
-    var playerCell = activeCell.nextElementSibling;
-    if (player.icon != undefined) {
-      playerCell.insertBefore(player.icon.cloneNode(true),
-          playerCell.firstChild);
-    }
-    addRow(ptab, player.classFor,
-        '<td class="playerDataKey">Deck:</td>' + '<td id="' +
-            player.idFor("deck") + '" class="playerDataValue">' +
-            player.getDeckString() + '</td>');
-    addRow(ptab, player.classFor, '<td id="' + player.idFor("otherCards") +
-        '" class="playerOtherCards" colspan="3">' + player.otherCardsHTML() +
-        '</td>');
-    var numRows = ptab.childNodes.length - countBefore;
-    playerCell.setAttribute("rowSpan", numRows - 1);
-    activeCell.setAttribute("rowSpan", numRows);
-  }
-  addRow(ptab, trashPlayer.classFor, '<td id="' + trashPlayer.idFor("active") +
-      '" class="activePlayerData" rowspan="0"></td>' +
-      '<td class="playerDataName" rowspan="0">' + trashPlayer.name + '</td>' +
-      '<td class="playerDataKey"> Cards:</td>' + '<td id="' +
-      trashPlayer.idFor("deck") + '" class="playerDataValue">' +
-      trashPlayer.getDeckString() + '</td>');
+  ptab.id = 'playerDataTable';
 
-  var top;
   if (text_mode) {
-    top = ptab;
     var outerTable = document.createElement("table");
     outerTable.id = "playerDataArranger";
     var row = addRow(outerTable, null,
         '<td id="playerDataContainer" valign="bottom"></td>' +
             '<td id="logContainer" valign="bottom"></td>');
+    row = row[0]; //!! Change this code to jquery code
     row.firstChild.appendChild(ptab);
     row.lastChild.appendChild(document.getElementById("log"));
     row.lastChild.appendChild(document.getElementById("choices"));
@@ -1248,31 +1276,16 @@ function setupPlayerArea() {
     if (tab != null) {
       var nrow = tab.insertRow(0);
       var area = nrow.insertCell();
-      top = area;
       nrow.setAttribute("align", "right");
       area.setAttribute("colspan", "2");
       area.appendChild(ptab);
+      area.id = 'playerData';
     }
   }
-
-  top.id = 'playerData';
-  
-  // Admittedly this is a hack, but ...
-  // Every time you buy something, the supply area is entirely rebuilt, which
-  // throws away our player area. We can build it each time (and the code here
-  // will actually do that without this trick), but that's expensive and makes
-  // the display jerk around a lot as things pop in and out. So we smooth that
-  // out by the following event listener, which will re-insert the player data
-  // area into the tree whenever it is removed.
-  top.addEventListener('DOMNodeRemovedFromDocument', function(evt) {
-    if (evt.target == top && started) {
-      top.parentNode.insertBefore(top, top);
-    }
-  });
 }
 
 // As needed, set up player data area and the per-card count columns.
-function maybeSetupPerPlayerInfo() {
+function setupPerPlayerInfoArea() {
   if (disabled) return;
 
   //!! Show how far through the deck each player is
@@ -1280,12 +1293,7 @@ function maybeSetupPerPlayerInfo() {
   //!! Show how much each 'extra' type would be worth (Duke, Fairgrounds, ...)
   //!! Put counting options in a pop-up window or something
   rewriteTree(function () {
-    // If the player area does not exist, create it. For some reason, the table
-    // that contains the player area is rebuilt during play (I think whenever a
-    // card is bought).
-    if (!document.getElementById("playerData")) {
-      setupPlayerArea();
-    }
+    setupPlayerArea();
 
     if (text_mode) {
       setupPerPlayerTextCardCounts();
@@ -1301,6 +1309,10 @@ function maybeSetupPerPlayerInfo() {
 // Remove the player area, such as at the end of the game or if disabled.
 function removePlayerArea() {
   var ptab = document.getElementById("playerData");
+  if (!ptab) {
+    // If there is no overall 'playerData' item, then it's just the table
+    ptab = document.getElementById('playerDataTable');
+  }
   if (ptab != null && ptab.parentNode != null) {
     removeActivePlayerData();
     ptab.parentNode.removeChild(ptab);
@@ -1328,7 +1340,7 @@ function updateDeck(player) {
   player = player || last_player;
   if (player == null) return;
   rewriteTree(function() {
-    $("#" + player.idFor("deck")).text(player.getDeckString() + "");
+    player.updateDeck();
   });
 }
 
@@ -1345,14 +1357,16 @@ function initialize(doc) {
   last_gain_player = null;
   scopes = [];
 
+  discoverGUIMode();
+  setupPerPlayerInfoArea();
+
   players = new Object();
   player_rewrites = new Object();
   player_re = "";
   player_count = 0;
   trashPlayer = new Player('Trash', i);
-  discoverGUIMode();
   activeData = new ActiveData();
-  
+
   // Figure out which cards are in supply piles
   supplied_cards = {};
   $("[cardname]").each(function() {
@@ -1373,7 +1387,8 @@ function initialize(doc) {
   // rewrite them and then all the text parsing works as normal.
   var p = "(?:([^,]+), )";    // an optional player
   var pl = "(?:([^,]+),? )";  // the last player (might not have a comma)
-  var re = new RegExp("Turn order is (?:(you)|"+p+"?"+p+"?"+p+"?"+pl+"and then (.+))\\.");
+  var re = new RegExp("Turn order is (?:(you)|" + p + "?" + p + "?" + p + "?" +
+      pl + "and then (.+))\\.");
   var arr = doc.innerText.match(re);
   if (arr == null) {
     handleError("Couldn't parse: " + doc.innerText);
@@ -1402,6 +1417,12 @@ function initialize(doc) {
 
   }
   player_re = '(' + other_player_names.join('|') + ')';
+
+  // The trash player is created first but should be listed last.
+
+  var trashRow = $('#' + trashPlayer.idFor('firstRow'));
+  trashRow.closest('table').append(trashRow);
+
   if (!disabled) {
     updateScores();
     updateDeck();
@@ -1763,7 +1784,7 @@ function handle(doc) {
     if (doc.id == "supply") {
       player_spot = doc;
     }
-    
+
     if (doc.id == 'sm2-container') {
       setupTooltips(doc);
       return;
@@ -1785,7 +1806,7 @@ function handle(doc) {
     // If the game hasn't started, everything after this is irrelevant.
     if (!started) {
       // This is sometimes left around
-      if (document.getElementById("playerData") && inLobby()) {
+      if (document.getElementById("playerDataTable") && inLobby()) {
         removePlayerData();
       }
       return;
