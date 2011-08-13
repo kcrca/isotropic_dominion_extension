@@ -3,9 +3,6 @@
     <script type="text/javascript" src="jquery-1.6.2.js"></script>
     <script type="text/javascript" src="fields.js"></script>
     <script type="text/javascript">
-        var rowWrapper = function(keyCell, field) {
-            return $('<tr/>').append(keyCell);
-        };
         function now() {
             return new Date().toString();
         }
@@ -37,7 +34,7 @@
             return 'after' + toIdString(name);
         },
         after: $('#afterHeader'),
-        wrapper: rowWrapper});
+        wrapper: fieldWrapInRow});
     afterHeaderGroup.add('Now');
     afterButton = function() {
         afterHeaderGroup.set('Now', now());
@@ -58,7 +55,7 @@
         idSource: function(name) {
             return 'under' + toIdString(name);
         },
-        under: $('#underTable'), wrapper: rowWrapper});
+        under: $('#underTable'), wrapper: fieldWrapInRow});
     underTableGroup.add('Now');
     underBotton = function() {
         underTableGroup.set('Now', now());

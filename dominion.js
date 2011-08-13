@@ -503,54 +503,43 @@ function Player(name, num) {
 
 // This object holds on to the active data for a single player.
 function ActiveData() {
-  // Declare all active data fields and their default values here.
-  this.actions = 1;
-  this.buys = 1;
-  this.coins = 0;
-  this.potions = 0;
-  this.played = 0;
+  var dataTable = $('<table id="activePlayerDataTable"/>');
+  var fieldGroup = new FieldGroup({idPrefix: 'active', under: dataTable,
+    wrapper: fieldWrapInRow,
+    keyClass: 'playerDataKey',
+    valueClass: 'playerDataValue'});
 
-  // The default value of each field is held in 'fields', and the keys of
-  // 'fields' is therefore the list of fields.
-  this.fields = {};
-  for (var key in this) {
-    if (typeof(this[key]) != 'function') {
-      this.fields[key] = this[key];
-    }
-  }
+  rewriteTree(function () {
+    fieldGroup.add('actions', { initial: 1 });
+    fieldGroup.add('buys', { initial: 1 });
+    fieldGroup.add('coins', { initial: 0, prefix: '$' });
+    fieldGroup.add('potions', { initial: 0, prefix: '◉' });
+    fieldGroup.add('played', { initial: 0 });
+  });
 
-  // Now we can add other values which are not active data fields.
-  this.prefixes = {coins: '$', potions: '◉'};
+  // The default value of each field is held was set above, so remember them.
+  this.fields = fieldGroup.values();
 
   // Reset all fields to their default values.
   this.reset = function() {
     for (var f in this.fields) {
+      fieldGroup.set(f, this.fields[f]);
       this[f] = this.fields[f];
     }
+  };
+
+  this.top = function() {
+    return dataTable;
   };
 
   // Change the value of a specific field.
   this.changeField = function(key, delta) {
     this[key] += delta;
-    this.displayField(key);
+    fieldGroup.set(key, this[key]);
   };
 
-  // Update the display of a specific field.
-  this.displayField = function(key) {
-    if (key == 'potions' && !gameHasPotions) return;
-    var prefix = this.prefixes[key];
-    prefix = prefix || '';
-    var thisPlayer = this;
-    rewriteTree(function() {
-      $('#active_' + key).text(prefix + thisPlayer[key]);
-    });
-  };
-
-  // Update the display of all fields.
-  this.display = function() {
-    for (var f in this.fields) {
-      this.displayField(f);
-    }
+  this.setUsesPotions = function(usesPotions) {
+    fieldGroup.setVisible('potions', usesPotions);
   };
 
   // Account for those effects of playing a specific card that are not
@@ -629,49 +618,19 @@ function placeActivePlayerData() {
 
   // Each player has a place for its active data, we just look it up here.
   var playerID = last_player.idFor("active");
-  var cell = document.getElementById(playerID);
-  if (cell == undefined)
+  var cell = $('#' + playerID);
+  if (cell.length == 0)
     return;
 
-  rewriteTree(function () {
-    var dataTable = document.getElementById("activePlayerDataTable");
-    if (dataTable == undefined) {
-      dataTable = document.createElement("table");
-      dataTable.id = "activePlayerDataTable";
-      addRow(dataTable, undefined, '<td class="playerDataKey">Actions:</td>' +
-          '<td id="active_actions" class="playerDataValue"></td>');
-      addRow(dataTable, undefined, '<td class="playerDataKey">Buys:</td>' +
-          '<td id="active_buys" class="playerDataValue"></td>');
-      addRow(dataTable, undefined, '<td class="playerDataKey">Coins:</td>' +
-          '<td id="active_coins" class="playerDataValue"></td>');
-      $('#supply .supplycard[cardname="Potion"]').each(function() {
-        gameHasPotions = true
-      });
-      if (gameHasPotions) {
-        addRow(dataTable, undefined, '<td class="playerDataKey">Potions:</td>' +
-            '<td id="active_potions" class="playerDataValue"></td>');
-      }
-      addRow(dataTable, undefined, '<td class="playerDataKey">Played:</td>' +
-          '<td id="active_played" class="playerDataValue"></td>');
-    }
-
-    if (cell.firstElementChild != dataTable) {
-      // This will move it from wherever it is currently.
-      cell.appendChild(dataTable);
-    }
-    activeData.display();
+  rewriteTree(function() {
+    cell.empty();
+    cell.append(activeData.top());
   });
 }
 
 // Remove the active player data from the page.
 function removeActivePlayerData() {
-  var dataTable = document.getElementById("activePlayerDataTable");
-  if (!dataTable) return;
-
-  var parent = dataTable.parentNode;
-  if (parent != null) {
-    parent.removeChild(dataTable);
-  }
+  activeData.top().remove();
 }
 
 // Check to see if the node shows that a player resigned.
@@ -1399,6 +1358,7 @@ function initialize(doc) {
   $("[cardname]").each(function() {
     supplied_cards[$(this).attr("cardname")] = true;
   });
+  activeData.setUsesPotions(supplied_cards['Potion'] != undefined);
 
   if (localStorage.getItem("disabled")) {
     disabled = true;

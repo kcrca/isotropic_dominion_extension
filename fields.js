@@ -26,29 +26,28 @@ function Field(name, fieldGroup, params) {
   }
 
   this.maybeBuildCells = function () {
+    if (this.valueCell) return;
+
     var id = this.idFor();
-    var valCell = $('#' + id);
-    if (!valCell || valCell.length == 0) {
-      var keyCell = $('<td/>');
-      if (this.keyClass) {
-        keyCell.addClass(this.keyClass);
-      }
-      keyCell.text(this.label + ':');
-      valCell = $('<td id="' + id + '"/>');
-      if (this.valueClass) {
-        keyCell.addClass(this.valueClass);
-      }
-      this.keyCell = keyCell;
-      this.valueCell = valCell;
-      this.fieldGroup.insertField(this);
-      keyCell.after(valCell);
+    this.keyCell = $('<td/>');
+    if (this.keyClass) {
+      this.keyCell.addClass(this.keyClass);
     }
+    this.keyCell.text(this.label + ':');
+    this.valueCell = $('<td id="' + id + '"/>');
+    if (this.valueClass) {
+      this.keyCell.addClass(this.valueClass);
+    }
+    this.fieldGroup.insertField(this);
+    this.keyCell.after(this.valueCell);
     this.updateVisibility();
-    return valCell;
   };
 
   this.idFor = function() {
-    if (typeof(this.idSource == "function")) {
+    if (this.idPrefix) {
+      return this.idPrefix + '_' + this.name;
+    }
+    if (typeof(this.idSource) == 'function') {
       return this.idSource(this.name);
     }
     return this.idSource.idFor(this.name);
@@ -68,17 +67,42 @@ function Field(name, fieldGroup, params) {
   };
 
   this.set = function(value) {
+    this.valueType = typeof(value);
     this.maybeBuildCells();
-    this.valueCell.text(this.prefix + value + this.suffix);
+    this.valueCell.text(this.prefix + String(value) + this.suffix);
+  };
+
+  this.get = function() {
+    this.maybeBuildCells();
+    var val = this.valueCell.text();
+    if (this.prefix && this.prefix.length > 0) {
+      if (val.indexOf(this.prefix) == 0) {
+        val = val.substr(this.prefix.length);
+      }
+    }
+    if (this.suffix && this.suffix.length > 0) {
+      if (val.indexOf(this.suffix) == val.length - this.suffix.length) {
+        val = val.substr(0, val.length - this.prefix.length);
+      }
+    }
+    switch (this.valueType) {
+    case 'boolean':
+      return val == 'true';
+    case 'number':
+      return Number(val);
+    default:
+      return val;
+    }
   };
 
   this.setVisible = function(visible) {
     if (visible == this.visible) return;
+    this.visible = visible;
     this.maybeBuildCells(this.idSource);
     this.updateVisibility();
   };
 
-  this.set(this.initial);
+  this.set(params.initial);
 }
 
 function FieldGroup(params) {
@@ -125,6 +149,21 @@ function FieldGroup(params) {
       this.add(name);
     }
     this.fields[name].set(value);
+  };
+
+  this.get = function(name) {
+    if (!this.fields[name]) {
+      this.add(name);
+    }
+    return this.fields[name].get();
+  };
+
+  this.values = function() {
+    var vals = {};
+    for (var name in this.fields) {
+      vals[name] = this.fields[name].get();
+    }
+    return vals;
   };
 
   this.setVisible = function(name, visible) {
@@ -180,4 +219,8 @@ function FieldGroup(params) {
 // canonicalize it to be always lower case, stripping out non-letters.
 function toIdString(name) {
   return name.replace(/[^a-zA-Z]/gi, "").toLowerCase();
+}
+
+function fieldWrapInRow(keyCell, field) {
+  return $('<tr/>').append(keyCell);
 }
