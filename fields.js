@@ -1,6 +1,6 @@
 var default_id_source = function(name) {
   return toIdString(name);
-}
+};
 
 var default_field_params = {
   idSource: default_id_source,
@@ -126,6 +126,7 @@ function FieldGroup(params) {
   this.fields = {};
 
   if (!this.wrapper) {
+    //noinspection JSUnusedLocalSymbols
     this.wrapper = function(keyCell, field) {
       return keyCell;
     }
@@ -221,6 +222,7 @@ function toIdString(name) {
   return name.replace(/[^a-zA-Z]/gi, "").toLowerCase();
 }
 
+//noinspection JSUnusedLocalSymbols
 function fieldWrapInRow(keyCell, field) {
   return $('<tr/>').append(keyCell);
 }
