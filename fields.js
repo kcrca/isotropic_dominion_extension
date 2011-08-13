@@ -96,7 +96,7 @@ function Field(name, fieldGroup, params) {
     this.updateVisibility();
   };
 
-  this.set(params.initial);
+  this.set(this.initial);
 }
 
 function FieldGroup(params) {
@@ -130,9 +130,9 @@ function FieldGroup(params) {
     if (this.fields[name]) return;
 
     this.order.push(name);
-    params = params || {};
-    $.extend(params, default_field_params, params);
-    this.fields[name] = new Field(name, this, params);
+    var toPass = {};
+    $.extend(toPass, this.fieldDefaults, params);
+    this.fields[name] = new Field(name, this, toPass);
   };
 
   this.set = function(name, value) {
@@ -192,7 +192,7 @@ function FieldGroup(params) {
         // Put it as the first node after the leading one
         this.after.after(toInsert);
       } else {
-        var first = $(this.under[0].firstElementChild);
+        var first = $(this.under.children(":first-child"));
         if (first && first.length > 0) {
           // There is already at last one child, so insert this before it.
           first.before(toInsert);

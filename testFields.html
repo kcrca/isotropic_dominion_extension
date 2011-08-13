@@ -18,6 +18,7 @@
 </head>
 <body>
 
+<span id="foo">This <b><i>is</i>some</b>text.</span>
 <h4>Wrapped in Rows, using .after</h4>
 <table border="1" title="Wrapped in Rows, using .after">
     <tr id="afterHeader">
@@ -44,6 +45,16 @@
     };
 </script>
 
+<script>
+    var node = $('#foo').children().first();
+    for (var i = 0; i < 10;i++) {
+        var n = node.next();
+        if (!n || n.length == 0)
+        break;
+        node = n;
+    }
+    console.log('');
+</script>
 <h4>Wrapped in Rows, using .under</h4>
 <table id="underTable" border="1" title="Wrapped in Rows, using .under">
 </table>
