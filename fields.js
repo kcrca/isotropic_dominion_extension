@@ -92,7 +92,7 @@ function Field(name, fieldGroup, params) {
   this.setVisible = function(visible) {
     if (visible == this.visible) return;
     this.visible = visible;
-    this.maybeBuildCells(this.idSource);
+    this.maybeBuildCells();
     this.updateVisibility();
   };
 
@@ -103,18 +103,18 @@ function FieldGroup(params) {
   if (!params.under && !params.after) {
     throw "Must provide either 'under' or 'after' parameter";
   }
-  this.fieldDefaults = {};
+  this.fieldDefaults = {idSource: default_id_source};
+  var fieldParams = {};
+  var thisParams = {};
   for (var param in params) {
-    if (default_field_params[param]) {
-      this.fieldDefaults[param] = params[param];
+    if (default_field_params.hasOwnProperty(param)) {
+      fieldParams[param] = params[param];
     } else {
-      this[param] = params[param];
+      thisParams[param] = params[param];
     }
   }
-
-  if (!this.fieldDefaults.idSource) {
-    this.fieldDefaults.idSource = default_id_source;
-  }
+  $.extend(this.fieldDefaults, fieldParams);
+  $.extend(this, thisParams);
 
   this.order = [];
   this.fields = {};
