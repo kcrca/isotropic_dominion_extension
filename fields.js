@@ -17,13 +17,7 @@ function Field(name, fieldGroup, params) {
   this.name = name;
   this.fieldGroup = fieldGroup;
   params.label = params.label || name;
-  for (var param in default_field_params) {
-    if (params[param] != undefined) {
-      this[param] = params[param];
-    } else {
-      this[param] = default_field_params[param];
-    }
-  }
+  $.extend(this, default_field_params, params);
 
   this.maybeBuildCells = function () {
     if (this.valueCell) return;
@@ -137,11 +131,7 @@ function FieldGroup(params) {
 
     this.order.push(name);
     params = params || {};
-    for (var param in default_field_params) {
-      if (this.fieldDefaults[param] && !params[param]) {
-        params[param] = this.fieldDefaults[param];
-      }
-    }
+    $.extend(params, default_field_params, params);
     this.fields[name] = new Field(name, this, params);
   };
 

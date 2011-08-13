@@ -8,7 +8,7 @@
         }
         $(document).ready(function() {
             $('#afterButton').click(afterButton);
-            $('#underButton').click(underBotton);
+            $('#underButton').click(underButton);
             $('#longButton').click(longButton);
             $('#afterTextButton').click(afterText);
             $('#underTextButton').click(underText);
@@ -57,7 +57,7 @@
         },
         under: $('#underTable'), wrapper: fieldWrapInRow});
     underTableGroup.add('Now');
-    underBotton = function() {
+    underButton = function() {
         underTableGroup.set('Now', now());
     };
     underText = function(evt) {
