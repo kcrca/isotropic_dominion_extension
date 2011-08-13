@@ -1274,12 +1274,11 @@ function setupPlayerArea() {
     var tab = player_spot.firstElementChild;
     // tab can be null at the end of a game when returning to the lobby
     if (tab != null) {
-      var nrow = tab.insertRow(0);
-      var area = nrow.insertCell();
-      nrow.setAttribute("align", "right");
-      area.setAttribute("colspan", "2");
-      area.appendChild(ptab);
-      area.id = 'playerData';
+      var origParent = $(player_spot).parent();
+      var outerCell = $('<td/>');
+      $(player_spot).replaceWith(outerCell);
+      outerCell.append(ptab);
+      outerCell.append(player_spot);
     }
   }
 }
@@ -1783,6 +1782,9 @@ function handle(doc) {
     // Remember the "supply" node for later use.
     if (doc.id == "supply") {
       player_spot = doc;
+      doc.addEventListener("DOMNodeRemovedFromDocument", function() {
+        console.log('removing supply');
+      });
     }
 
     if (doc.id == 'sm2-container') {
