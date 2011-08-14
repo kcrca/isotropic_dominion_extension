@@ -190,7 +190,7 @@ function FieldGroup(params) {
     if (prev) {
       insertion.after = prev;
     } else {
-      // If there is no prevous node, this should be the first in the list
+      // If there is no previous node, this should be the first in the list
       if (this.after) {
         // Put it as the first node after the leading one
         insertion.after = this.after;
@@ -227,7 +227,7 @@ function FieldGroup(params) {
     } else {
       field.trailingNode = insertion.toInsert.last();
     }
-  }
+  };
 
   // Putting it here allows it to override findInsert()
   $.extend(this, thisParams);
