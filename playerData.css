@@ -37,8 +37,8 @@
     color: white !important;
 }
 
-#playerData, #playerData * {
-    vertical-align: top;
+#playerDataTable, #playerDataTable * {
+    vertical-align: baseline;
     text-align: right;
 }
 
@@ -193,7 +193,7 @@ td.kingdom-column, td.basic-column {
     width: 100%;
 }
 
-.avail {
+.atevail {
     text-align: right;
     padding-right: 0.5em !important;
 }

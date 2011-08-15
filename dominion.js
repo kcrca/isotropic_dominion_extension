@@ -424,15 +424,14 @@ function Player(name, num) {
     } else {
       delete this.otherCards[cardName];
     }
+    fields.set('otherCards', this.otherCardsHTML());
   };
 
   // Return HTML string to display the "other" cards this player has.
   this.otherCardsHTML = function() {
     var otherCards = '';
     for (var name in this.otherCards) {
-      if (otherCards.length == 0) {
-        otherCards = '<span class="playerDataKey">Other Cards: </span>';
-      } else {
+      if (otherCards.length > 0) {
         otherCards += ", ";
       }
       otherCards += this.otherCards[name];
@@ -518,40 +517,53 @@ function Player(name, num) {
   if (this.icon != undefined) {
     playerCell().children().first().before(this.icon.cloneNode(true))
   }
-  addRow(ptab, this.classFor, '<td id="' + this.idFor("otherCards") +
-      '" class="playerOtherCards" colspan="3">' + this.otherCardsHTML() +
-      '</td>');
-
+  var seenWide = false;
+  var prev;
   var player = this;
   var fieldInsertPos = function(field) {
     if (!player.seenFirst) {
       player.seenFirst = true;
-      return {toInsert: field.keyCell, after: $('#' + player.idFor('name'))};
+      return {toInsert: field.keyNode, after: $('#' + player.idFor('name'))};
     }
 
     function incrementRowspan(cell) {
       var curSpan = cell.attr('rowspan');
       cell.attr('rowspan', parseInt(curSpan) + 1);
     }
+
     incrementRowspan(activeCell);
-    incrementRowspan(playerCell);
+
+    seenWide |= (field.tag == 'span');
 
     var row = $('<tr/>').addClass(player.classFor).attr('id',
         player.idFor('active'));
-    row.append(field.keyCell);
+    if (!seenWide) {
+      incrementRowspan(playerCell);
+      row.append(field.keyNode);
+    } else {
+      var cell = $('<td/>').attr('colspan', 3).addClass('playerOtherCards');
+      row.append(cell);
+      cell.append(field.keyNode);
+    }
 
-    return {toInsert: row, after: $('#' + player.idFor('firstRow'))};
+    var after = (prev ? prev : $('#' + player.idFor('firstRow')));
+    prev = row;
+    return {toInsert: row, after: after};
   };
 
   var fields = new FieldGroup({idSource: this, findInsert: fieldInsertPos,
     keyClass: 'playerDataKey', valueClass: 'playerDataValue'});
 
+  fields.add('score', {initial: this.getScore()});
   if (!this.isTrash) {
-    fields.add('score', {initial: this.getScore()});
     fields.add('deck', {initial: this.getDeckString()});
   } else {
+    fields.setVisible('score', false);
     fields.add('deck', {label: "Cards", initial: this.getDeckString()});
   }
+  fields.add('otherCards', {label: 'Other Cards',
+    initial: this.otherCardsHTML(), tag: 'span',
+    isVisible: fieldInvisibleIfEmpty});
 }
 
 // This object holds on to the active data for a single player.
@@ -605,7 +617,7 @@ function ActiveData() {
     var count = NaN;
     try {
       count = parseInt(countIndicator);
-    } catch (err) {
+    } catch (ignored) {
       // a, an, the
       count = 1;
     }
@@ -877,6 +889,7 @@ function maybeHandleSwindler(elems, text) {
   return false;
 }
 
+//noinspection JSUnusedLocalSymbols
 function maybeHandlePirateShip(elems, text_arr, text) {
   // Swallow gaining pirate ship tokens.
   // It looks like gaining a pirate ship otherwise.
@@ -1244,7 +1257,6 @@ function updateScores() {
     allPlayers(function(player) {
       player.updateScore();
     });
-    $("#" + last_player.idFor("otherCards")).html(last_player.otherCardsHTML());
   });
 }
 
@@ -1274,8 +1286,7 @@ function setupPlayerArea() {
     var tab = player_spot.firstElementChild;
     // tab can be null at the end of a game when returning to the lobby
     if (tab != null) {
-      var origParent = $(player_spot).parent();
-      var outerCell = $('<td/>');
+      var outerCell = $('<td valign="bottom"/>');
       $(player_spot).replaceWith(outerCell);
       outerCell.append(ptab);
       outerCell.append(player_spot);
@@ -1418,9 +1429,10 @@ function initialize(doc) {
   player_re = '(' + other_player_names.join('|') + ')';
 
   // The trash player is created first but should be listed last.
-
   var trashRow = $('#' + trashPlayer.idFor('firstRow'));
-  trashRow.closest('table').append(trashRow);
+  $('.trash').each(function() {
+    trashRow.closest('table').append($(this));
+  });
 
   if (!disabled) {
     updateScores();
@@ -1574,6 +1586,7 @@ function handleGameEnd(doc) {
       }
 
       // Post the game information to app-engine for later use for tests, etc.
+      //noinspection JSUnusedGlobalSymbols
       chrome.extension.sendRequest({
         type: "log",
         game_id: game_id_str,
@@ -1677,6 +1690,10 @@ function restoreHistory(node) {
   // parent node.
   var storedLog = node.parentNode.cloneNode(false);
   storedLog.innerHTML = logHistory;
+
+  // Now that we've pulled the log out of the history, remove it so that it
+  // starts out empty, just like it does in the original game.
+  localStorage.removeItem('log');
 
   // Write all the entries from the history into the log up to (but not
   // including) the one that matches the newly added entry that triggered

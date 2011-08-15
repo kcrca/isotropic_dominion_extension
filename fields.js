@@ -2,13 +2,19 @@ var default_id_source = function(name) {
   return toIdString(name);
 };
 
+var default_is_visible = function(field) {
+  return field.visible;
+};
+
 var default_field_params = {
   idSource: default_id_source,
+  isVisible: default_is_visible,
   visible: true,
   initial: "",
   prefix: "",
   suffix: "",
   label: fieldTitleCase,
+  tag: 'td',
   keyClass: undefined,
   valueClass: undefined
 };
@@ -30,20 +36,24 @@ function Field(name, fieldGroup, params) {
   };
 
   this.maybeBuildCells = function () {
-    if (this.valueCell) return;
+    if (this.valueNode) return;
 
     var id = this.idFor();
-    this.keyCell = $('<td/>');
+    this.keyNode = $('<' + this.tag + '/>');
     if (this.keyClass) {
-      this.keyCell.addClass(this.keyClass);
+      this.keyNode.addClass(this.keyClass);
     }
-    this.keyCell.text(this.labelFor() + ':');
-    this.valueCell = $('<td id="' + id + '"/>');
+    this.keyNode.text(this.labelFor() + ':');
+    this.valueNode = $('<' + this.tag + ' id="' + id + '"/>');
     if (this.valueClass) {
-      this.keyCell.addClass(this.valueClass);
+      this.keyNode.addClass(this.valueClass);
     }
     this.fieldGroup.insertField(this);
-    this.keyCell.after(this.valueCell);
+    // If inserting didn't also insert the value node, put it after the key.
+    if (this.valueNode.parent().length == 0 &&
+        this.valueNode.prev().length == 0) {
+      this.keyNode.after(this.valueNode);
+    }
     this.updateVisibility();
   };
 
@@ -66,19 +76,20 @@ function Field(name, fieldGroup, params) {
       }
     }
 
-    setVisibilityForCell(this.keyCell, this.visible);
-    setVisibilityForCell(this.valueCell, this.visible);
+    setVisibilityForCell(this.keyNode, this.visible);
+    setVisibilityForCell(this.valueNode, this.visible);
   };
 
   this.set = function(value) {
     this.valueType = typeof(value);
     this.maybeBuildCells();
-    this.valueCell.text(this.prefix + String(value) + this.suffix);
+    this.valueNode.html(this.prefix + String(value) + this.suffix);
+    this.setVisible(this.isVisible(this));
   };
 
   this.get = function() {
     this.maybeBuildCells();
-    var val = this.valueCell.text();
+    var val = this.valueNode.text();
     if (this.prefix && this.prefix.length > 0) {
       if (val.indexOf(this.prefix) == 0) {
         val = val.substr(this.prefix.length);
@@ -127,8 +138,8 @@ function FieldGroup(params) {
 
   if (!this.wrapper) {
     //noinspection JSUnusedLocalSymbols
-    this.wrapper = function(keyCell, field) {
-      return keyCell;
+    this.wrapper = function(keyNode, field) {
+      return keyNode;
     }
   }
 
@@ -186,7 +197,7 @@ function FieldGroup(params) {
       }
     }
 
-    insertion.toInsert = this.wrapper(field.keyCell, field);
+    insertion.toInsert = this.wrapper(field.keyNode, field);
     if (prev) {
       insertion.after = prev;
     } else {
@@ -222,8 +233,8 @@ function FieldGroup(params) {
       throw "Insertion spec needs one of 'after', 'before', or 'under'";
     }
 
-    if (insertion.toInsert == field.keyCell) {
-      field.trailingNode = field.valueCell;
+    if (insertion.toInsert == field.keyNode) {
+      field.trailingNode = field.valueNode;
     } else {
       field.trailingNode = insertion.toInsert.last();
     }
@@ -240,8 +251,8 @@ function toIdString(name) {
 }
 
 //noinspection JSUnusedLocalSymbols
-function fieldWrapInRow(keyCell, field) {
-  return $('<tr/>').append(keyCell);
+function fieldWrapInRow(keyNode, field) {
+  return $('<tr/>').append(keyNode);
 }
 
 /*
@@ -296,4 +307,8 @@ function fieldWrapInRow(keyCell, field) {
 
 function fieldTitleCase(str) {
   return titleCaps(str);
+}
+
+function fieldInvisibleIfEmpty(field) {
+  return (field.get() != '');
 }
