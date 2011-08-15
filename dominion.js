@@ -259,11 +259,11 @@ function Player(name, num) {
   };
 
   this.updateScore = function() {
-    fields.set('score', this.getScore());
+    this.fields.set('score', this.getScore());
   };
 
   this.updateDeck = function() {
-    fields.set('deck', this.getDeckString());
+    this.fields.set('deck', this.getDeckString());
   };
 
   this.getScore = function() {
@@ -505,22 +505,23 @@ function Player(name, num) {
     }
   };
 
+  var player = this;
   rewriteTree(function() {
     var ptab = $('#playerDataTable')[0];
-    var row1 = addRow(ptab, this.classFor, '<td id="' + this.idFor("active") +
-        '" class="activePlayerData" rowspan="1"></td>' + '<td id="' +
-        this.idFor('name') + '" class="playerDataName" rowspan="0">' +
-        this.name + '</td>');
-    row1.attr('id', this.idFor('firstRow'));
+    var row1 = addRow(ptab, player.classFor,
+        '<td id="' + player.idFor("active") +
+            '" class="activePlayerData" rowspan="1"></td>' + '<td id="' +
+            player.idFor('name') + '" class="playerDataName" rowspan="0">' +
+            player.name + '</td>');
+    row1.attr('id', player.idFor('firstRow'));
 
     var activeCell = row1.children().first();
     var playerCell = activeCell.next();
-    if (this.icon != undefined) {
-      playerCell().children().first().before(this.icon.cloneNode(true))
+    if (player.icon != undefined) {
+      playerCell().children().first().before(player.icon.cloneNode(true))
     }
     var seenWide = false;
     var prev;
-    var player = this;
     var fieldInsertPos = function(field) {
       if (!player.seenFirst) {
         player.seenFirst = true;
@@ -552,18 +553,19 @@ function Player(name, num) {
       return {toInsert: row, after: after};
     };
 
-    var fields = new FieldGroup({idSource: this, findInsert: fieldInsertPos,
+    var fields = new FieldGroup({idSource: player, findInsert: fieldInsertPos,
       keyClass: 'playerDataKey', valueClass: 'playerDataValue'});
+    player.fields = fields;
 
-    fields.add('score', {initial: this.getScore()});
-    if (!this.isTrash) {
-      fields.add('deck', {initial: this.getDeckString()});
+    fields.add('score', {initial: player.getScore()});
+    if (!player.isTrash) {
+      fields.add('deck', {initial: player.getDeckString()});
     } else {
       fields.setVisible('score', false);
-      fields.add('deck', {label: "Cards", initial: this.getDeckString()});
+      fields.add('deck', {label: "Cards", initial: player.getDeckString()});
     }
     fields.add('otherCards', {label: 'Other Cards',
-      initial: this.otherCardsHTML(), tag: 'span',
+      initial: player.otherCardsHTML(), tag: 'span',
       isVisible: fieldInvisibleIfEmpty});
   });
 }
@@ -585,14 +587,14 @@ function ActiveData() {
   });
 
   // The default value of each field is held was set above, so remember them.
-  this.fields = fieldGroup.values();
+  this.defaultValues = fieldGroup.values();
 
   // Reset all fields to their default values.
   this.reset = function() {
     rewriteTree(function () {
-      for (var f in this.fields) {
-        fieldGroup.set(f, this.fields[f]);
-        this[f] = this.fields[f];
+      for (var f in this.defaultValues) {
+        fieldGroup.set(f, this.defaultValues[f]);
+        this[f] = this.defaultValues[f];
       }
     });
   };
@@ -1291,10 +1293,12 @@ function setupPlayerArea() {
     var tab = player_spot.firstElementChild;
     // tab can be null at the end of a game when returning to the lobby
     if (tab != null) {
-      var outerCell = $('<td valign="bottom"/>');
-      $(player_spot).replaceWith(outerCell);
-      outerCell.append(ptab);
-      outerCell.append(player_spot);
+      rewriteTree(function () {
+        var outerCell = $('<td valign="bottom"/>');
+        $(player_spot).replaceWith(outerCell);
+        outerCell.append(ptab);
+        outerCell.append(player_spot);
+      });
     }
   }
 }
@@ -1374,15 +1378,14 @@ function initialize(doc) {
   last_gain_player = null;
   scopes = [];
 
-  discoverGUIMode();
-  setupPerPlayerInfoArea();
-
+  activeData = new ActiveData();
   players = new Object();
   player_rewrites = new Object();
   player_re = "";
   player_count = 0;
-  trashPlayer = new Player('Trash', i);
-  activeData = new ActiveData();
+
+  discoverGUIMode();
+  setupPerPlayerInfoArea();
 
   // Figure out which cards are in supply piles
   supplied_cards = {};
@@ -1435,6 +1438,7 @@ function initialize(doc) {
   }
   player_re = '(' + other_player_names.join('|') + ')';
 
+  trashPlayer = new Player('Trash', i);
   // The trash player is created first but should be listed last.
   var trashRow = $('#' + trashPlayer.idFor('firstRow'));
   $('.trash').each(function() {
