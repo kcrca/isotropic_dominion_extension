@@ -424,7 +424,7 @@ function Player(name, num) {
     } else {
       delete this.otherCards[cardName];
     }
-    fields.set('otherCards', this.otherCardsHTML());
+    this.fields.set('otherCards', this.otherCardsHTML());
   };
 
   // Return HTML string to display the "other" cards this player has.
