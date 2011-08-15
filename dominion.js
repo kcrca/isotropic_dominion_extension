@@ -203,6 +203,9 @@ function pointsForCard(card_name) {
 }
 
 function Player(name, num) {
+  // This alias is used in nested functions that execute in other contexts
+  var self = this;
+
   this.name = name;
   this.score = 3;
   this.deck_size = 10;
@@ -505,27 +508,25 @@ function Player(name, num) {
     }
   };
 
-  var player = this;
   rewriteTree(function() {
     var ptab = $('#playerDataTable')[0];
-    var row1 = addRow(ptab, player.classFor,
-        '<td id="' + player.idFor("active") +
-            '" class="activePlayerData" rowspan="1"></td>' + '<td id="' +
-            player.idFor('name') + '" class="playerDataName" rowspan="0">' +
-            player.name + '</td>');
-    row1.attr('id', player.idFor('firstRow'));
+    var row1 = addRow(ptab, self.classFor, '<td id="' + self.idFor("active") +
+        '" class="activePlayerData" rowspan="1"></td>' + '<td id="' +
+        self.idFor('name') + '" class="playerDataName" rowspan="0">' +
+        self.name + '</td>');
+    row1.attr('id', self.idFor('firstRow'));
 
     var activeCell = row1.children().first();
     var playerCell = activeCell.next();
-    if (player.icon != undefined) {
-      playerCell().children().first().before(player.icon.cloneNode(true))
+    if (self.icon != undefined) {
+      playerCell().children().first().before(self.icon.cloneNode(true))
     }
     var seenWide = false;
     var prev;
     var fieldInsertPos = function(field) {
-      if (!player.seenFirst) {
-        player.seenFirst = true;
-        return {toInsert: field.keyNode, after: $('#' + player.idFor('name'))};
+      if (!self.seenFirst) {
+        self.seenFirst = true;
+        return {toInsert: field.keyNode, after: $('#' + self.idFor('name'))};
       }
 
       function incrementRowspan(cell) {
@@ -537,8 +538,8 @@ function Player(name, num) {
 
       seenWide |= (field.tag == 'span');
 
-      var row = $('<tr/>').addClass(player.classFor).attr('id',
-          player.idFor('active'));
+      var row = $('<tr/>').addClass(self.classFor).attr('id',
+          self.idFor('active'));
       if (!seenWide) {
         incrementRowspan(playerCell);
         row.append(field.keyNode);
@@ -548,30 +549,33 @@ function Player(name, num) {
         cell.append(field.keyNode);
       }
 
-      var after = (prev ? prev : $('#' + player.idFor('firstRow')));
+      var after = (prev ? prev : $('#' + self.idFor('firstRow')));
       prev = row;
       return {toInsert: row, after: after};
     };
 
-    var fields = new FieldGroup({idSource: player, findInsert: fieldInsertPos,
+    var fields = new FieldGroup({idSource: self, findInsert: fieldInsertPos,
       keyClass: 'playerDataKey', valueClass: 'playerDataValue'});
-    player.fields = fields;
+    self.fields = fields;
 
-    fields.add('score', {initial: player.getScore()});
-    if (!player.isTrash) {
-      fields.add('deck', {initial: player.getDeckString()});
+    fields.add('score', {initial: self.getScore()});
+    if (!self.isTrash) {
+      fields.add('deck', {initial: self.getDeckString()});
     } else {
       fields.setVisible('score', false);
-      fields.add('deck', {label: "Cards", initial: player.getDeckString()});
+      fields.add('deck', {label: "Cards", initial: self.getDeckString()});
     }
     fields.add('otherCards', {label: 'Other Cards',
-      initial: player.otherCardsHTML(), tag: 'span',
+      initial: self.otherCardsHTML(), tag: 'span',
       isVisible: fieldInvisibleIfEmpty});
   });
 }
 
 // This object holds on to the active data for a single player.
 function ActiveData() {
+  // This alias is used in nested functions that execute in other contexts
+  var self = this;
+
   var dataTable = $('<table id="activePlayerDataTable"/>');
   var fieldGroup = new FieldGroup({idPrefix: 'active', under: dataTable,
     wrapper: fieldWrapInRow,
@@ -591,10 +595,10 @@ function ActiveData() {
 
   // Reset all fields to their default values.
   this.reset = function() {
+    $.extend(this, this.defaultValues);
     rewriteTree(function () {
-      for (var f in this.defaultValues) {
-        fieldGroup.set(f, this.defaultValues[f]);
-        this[f] = this.defaultValues[f];
+      for (var f in self.defaultValues) {
+        fieldGroup.set(f, self[f]);
       }
     });
   };
@@ -607,7 +611,7 @@ function ActiveData() {
   this.changeField = function(key, delta) {
     this[key] += delta;
     rewriteTree(function () {
-      fieldGroup.set(key, this[key]);
+      fieldGroup.set(key, self[key]);
     });
   };
 
