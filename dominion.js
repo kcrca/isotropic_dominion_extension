@@ -1928,7 +1928,6 @@ function positionFromBottom() {
 
   var jqDoc = $(tooltip);
   var style = jqDoc.attr('style');
-  var xyzzy = jqDoc.attr("xyzzy");
   if (!style || style.match(/visibility:\s+hidden/) ||
       style.match(/display:\s+none/)) {
     tooltip_bottom = {};
