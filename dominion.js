@@ -505,65 +505,67 @@ function Player(name, num) {
     }
   };
 
-  var ptab = $('#playerDataTable')[0];
-  var row1 = addRow(ptab, this.classFor, '<td id="' + this.idFor("active") +
-      '" class="activePlayerData" rowspan="1"></td>' + '<td id="' +
-      this.idFor('name') + '" class="playerDataName" rowspan="0">' + this.name +
-      '</td>');
-  row1.attr('id', this.idFor('firstRow'));
+  rewriteTree(function() {
+    var ptab = $('#playerDataTable')[0];
+    var row1 = addRow(ptab, this.classFor, '<td id="' + this.idFor("active") +
+        '" class="activePlayerData" rowspan="1"></td>' + '<td id="' +
+        this.idFor('name') + '" class="playerDataName" rowspan="0">' +
+        this.name + '</td>');
+    row1.attr('id', this.idFor('firstRow'));
 
-  var activeCell = row1.children().first();
-  var playerCell = activeCell.next();
-  if (this.icon != undefined) {
-    playerCell().children().first().before(this.icon.cloneNode(true))
-  }
-  var seenWide = false;
-  var prev;
-  var player = this;
-  var fieldInsertPos = function(field) {
-    if (!player.seenFirst) {
-      player.seenFirst = true;
-      return {toInsert: field.keyNode, after: $('#' + player.idFor('name'))};
+    var activeCell = row1.children().first();
+    var playerCell = activeCell.next();
+    if (this.icon != undefined) {
+      playerCell().children().first().before(this.icon.cloneNode(true))
     }
+    var seenWide = false;
+    var prev;
+    var player = this;
+    var fieldInsertPos = function(field) {
+      if (!player.seenFirst) {
+        player.seenFirst = true;
+        return {toInsert: field.keyNode, after: $('#' + player.idFor('name'))};
+      }
 
-    function incrementRowspan(cell) {
-      var curSpan = cell.attr('rowspan');
-      cell.attr('rowspan', parseInt(curSpan) + 1);
-    }
+      function incrementRowspan(cell) {
+        var curSpan = cell.attr('rowspan');
+        cell.attr('rowspan', parseInt(curSpan) + 1);
+      }
 
-    incrementRowspan(activeCell);
+      incrementRowspan(activeCell);
 
-    seenWide |= (field.tag == 'span');
+      seenWide |= (field.tag == 'span');
 
-    var row = $('<tr/>').addClass(player.classFor).attr('id',
-        player.idFor('active'));
-    if (!seenWide) {
-      incrementRowspan(playerCell);
-      row.append(field.keyNode);
+      var row = $('<tr/>').addClass(player.classFor).attr('id',
+          player.idFor('active'));
+      if (!seenWide) {
+        incrementRowspan(playerCell);
+        row.append(field.keyNode);
+      } else {
+        var cell = $('<td/>').attr('colspan', 3).addClass('playerOtherCards');
+        row.append(cell);
+        cell.append(field.keyNode);
+      }
+
+      var after = (prev ? prev : $('#' + player.idFor('firstRow')));
+      prev = row;
+      return {toInsert: row, after: after};
+    };
+
+    var fields = new FieldGroup({idSource: this, findInsert: fieldInsertPos,
+      keyClass: 'playerDataKey', valueClass: 'playerDataValue'});
+
+    fields.add('score', {initial: this.getScore()});
+    if (!this.isTrash) {
+      fields.add('deck', {initial: this.getDeckString()});
     } else {
-      var cell = $('<td/>').attr('colspan', 3).addClass('playerOtherCards');
-      row.append(cell);
-      cell.append(field.keyNode);
+      fields.setVisible('score', false);
+      fields.add('deck', {label: "Cards", initial: this.getDeckString()});
     }
-
-    var after = (prev ? prev : $('#' + player.idFor('firstRow')));
-    prev = row;
-    return {toInsert: row, after: after};
-  };
-
-  var fields = new FieldGroup({idSource: this, findInsert: fieldInsertPos,
-    keyClass: 'playerDataKey', valueClass: 'playerDataValue'});
-
-  fields.add('score', {initial: this.getScore()});
-  if (!this.isTrash) {
-    fields.add('deck', {initial: this.getDeckString()});
-  } else {
-    fields.setVisible('score', false);
-    fields.add('deck', {label: "Cards", initial: this.getDeckString()});
-  }
-  fields.add('otherCards', {label: 'Other Cards',
-    initial: this.otherCardsHTML(), tag: 'span',
-    isVisible: fieldInvisibleIfEmpty});
+    fields.add('otherCards', {label: 'Other Cards',
+      initial: this.otherCardsHTML(), tag: 'span',
+      isVisible: fieldInvisibleIfEmpty});
+  });
 }
 
 // This object holds on to the active data for a single player.
@@ -587,10 +589,12 @@ function ActiveData() {
 
   // Reset all fields to their default values.
   this.reset = function() {
-    for (var f in this.fields) {
-      fieldGroup.set(f, this.fields[f]);
-      this[f] = this.fields[f];
-    }
+    rewriteTree(function () {
+      for (var f in this.fields) {
+        fieldGroup.set(f, this.fields[f]);
+        this[f] = this.fields[f];
+      }
+    });
   };
 
   this.top = function() {
@@ -600,7 +604,9 @@ function ActiveData() {
   // Change the value of a specific field.
   this.changeField = function(key, delta) {
     this[key] += delta;
-    fieldGroup.set(key, this[key]);
+    rewriteTree(function () {
+      fieldGroup.set(key, this[key]);
+    });
   };
 
   this.setUsesPotions = function(usesPotions) {
@@ -1253,6 +1259,7 @@ function toIdString(name) {
 
 function updateScores() {
   if (last_player == null) return;
+  maybeSetupCardCounts();
   rewriteTree(function() {
     allPlayers(function(player) {
       player.updateScore();
@@ -1260,9 +1267,7 @@ function updateScores() {
   });
 }
 
-// If the player area does not exist, create it. For some reason, the table that
-// contains the player area is rebuilt during play (I think whenever a card is
-// bought).
+// Set up the player area in which per-player info will be displayed.
 function setupPlayerArea() {
   var ptab = document.createElement("table");
   if (!text_mode) {
@@ -1294,7 +1299,17 @@ function setupPlayerArea() {
   }
 }
 
-// As needed, set up player data area and the per-card count columns.
+// As needed, set per-card count columns.
+function maybeSetupCardCounts() {
+  if (text_mode) {
+    setupPerPlayerTextCardCounts();
+  } else {
+    setupPerPlayerImageCardCounts('kingdom');
+    setupPerPlayerImageCardCounts('basic');
+  }
+}
+
+// Set up player data area and the per-card count columns.
 function setupPerPlayerInfoArea() {
   if (disabled) return;
 
@@ -1304,14 +1319,6 @@ function setupPerPlayerInfoArea() {
   //!! Put counting options in a pop-up window or something
   rewriteTree(function () {
     setupPlayerArea();
-
-    if (text_mode) {
-      setupPerPlayerTextCardCounts();
-    } else {
-      setupPerPlayerImageCardCounts('kingdom');
-      setupPerPlayerImageCardCounts('basic');
-    }
-
     placeActivePlayerData();
   });
 }
