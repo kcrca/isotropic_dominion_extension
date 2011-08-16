@@ -558,7 +558,7 @@ function Player(name, num) {
       keyClass: 'playerDataKey', valueClass: 'playerDataValue'});
     self.fields = fields;
 
-    fields.add('score', {initial: self.getScore()});
+    fields.add('score', {initial: self.getScore(), valueClass: 'scoreValue'});
     if (!self.isTrash) {
       fields.add('deck', {initial: self.getDeckString()});
     } else {
@@ -594,8 +594,7 @@ function ActiveData() {
     fields.add('coins', { initial: 0, prefix: '$' });
     fields.add('copper',
         { initial: 1, prefix: '$', isVisible: isCopperValueVisible });
-    fields.add('VP',
-        { initial: 0, prefix: '▼', isVisible: isNotZero });
+    fields.add('VP', { initial: 0, prefix: '▼', isVisible: isNotZero });
     fields.add('potions', { initial: 0, prefix: '◉' });
     fields.add('played', { initial: 0 });
   });
@@ -985,6 +984,7 @@ function maybeHandleIsland(elems, text_arr, text) {
   return false;
 }
 
+//noinspection JSUnusedLocalSymbols
 function maybeHandleCoppersmith(elems, text_arr, text) {
   var m = text.match(/ Copper is now worth \$([0-9]+)/);
   if (m) {
@@ -1843,9 +1843,6 @@ function handle(doc) {
     // Remember the "supply" node for later use.
     if (doc.id == "supply") {
       player_spot = doc;
-      doc.addEventListener("DOMNodeRemovedFromDocument", function() {
-        console.log('removing supply');
-      });
     }
 
     if (doc.id == 'sm2-container') {

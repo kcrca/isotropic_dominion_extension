@@ -9,7 +9,7 @@
 /* !! The card count column widths are different for basic and kingdom cards. */
 
 .you, .you * {
-	background-color: #dbf8db;
+    background-color: #dbf8db;
 }
 
 .playerClass1, .playerClass1 * {
@@ -56,6 +56,10 @@
 .playerDataKey {
     white-space: nowrap;
     text-align: right;
+}
+
+.scoreValue {
+    font-weight: bold;
 }
 
 .playerCardCountCol {

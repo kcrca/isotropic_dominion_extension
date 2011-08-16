@@ -40,13 +40,15 @@ function Field(name, fieldGroup, params) {
 
     var id = this.idFor();
     this.keyNode = $('<' + this.tag + '/>');
+    this.keyNode.attr('id', id + 'Key');
     if (this.keyClass) {
       this.keyNode.addClass(this.keyClass);
     }
     this.keyNode.text(this.labelFor() + ':');
     this.valueNode = $('<' + this.tag + ' id="' + id + '"/>');
+    this.valueNode.attr('id', id + 'Value');
     if (this.valueClass) {
-      this.keyNode.addClass(this.valueClass);
+      this.valueNode.addClass(this.valueClass);
     }
     this.fieldGroup.insertField(this);
     // If inserting didn't also insert the value node, put it after the key.
