@@ -49,7 +49,11 @@
 }
 
 .activeMark {
-    width: 1em;
+    width: 0.75em;
+}
+
+.markPlace:not(.activeMark) {
+    visibility: hidden;
 }
 
 .trash, .trash * {

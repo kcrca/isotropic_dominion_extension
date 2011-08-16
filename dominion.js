@@ -259,6 +259,7 @@ function Player(name, num) {
     this.icon = imgNode.cloneNode(true);
     this.icon.removeAttribute("class");
     this.icon.setAttribute("align", 'baseline');
+
   };
 
   this.updateScore = function() {
@@ -512,9 +513,9 @@ function Player(name, num) {
     var ptab = $('#playerDataTable')[0];
     var row1 = addRow(ptab, self.classFor, '<td id="' + self.idFor('active') +
         '" class="activePlayerData rowStretch"></td>' + '<td id="' +
-        self.idFor('mark') + '" class="rowStretch"></td>' + '<td id="' +
-        self.idFor('name') + '" class="playerDataName" rowspan="0">' +
-        self.name + '</td>');
+        self.idFor('mark') + '" class="rowStretch markPlace"></td>' +
+        '<td id="' + self.idFor('name') +
+        '" class="playerDataName" rowspan="0">' + self.name + '</td>');
     row1.attr('id', self.idFor('firstRow'));
 
     var stetchCells = row1.children('.rowStretch');
