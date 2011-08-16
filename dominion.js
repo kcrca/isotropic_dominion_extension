@@ -571,34 +571,40 @@ function Player(name, num) {
   });
 }
 
+isCopperValueVisible = function(val) {
+  return val.get() != 1;
+};
+
 // This object holds on to the active data for a single player.
 function ActiveData() {
   // This alias is used in nested functions that execute in other contexts
   var self = this;
 
   var dataTable = $('<table id="activePlayerDataTable"/>');
-  var fieldGroup = new FieldGroup({idPrefix: 'active', under: dataTable,
+  var fields = new FieldGroup({idPrefix: 'active', under: dataTable,
     wrapper: fieldWrapInRow,
     keyClass: 'playerDataKey',
     valueClass: 'playerDataValue'});
 
   rewriteTree(function () {
-    fieldGroup.add('actions', { initial: 1 });
-    fieldGroup.add('buys', { initial: 1 });
-    fieldGroup.add('coins', { initial: 0, prefix: '$' });
-    fieldGroup.add('potions', { initial: 0, prefix: '◉' });
-    fieldGroup.add('played', { initial: 0 });
+    fields.add('actions', { initial: 1 });
+    fields.add('buys', { initial: 1 });
+    fields.add('coins', { initial: 0, prefix: '$' });
+    fields.add('copper',
+        { initial: 1, prefix: '$', isVisible: isCopperValueVisible });
+    fields.add('potions', { initial: 0, prefix: '◉' });
+    fields.add('played', { initial: 0 });
   });
 
   // The default value of each field is held was set above, so remember them.
-  this.defaultValues = fieldGroup.values();
+  this.defaultValues = fields.values();
 
   // Reset all fields to their default values.
   this.reset = function() {
     $.extend(this, this.defaultValues);
     rewriteTree(function () {
       for (var f in self.defaultValues) {
-        fieldGroup.set(f, self[f]);
+        fields.set(f, self[f]);
       }
     });
   };
@@ -606,17 +612,25 @@ function ActiveData() {
   this.top = function() {
     return dataTable;
   };
+  
+  this.get = function(field) {
+    return fields.get(field);
+  };
+  
+  this.set = function(field, value) {
+    fields.set(field, value);
+  };
 
   // Change the value of a specific field.
   this.changeField = function(key, delta) {
     this[key] += delta;
     rewriteTree(function () {
-      fieldGroup.set(key, self[key]);
+      fields.set(key, self[key]);
     });
   };
 
   this.setUsesPotions = function(usesPotions) {
-    fieldGroup.setVisible('potions', usesPotions);
+    fields.setVisible('potions', usesPotions);
   };
 
   // Account for those effects of playing a specific card that are not
@@ -650,7 +664,8 @@ function ActiveData() {
     }
     if (card.Treasure != "0") {
       // The coins and potions from treasure cards are not reported.
-      this.changeField('coins', count * card.getCoinCount());
+      var copperMult = (card.Singular == 'Copper' ? activeData.get('copper') : 1);
+      this.changeField('coins', count * card.getCoinCount() * copperMult);
       this.changeField('potions', count * card.getPotionCount());
     }
   };
@@ -969,6 +984,15 @@ function maybeHandleIsland(elems, text_arr, text) {
   return false;
 }
 
+function maybeHandleCoppersmith(elems, text_arr, text) {
+  var m = text.match(/ Copper is now worth \$([0-9]+)/);
+  if (m) {
+    activeData.set('copper', parseInt(m[1]));
+    return true;
+  }
+  return false;
+}
+
 function maybeHandleVp(text) {
   var re = new RegExp("[+]([0-9]+) ▼");
   var arr = text.match(re);
@@ -1093,6 +1117,7 @@ function handleLogEntry(node) {
   if (maybeHandleOffensiveTrash(elems, text, node.innerText)) return;
   if (maybeHandleTournament(elems, text, node.innerText)) return;
   if (maybeHandleIsland(elems, text, node.innerText)) return;
+  if (maybeHandleCoppersmith(elems, text, node.innerText)) return;
 
   if (text[0] == "trashing") {
     var player = last_player;
@@ -1309,12 +1334,14 @@ function setupPlayerArea() {
 
 // As needed, set per-card count columns.
 function maybeSetupCardCounts() {
-  if (text_mode) {
-    setupPerPlayerTextCardCounts();
-  } else {
-    setupPerPlayerImageCardCounts('kingdom');
-    setupPerPlayerImageCardCounts('basic');
-  }
+  rewriteTree(function () {
+    if (text_mode) {
+      setupPerPlayerTextCardCounts();
+    } else {
+      setupPerPlayerImageCardCounts('kingdom');
+      setupPerPlayerImageCardCounts('basic');
+    }
+  });
 }
 
 // Set up player data area and the per-card count columns.
