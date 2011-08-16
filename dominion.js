@@ -736,7 +736,7 @@ function removeActivePlayerData() {
 
 // Check to see if the node shows that a player resigned.
 function maybeHandleResignation(node) {
-  if (node.innerText.match(/ resigns from the game\.$/)) {
+  if (node.innerText.match(/ resigns from the game/)) {
     last_player.setResigned();
     return true;
   }
@@ -1589,6 +1589,7 @@ function stopCounting() {
   points_spot.innerHTML = "faq";
 
   localStorage.removeItem("log");
+  removeActivePlayerData();
   text_mode = undefined;
 }
 

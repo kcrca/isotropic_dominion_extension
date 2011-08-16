@@ -12,7 +12,7 @@
     background-color: #dbf8db;
 }
 
-.you *.activeMark {
+.you:not(.resigned) *.activeMark {
     background-color: #2de52d;
 }
 
@@ -20,15 +20,15 @@
     background: #fdfed3;
 }
 
-.playerClass1 *.activeMark {
-    background: #faff00;
+.playerClass1:not(.resigned) *.activeMark {
+    background: #f1f600;
 }
 
 .playerClass2, .playerClass2 * {
     background: #feefd3;
 }
 
-.playerClass2 *.activeMark {
+.playerClass2:not(.resigned) *.activeMark {
     background: #ffb733;
 }
 
@@ -36,7 +36,7 @@
     background: #e7fefe;
 }
 
-.playerClass3 *.activeMark {
+.playerClass3:not(.resigned) *.activeMark {
     background: #19ffff;
 }
 
@@ -44,7 +44,7 @@
     background: #fee5fe;
 }
 
-.playerClass4 *.activeMark {
+.playerClass4:not(.resigned) *.activeMark {
     background: #f200f2;
 }
 
@@ -61,7 +61,7 @@
 }
 
 .resigned, .resigned * {
-    background: #5e5e5e;
+    background: #ccc;
     color: white !important;
 }
 
