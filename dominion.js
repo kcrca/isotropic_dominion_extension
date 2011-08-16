@@ -1596,6 +1596,8 @@ function settingsString() {
 function removePlayerData() {
   removePlayerArea();
   forgetGUIMode();
+  // Return true because this is used as an event handler.
+  return true; 
 }
 
 function stopCounting() {
@@ -1647,10 +1649,6 @@ function handleGameEnd(doc) {
             }
           }
         }
-      } else if (childNode.innerText = "return") {
-        childNode.addEventListener("DOMActivate", function() {
-          removePlayerData();
-        }, true);
       }
 
       // Post the game information to app-engine for later use for tests, etc.
@@ -1665,6 +1663,8 @@ function handleGameEnd(doc) {
         version: extension_version,
         settings: settingsString() });
       break;
+    } else if (childNode.innerText = "return") {
+      $(childNode).click(removePlayerData);
     }
   }
 }
