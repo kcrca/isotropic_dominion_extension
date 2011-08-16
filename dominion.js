@@ -571,8 +571,12 @@ function Player(name, num) {
   });
 }
 
-isCopperValueVisible = function(val) {
-  return val.get() != 1;
+isCopperValueVisible = function(field) {
+  return field.get() != 1;
+};
+
+isNotZero = function(field) {
+  return field.get() != 0;
 };
 
 // This object holds on to the active data for a single player.
@@ -590,6 +594,8 @@ function ActiveData() {
     fields.add('coins', { initial: 0, prefix: '$' });
     fields.add('copper',
         { initial: 1, prefix: '$', isVisible: isCopperValueVisible });
+    fields.add('VP',
+        { initial: 0, prefix: '▼', isVisible: isNotZero });
     fields.add('potions', { initial: 0, prefix: '◉' });
     fields.add('played', { initial: 0 });
   });
@@ -993,6 +999,7 @@ function maybeHandleVp(text) {
   var arr = text.match(re);
   if (arr && arr.length == 2) {
     last_player.changeScore(arr[1]);
+    activeData.changeField('VP', parseInt(arr[1]));
   }
 }
 
