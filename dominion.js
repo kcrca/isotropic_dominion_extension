@@ -1522,7 +1522,7 @@ function maybeIntroducePlugin() {
     writeText("★ Game scored by Dominion Point Counter ★");
     writeText("http://goo.gl/iDihS");
     writeText("Type !status to see the current score.");
-    if (localStorage["allow_disable"] != "f") {
+    if (localStorage["allow_disable"]) {
       writeText("Type !disable to disable the point counter.");
     }
   }
@@ -1549,7 +1549,7 @@ function handleChatText(speaker, text) {
     if (i_introduced) wait_time = 100;
     setTimeout(command, wait_time);
   }
-  if (localStorage["allow_disable"] != "f" && text == " !disable") {
+  if (localStorage["allow_disable"] && text == " !disable") {
     localStorage.setItem("disabled", "t");
     disabled = true;
     stopCounting();
@@ -1723,7 +1723,7 @@ function maybeStartOfGame(node) {
     localStorage.removeItem("disabled");
   } else {
     console.log("--- replaying history ---");
-    disabled = localStorage.getItem("disabled") == "t";
+    disabled = localStorage.getItem("disabled");
     if (!restoreHistory(node)) return;
   }
   started = true;
@@ -1941,7 +1941,7 @@ function buildStatusMessage() {
 }
 
 function enterLobby() {
-  if (localStorage["status_announce"] == "t" && $('#lobby').length != 0 &&
+  if (localStorage["status_announce"] && $('#lobby').length != 0 &&
       $('#lobby').css('display') != "none") {
     // Set the original status message.
     writeText(buildStatusMessage());

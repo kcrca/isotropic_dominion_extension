@@ -4,65 +4,63 @@ function setupOption(default_value, name) {
     enable = default_value;
   }
 
-  var name_to_select = document.getElementById(name + "_" + enable);
-  name_to_select.checked = true
+  $('#' + name).attr('checked', enable);
 }
 
 function loadOptions() {
-  setupOption("t", "allow_disable");
-  setupOption("f", "status_announce");
+  setupOption(true, "allow_disable");
+  setupOption(false, "status_announce");
 }
 
-function generateOptionButton(name, value, desc) {
-  var id = name + "_" + value;
-  return "<label for='" + id + "'>" +
-    "<input type='radio' name='" + name + "' id='" + id + "'" +
-        "onclick='saveOption(\"" + name + "\", \"" + value + "\")'>" +
-      desc +
-    "</label><br>";
+function generateOptionButton(name, desc) {
+  var control = $('<label/>').attr('for', name);
+  var button = $('<input type="checkbox"/>').attr('id', name).attr('name',
+      name);
+  button.click(saveOption);
+  control.append(button).append(desc);
+  button.attr('checked', localStorage[name] == 't');
+  return control;
 }
 
-function generateOption(option_desc, extra_desc, name, yes_desc, no_desc) {
+function generateOption(name, option_desc, extra_desc) {
   if (extra_desc != "") {
-    extra_desc += '<div style="line-height:6px;">&nbsp;</div>';
+    option_desc += ' <span class="optionNote">(' + extra_desc + ')</span>';
   }
-  return "<h3>" + option_desc + "</h3>" + extra_desc +
-         generateOptionButton(name, "t", yes_desc) +
-         generateOptionButton(name, "f", no_desc);
+  return generateOptionButton(name, option_desc);
 }
 
-var js_element = document.createElement("script");
-js_element.id = "pointCounterOptionsJavascript";
-js_element.type = "text/javascript";
-js_element.innerHTML = "function saveOption(name, value) { localStorage[name] = value; }"
-document.body.appendChild(js_element);
+function saveOption(evt) {
+  var button = $(evt.target);
+  localStorage[button.attr('id')] = button.attr('checked');
+}
 
-var element = document.createElement("div");
-element.id = "pointCounterOptions";
+function insertOptions(under) {
+  var element = $('<div/>').attr('id', "pointCounterOptions");
+  element.append('<h3>Dominion Point Counter Options</h3>');
+  var disableControl = generateOption("allow_disable",
+      "Allow opponents to disable point counter with !disable.", "");
+  var announceControl = generateOption("status_announce",
+      "Change lobby status to announce you use point counter.",
+      "Mandatory if disabling is not allowed.");
+  element.append(disableControl).append(announceControl);
+  under.append(element);
 
-element.innerHTML =
-  "<h1>Dominion Point Counter Options</h1>" +
-  generateOption("Allow opponents to disable point counter with !disable?",
-                 "",
-                 "allow_disable",
-                 "Allow disabling.",
-                 "Do not allow disabling.") +
-  generateOption("Change lobby status to announce you use point counter?",
-                 "Mandatory if disabling is not allowed.",
-                 "status_announce",
-                 "Post in status message.",
-                 "Do not post in status message.");
+  loadOptions();
 
-document.body.appendChild(element);
-loadOptions();
+  var disableButton = $('#allow_disable');
+  var annouceButton = $('#status_announce');
 
-$('#allow_disable_t').click(function() {
-  $('#status_announce_t').attr('disabled', false);
-  $('#status_announce_f').attr('disabled', false);
-})
+  $('#allow_disable').change(function() {
+    if (disableButton.attr('checked')) {
+      annouceButton.attr('disabled', false);
+    } else {
+      annouceButton.attr('checked', true);
+      annouceButton.attr('disabled', true);
+    }
+  });
 
-$('#allow_disable_f').click(function() {
-  localStorage["status_announce"] = "t";
-  $('#status_announce_t').attr('checked', true);
-  $('#status_announce_t').attr('disabled', true);
-})
+  disableControl.trigger('change');
+}
+
+
+$(document).ready(insertOptions($(document.body)));

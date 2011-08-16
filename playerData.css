@@ -8,6 +8,7 @@
 
 /* !! The card count column widths are different for basic and kingdom cards. */
 
+#pointCounterOptions,
 .you, .you * {
     background-color: #dbf8db;
 }
@@ -240,4 +241,19 @@ td.kingdom-column, td.basic-column {
 
 .textMode #choices {
     margin-left: 2em;
+}
+
+/*
+ * Styles for the options.
+ */
+
+#pointCounterOptions {
+	padding: 1px 1em 1.75em;
+}
+
+#pointCounterOptions > label {
+	display: block;
+}
+
+#pointCounterOptions .optionNote {
 }

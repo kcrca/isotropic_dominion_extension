@@ -11,6 +11,7 @@
      },
      {
        "js": [ "jquery.js", "options.js" ],
+       "css": [ "playerData.css" ],
        "matches": [ "http://dominion.isotropic.org/" ]
      },
      {
