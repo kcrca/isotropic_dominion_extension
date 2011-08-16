@@ -258,7 +258,7 @@ function Player(name, num) {
     if (imgNode == null) return;
     this.icon = imgNode.cloneNode(true);
     this.icon.removeAttribute("class");
-    this.icon.setAttribute("align", "top");
+    this.icon.setAttribute("align", 'baseline');
   };
 
   this.updateScore = function() {
@@ -510,16 +510,17 @@ function Player(name, num) {
 
   rewriteTree(function() {
     var ptab = $('#playerDataTable')[0];
-    var row1 = addRow(ptab, self.classFor, '<td id="' + self.idFor("active") +
-        '" class="activePlayerData" rowspan="1"></td>' + '<td id="' +
+    var row1 = addRow(ptab, self.classFor, '<td id="' + self.idFor('active') +
+        '" class="activePlayerData rowStretch"></td>' + '<td id="' +
+        self.idFor('mark') + '" class="rowStretch"></td>' + '<td id="' +
         self.idFor('name') + '" class="playerDataName" rowspan="0">' +
         self.name + '</td>');
     row1.attr('id', self.idFor('firstRow'));
 
-    var activeCell = row1.children().first();
-    var playerCell = activeCell.next();
+    var stetchCells = row1.children('.rowStretch');
+    var playerCell = row1.children('#' + self.idFor('name'));
     if (self.icon != undefined) {
-      playerCell().children().first().before(self.icon.cloneNode(true))
+      playerCell.children().first().before(self.icon.cloneNode(true))
     }
     var seenWide = false;
     var prev;
@@ -531,15 +532,19 @@ function Player(name, num) {
 
       function incrementRowspan(cell) {
         var curSpan = cell.attr('rowspan');
+        if (!curSpan) {
+          curSpan = '1';
+        }
         cell.attr('rowspan', parseInt(curSpan) + 1);
       }
 
-      incrementRowspan(activeCell);
+      stetchCells.each(function() {
+        incrementRowspan($(this));
+      });
 
       seenWide |= (field.tag == 'span');
 
-      var row = $('<tr/>').addClass(self.classFor).attr('id',
-          self.idFor('active'));
+      var row = $('<tr/>').addClass(self.classFor);
       if (!seenWide) {
         incrementRowspan(playerCell);
         row.append(field.keyNode);
@@ -708,8 +713,11 @@ function placeActivePlayerData() {
   if (disabled) return;
   if (last_player == null) return;
 
+  $('.activeMark').removeClass('activeMark');
+  $('#' + last_player.idFor('mark')).addClass('activeMark');
+
   // Each player has a place for its active data, we just look it up here.
-  var playerID = last_player.idFor("active");
+  var playerID = last_player.idFor('active');
   var cell = $('#' + playerID);
   if (cell.length == 0)
     return;
