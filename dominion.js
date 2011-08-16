@@ -578,8 +578,6 @@ isCopperValueVisible = function(val) {
 // This object holds on to the active data for a single player.
 function ActiveData() {
   // This alias is used in nested functions that execute in other contexts
-  var self = this;
-
   var dataTable = $('<table id="activePlayerDataTable"/>');
   var fields = new FieldGroup({idPrefix: 'active', under: dataTable,
     wrapper: fieldWrapInRow,
@@ -601,32 +599,28 @@ function ActiveData() {
 
   // Reset all fields to their default values.
   this.reset = function() {
-    $.extend(this, this.defaultValues);
-    rewriteTree(function () {
-      for (var f in self.defaultValues) {
-        fields.set(f, self[f]);
-      }
-    });
+    for (var f in this.defaultValues) {
+      fields.set(f, this.defaultValues[f]);
+    }
   };
 
   this.top = function() {
     return dataTable;
   };
-  
+
   this.get = function(field) {
     return fields.get(field);
   };
-  
+
   this.set = function(field, value) {
-    fields.set(field, value);
+    rewriteTree(function () {
+      fields.set(field, value);
+    });
   };
 
   // Change the value of a specific field.
   this.changeField = function(key, delta) {
-    this[key] += delta;
-    rewriteTree(function () {
-      fields.set(key, self[key]);
-    });
+    fields.set(key, this.get(key) + delta);
   };
 
   this.setUsesPotions = function(usesPotions) {
@@ -664,7 +658,8 @@ function ActiveData() {
     }
     if (card.Treasure != "0") {
       // The coins and potions from treasure cards are not reported.
-      var copperMult = (card.Singular == 'Copper' ? activeData.get('copper') : 1);
+      var copperMult = (
+          card.Singular == 'Copper' ? activeData.get('copper') : 1);
       this.changeField('coins', count * card.getCoinCount() * copperMult);
       this.changeField('potions', count * card.getPotionCount());
     }
