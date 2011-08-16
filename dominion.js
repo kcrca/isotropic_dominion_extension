@@ -1345,6 +1345,8 @@ function setupPlayerArea() {
 
 // As needed, set per-card count columns.
 function maybeSetupCardCounts() {
+  if (!optionSet('show_card_counts')) return;
+
   rewriteTree(function () {
     if (text_mode) {
       setupPerPlayerTextCardCounts();
@@ -1369,6 +1371,11 @@ function setupPerPlayerInfoArea() {
   });
 }
 
+// Remove the card counts columns
+function removeCardCounts() {
+  $(".playerCardCountCol").remove();
+}
+
 // Remove the player area, such as at the end of the game or if disabled.
 function removePlayerArea() {
   var ptab = document.getElementById("playerData");
@@ -1380,8 +1387,7 @@ function removePlayerArea() {
     removeActivePlayerData();
     ptab.parentNode.removeChild(ptab);
   }
-  $(".playerCardCountCol").remove();
-
+  removeCardCounts();
   $('#supply td[grown]').each(function() {
     var $this = $(this);
     var grownBy = $this.attr('grown');
@@ -1436,7 +1442,7 @@ function initialize(doc) {
   });
   activeData.setUsesPotions(supplied_cards['Potion'] != undefined);
 
-  if (localStorage.getItem("disabled")) {
+  if (localStorage['disabled']) {
     disabled = true;
   }
 
@@ -1453,7 +1459,8 @@ function initialize(doc) {
   } else {
     var p = "(?:([^,]+), )";    // an optional player
     var pl = "(?:([^,]+),? )";  // the last player (might not have a comma)
-    var re = new RegExp("Turn order is "+p+"?"+p+"?"+p+"?"+pl+"and then (.+).");
+    var re = new RegExp("Turn order is " + p + "?" + p + "?" + p + "?" + pl +
+        "and then (.+).");
     arr = doc.innerText.match(re);
   }
   if (arr == null) {
@@ -1522,7 +1529,7 @@ function maybeIntroducePlugin() {
     writeText("★ Game scored by Dominion Point Counter ★");
     writeText("http://goo.gl/iDihS");
     writeText("Type !status to see the current score.");
-    if (localStorage["allow_disable"]) {
+    if (optionSet('allow_disable')) {
       writeText("Type !disable to disable the point counter.");
     }
   }
@@ -1549,13 +1556,13 @@ function handleChatText(speaker, text) {
     if (i_introduced) wait_time = 100;
     setTimeout(command, wait_time);
   }
-  if (localStorage["allow_disable"] && text == " !disable") {
-    localStorage.setItem("disabled", "t");
+  if (optionSet('allow_disable') && text == " !disable") {
+    localStorage['disabled'] = "t";
     disabled = true;
     stopCounting();
     removePlayerData();
     $('div[reinserted="true"]').css('display', 'none');
-    localStorage.setItem("log", $('#log').html());
+    localStorage['log'] = $('#log').html();
     writeText(">> Point counter disabled.");
   }
 
@@ -1575,6 +1582,7 @@ function addSetting(setting, output) {
     output[setting] = localStorage[setting];
   }
 }
+
 function settingsString() {
   var settings = new Object();
   addSetting("debug", settings);
@@ -1701,14 +1709,14 @@ function maybeStartOfGame(node) {
     return;
   }
 
-  if (localStorage.getItem("log") == undefined &&
+  if (localStorage['log'] == undefined &&
       nodeText.indexOf("Your turn 1 —") != -1) {
     // We don't have a log but it's turn 1. This must be a solitaire game.
     // Create a fake (and invisible) setup line. We'll get called back again
     // with it.
     console.log("Single player game.");
     node = $('<div class="logline" style="display:none;">' +
-             'Turn order is you.</div>)').insertBefore(node)[0];
+        'Turn order is you.</div>)').insertBefore(node)[0];
     return;
   }
 
@@ -1723,7 +1731,7 @@ function maybeStartOfGame(node) {
     localStorage.removeItem("disabled");
   } else {
     console.log("--- replaying history ---");
-    disabled = localStorage.getItem("disabled");
+    disabled = localStorage['disabled'];
     if (!restoreHistory(node)) return;
   }
   started = true;
@@ -1745,7 +1753,7 @@ function logEntryForGame(node) {
 function restoreHistory(node) {
   // The first log line is not the first line of the game, so restore the
   // log from history. Of course, there must be a log history to restore.
-  var logHistory = localStorage.getItem("log");
+  var logHistory = localStorage['log'];
   if (logHistory == undefined || logHistory.length == 0) {
     return false;
   }
@@ -1863,7 +1871,7 @@ function handle(doc) {
       if (logEntryForGame(doc)) {
         handleLogEntry(doc);
         if (started) {
-          localStorage.setItem("log", doc.parentElement.innerHTML);
+          localStorage['log'] = doc.parentElement.innerHTML;
         }
       }
     }
@@ -1941,7 +1949,7 @@ function buildStatusMessage() {
 }
 
 function enterLobby() {
-  if (localStorage["status_announce"] && $('#lobby').length != 0 &&
+  if (optionSet('status_announce') && $('#lobby').length != 0 &&
       $('#lobby').css('display') != "none") {
     // Set the original status message.
     writeText(buildStatusMessage());
@@ -1978,7 +1986,13 @@ function enterLobby() {
 
   setupTooltips($('#sm2-container').prev()[0]);
 
-  my_icon = $('#log img').first().get(0);
+  my_icon = $('#log img').first()[0];
+
+  $('.selfname').each(function() {
+    var $this = $(this);
+    $this.addClass('you');
+    $this.parent().addClass('you');
+  })
 }
 
 function setupTooltips(node) {
