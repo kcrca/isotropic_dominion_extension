@@ -1597,7 +1597,7 @@ function removePlayerData() {
   removePlayerArea();
   forgetGUIMode();
   // Return true because this is used as an event handler.
-  return true; 
+  return true;
 }
 
 function stopCounting() {
@@ -1616,6 +1616,9 @@ function handleGameEnd(doc) {
       // Reset exit / faq at end of game.
       started = false;
       stopCounting();
+      $(doc).children('a:contains(return)').each(function() {
+        $(this).click(removePlayerData);
+      });
       // Collect information about the game.
       var href = childNode.href;
       var game_id_str = href.substring(href.lastIndexOf("/") + 1);
@@ -1663,8 +1666,6 @@ function handleGameEnd(doc) {
         version: extension_version,
         settings: settingsString() });
       break;
-    } else if (childNode.innerText = "return") {
-      $(childNode).click(removePlayerData);
     }
   }
 }
