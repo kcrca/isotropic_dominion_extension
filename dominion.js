@@ -1094,7 +1094,7 @@ function handleLogEntry(node) {
   if (maybeHandleResignation(node)) return;
 
   // Make sure this isn't a duplicate possession entry.
-  if (node.className.indexOf("logline") < 0) return;
+  if (node.className.indexOf("possessed-log") > 0) return;
 
   var text = node.innerText.split(" ");
 
@@ -1447,11 +1447,15 @@ function initialize(doc) {
   //!! We need to also rewrite players named "you", "You", "Your", etc.
   // Hack: collect player names with spaces and apostrophes in them. We'll
   // rewrite them and then all the text parsing works as normal.
-  var p = "(?:([^,]+), )";    // an optional player
-  var pl = "(?:([^,]+),? )";  // the last player (might not have a comma)
-  var re = new RegExp("Turn order is (?:(you)|" + p + "?" + p + "?" + p + "?" +
-      pl + "and then (.+))\\.");
-  var arr = doc.innerText.match(re);
+  var arr;
+  if (doc.innerText == "Turn order is you.") {
+    arr = [undefined, "you"];
+  } else {
+    var p = "(?:([^,]+), )";    // an optional player
+    var pl = "(?:([^,]+),? )";  // the last player (might not have a comma)
+    var re = new RegExp("Turn order is "+p+"?"+p+"?"+p+"?"+pl+"and then (.+).");
+    arr = doc.innerText.match(re);
+  }
   if (arr == null) {
     handleError("Couldn't parse: " + doc.innerText);
   }
@@ -1550,6 +1554,8 @@ function handleChatText(speaker, text) {
     disabled = true;
     stopCounting();
     removePlayerData();
+    $('div[reinserted="true"]').css('display', 'none');
+    localStorage.setItem("log", $('#log').html());
     writeText(">> Point counter disabled.");
   }
 
@@ -1677,9 +1683,14 @@ function reinsert(ev) {
     var copy = node.cloneNode(true);
     // The "fading" of old log messages reduces opacity to near zero; clear that
     copy.removeAttribute("style");
+    copy.setAttribute("reinserted", "true");
+    if (disabled) {
+      copy.setAttribute("style", "display:none;");
+    }
     rewriteTree(function () {
       node.parentNode.insertBefore(copy, node);
     });
+    localStorage.setItem("log", $('#log').html());
   }
 }
 
@@ -1697,7 +1708,7 @@ function maybeStartOfGame(node) {
     // with it.
     console.log("Single player game.");
     node = $('<div class="logline" style="display:none;">' +
-        'Turn order is you.</div>)').insertBefore(node)[0];
+             'Turn order is you.</div>)').insertBefore(node)[0];
     return;
   }
 
@@ -1713,7 +1724,7 @@ function maybeStartOfGame(node) {
   } else {
     console.log("--- replaying history ---");
     disabled = localStorage.getItem("disabled") == "t";
-    restoreHistory(node);
+    if (!restoreHistory(node)) return;
   }
   started = true;
 }
@@ -1736,7 +1747,7 @@ function restoreHistory(node) {
   // log from history. Of course, there must be a log history to restore.
   var logHistory = localStorage.getItem("log");
   if (logHistory == undefined || logHistory.length == 0) {
-    return;
+    return false;
   }
 
   console.log("--- restoring log ---" + "\n");
@@ -1787,6 +1798,7 @@ function restoreHistory(node) {
       }
     }
   });
+  return true;
 }
 
 function inLobby() {
@@ -1827,6 +1839,12 @@ function rewriteTree(func) {
 }
 
 function handle(doc) {
+  // When the lobby screen is built, make sure point tracker settings are used.
+  if (doc.className && doc.className == "constr") {
+    $('#tracker').attr('checked', true).attr('disabled', true);
+    $('#autotracker').val('yes').attr('disabled', true);
+  }
+
   // Ignore DOM events when we are rewritting the tree; see rewriteTree().
   if (rewritingTree > 0) return;
 
@@ -1957,9 +1975,6 @@ function enterLobby() {
       $('#fake_entry').val("");
     })
   }
-
-  $('#tracker').attr('checked', true).attr('disabled', true);
-  $('#autotracker').val('yes').attr('disabled', true);
 
   setupTooltips($('#sm2-container').prev()[0]);
 
