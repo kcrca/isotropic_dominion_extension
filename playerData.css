@@ -67,19 +67,20 @@
 }
 
 #playerDataTable, #playerDataTable * {
-    vertical-align: baseline;
+    vertical-align: top;
     text-align: right;
 }
 
-#playerData table {
-    position: relative !important;
+#playerDataTable {
     border-collapse: collapse;
+    border-spacing: 0;
+    border-color: white;
     margin: 0.1em 0.5em;
 }
 
-#playerData td {
+#playerDataTable td {
+    padding: 0.25ex 0.4em;
     margin: 0;
-    padding: 0.1em 0.5em;
 }
 
 .playerDataKey {
@@ -108,14 +109,14 @@
     text-align: left !important;
 }
 
-#playerData img {
-    padding-right: 1ex;
-    vertical-align: top;
+.playerDataName img {
     float: left;
+    padding: 0.25ex 0.5em 0.25ex 0.3em;
 }
 
 .playerDataName {
     font-weight: bold;
+    padding-right: .75em;
 }
 
 .playerDataKey {

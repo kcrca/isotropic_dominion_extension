@@ -257,9 +257,9 @@ function Player(name, num) {
   this.setIcon = function(imgNode) {
     if (imgNode == null) return;
     this.icon = imgNode.cloneNode(true);
-    this.icon.removeAttribute("class");
-    this.icon.setAttribute("align", 'baseline');
-
+    this.icon.removeAttribute('class');
+    this.icon.setAttribute('align', 'top');
+    $('#' + this.idFor('name')).contents().first().before(this.icon);
   };
 
   this.updateScore = function() {
@@ -564,12 +564,14 @@ function Player(name, num) {
       keyClass: 'playerDataKey', valueClass: 'playerDataValue'});
     self.fields = fields;
 
+    if (self.isTrash) {
+      fields.add('deck', {label: "Cards", initial: self.getDeckString()});
+    }
     fields.add('score', {initial: self.getScore(), valueClass: 'scoreValue'});
     if (!self.isTrash) {
       fields.add('deck', {initial: self.getDeckString()});
     } else {
       fields.setVisible('score', false);
-      fields.add('deck', {label: "Cards", initial: self.getDeckString()});
     }
     fields.add('otherCards', {label: 'Other Cards',
       initial: self.otherCardsHTML(), tag: 'span',
