@@ -16,7 +16,8 @@ var default_field_params = {
   label: fieldTitleCase,
   tag: 'td',
   keyClass: undefined,
-  valueClass: undefined
+  valueClass: undefined,
+  manageContainer: false
 };
 
 function Field(name, fieldGroup, params) {
@@ -70,16 +71,18 @@ function Field(name, fieldGroup, params) {
   };
 
   this.updateVisibility = function () {
-    function setVisibilityForCell(cell, visible) {
+    function setVisibilityForCell(node, visible) {
+      if (!node) return;
       if (visible) {
-        cell.show();
+        node.show();
       } else {
-        cell.hide();
+        node.hide();
       }
     }
 
     setVisibilityForCell(this.keyNode, this.visible);
     setVisibilityForCell(this.valueNode, this.visible);
+    setVisibilityForCell(this.container, this.visible);
   };
 
   this.set = function(value) {
@@ -238,6 +241,9 @@ function FieldGroup(params) {
     if (insertion.toInsert == field.keyNode) {
       field.trailingNode = field.valueNode;
     } else {
+      if (field.manageContainer) {
+        field.container = insertion.toInsert;
+      }
       field.trailingNode = insertion.toInsert.last();
     }
   };

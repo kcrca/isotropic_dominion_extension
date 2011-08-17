@@ -592,7 +592,9 @@ function ActiveData() {
   var fields = new FieldGroup({idPrefix: 'active', under: dataTable,
     wrapper: fieldWrapInRow,
     keyClass: 'playerDataKey',
-    valueClass: 'playerDataValue'});
+    valueClass: 'playerDataValue',
+    manageContainer: true
+  });
 
   rewriteTree(function () {
     fields.add('actions', { initial: 1 });
