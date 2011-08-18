@@ -1853,15 +1853,16 @@ function rewriteTree(func) {
   }
 }
 
-function activeValueTest() {
+function testActiveValuesVsYou() {
   if (rewritingTree) return;
   if (!started) return;
   if (!last_player || last_player.name != 'You') return;
 
+  // When we're being told we're waiting for something, or being offered a
+  // choice, sometimes we are ahead of the game's updates.
   var tempText = $('#temp_say').text();
-  // When we're being told we're waiting for something, sometimes we are ahead
-  // of the game's updates.
-  if (tempText.indexOf('— waiting ') == 0) return;
+  if (tempText.indexOf('— waiting ') >= 0) return;
+  if ($('#choices').children().length > 0) return;
 
   var msgs = [];
 
@@ -1944,7 +1945,7 @@ function handle(doc) {
         handleLogEntry(doc);
         if (started) {
           if (last_player && last_player.name == 'You') {
-            window.setTimeout(activeValueTest, 300);
+            window.setTimeout(testActiveValuesVsYou, 300);
           }
           localStorage['log'] = doc.parentElement.innerHTML;
         }
