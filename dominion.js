@@ -79,6 +79,9 @@ RegExp.quote = function(str) {
 var tooltip;
 var tooltip_bottom = {};
 
+// id for testing active values
+var activeValueTiemout;
+
 // Keep a map from all card names (singular or plural) to the card object.
 var card_map = {};
 for (var i = 0; i < card_list.length; i++) {
@@ -1265,7 +1268,6 @@ function setupPerPlayerTextCardCounts() {
     $this.attr('colspan', (origSpan + toAdd) + "");
     $this.attr('grown', toAdd + "");
   });
-
 }
 
 // Set up the per-player card counts in image mode for a given column.
@@ -1851,6 +1853,70 @@ function rewriteTree(func) {
   }
 }
 
+function activeValueTest() {
+  if (rewritingTree) return;
+  if (!started) return;
+  if (!last_player || last_player.name != 'You') return;
+
+  var tempText = $('#temp_say').text();
+  // When we're being told we're waiting for something, sometimes we are ahead
+  // of the game's updates.
+  if (tempText.indexOf('— waiting ') == 0) return;
+
+  var msgs = [];
+
+  function checkValue(text, name) {
+    var shown = parseInt(text);
+    var active = activeData.get(name);
+    if (shown != active) {
+      msgs.push(name + ': ' + shown + ' [shown] != ' + active + ' [active]');
+    }
+  }
+
+  var activeState = activeData.get('actions') + 'a, ' + activeData.get('buys') +
+      'b, $' + activeData.get('coins') + '+' + activeData.get('potions');
+  var shownState = '';
+  var candidates = $('#hand_holder .hrightfixed1');
+  candidates.each(function() {
+    var node = $(this);
+    var shownLabel = node.text();
+    var shownValue = node.next().text();
+    if (shownState) shownState += ', ';
+    var valueAbbrev = shownLabel.charAt(0);
+    switch (shownLabel) {
+    case "actions:":
+    case "buys:":
+      checkValue(shownValue, shownLabel.substr(0, shownLabel.length - 1));
+      break;
+    case "to spend:":
+      valueAbbrev = '';
+      var m = shownValue.match(/\$([0-9]+)(\s+◉×?([0-9]+)?)?/);
+      if (!m) {
+        return;
+      }
+      checkValue(m[1], 'coins');
+      if (m[3]) {
+        checkValue(m[3], 'potions');
+      } else if (m[2] && m[2].length > 0) {
+        checkValue('1', 'potions');
+      } else {
+        checkValue('0', 'potions');
+      }
+      break;
+    }
+    shownState += shownValue + valueAbbrev;
+  });
+  var stateMsg = (msgs.length == 0 ? 'valid' : 'INVALID') + ' @ ' + new Date() +
+      ': ' + shownState + ' [shown] vs. ' + activeState + ' [active]';
+  console.log(stateMsg);
+  if (msgs.length != 0) {
+    for (var i = 0; i < msgs.length; i++) {
+      console.log('  ' + msgs[i]);
+    }
+    alert('Invalid active state: check console');
+  }
+}
+
 function handle(doc) {
   // When the lobby screen is built, make sure point tracker settings are used.
   if (doc.className && doc.className == "constr") {
@@ -1873,9 +1939,13 @@ function handle(doc) {
     }
 
     if (doc.className && doc.className.indexOf("logline") >= 0) {
+      window.clearTimeout(activeValueTiemout);
       if (logEntryForGame(doc)) {
         handleLogEntry(doc);
         if (started) {
+          if (last_player && last_player.name == 'You') {
+            window.setTimeout(activeValueTest, 300);
+          }
           localStorage['log'] = doc.parentElement.innerHTML;
         }
       }
@@ -1930,6 +2000,7 @@ function handle(doc) {
       updateScores();
       updateDeck();
     }
+
   } catch (err) {
     console.log(doc);
     var error = '';
