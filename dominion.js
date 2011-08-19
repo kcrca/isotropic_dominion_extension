@@ -472,6 +472,8 @@ function Player(name, num) {
     // If the count is going down, usually this is trashing a card.
     if (!this.isTrash && count < 0 && trashing) {
       trashPlayer.gainCard(card, -count);
+    }
+    if (trashing || this.isTrash) {
       updateDeck(trashPlayer);
     }
   };
@@ -1170,6 +1172,10 @@ function handleGainOrTrash(player, elems, text, multiplier) {
         // Skip trashing any cards during possession.
       } else {
         player.gainCard(elems[elem], num);
+        // If Thief is used to gain the trashed card, take it back out
+        if (text.match(/ gain(s|ed)? the trashed /)) {
+          trashPlayer.gainCard(elems[elem], -num);
+        }
       }
     }
   }
