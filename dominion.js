@@ -82,6 +82,8 @@ var tooltip_bottom = {};
 // id for testing active values
 var activeValueTiemout;
 
+var infoIsForTests = false;
+
 // Keep a map from all card names (singular or plural) to the card object.
 var card_map = {};
 for (var i = 0; i < card_list.length; i++) {
@@ -512,6 +514,16 @@ function Player(name, num) {
     }
   };
 
+  this.get = function(field) {
+    return this.fields.get(field);
+  };
+
+  this.set = function(field, value) {
+    rewriteTree(function () {
+      this.fields.set(field, value);
+    });
+  };
+
   rewriteTree(function() {
     var ptab = $('#playerDataTable')[0];
     var row1 = addRow(ptab, self.classFor, '<td id="' + self.idFor('active') +
@@ -798,6 +810,125 @@ function maybeHandleTurnChange(node) {
     return true;
   }
   return false;
+}
+
+function maybeRunInternalTests(table) {
+  if (!infoIsForTests) return;
+  if (table.tagName != 'TABLE') return;
+  if (table.innerText.indexOf("Trash:") < 0) return;
+
+  infoIsForTests = false;
+
+  var msgs = [];
+  var foundProblem = false;
+
+  function checkValue(actual, expected, text) {
+    var valid = (actual == expected);
+    var label;
+    var op;
+    if (valid) {
+      label = 'valid';
+      op = '==';
+    } else {
+      label = 'INVALID';
+      op = '!=';
+      foundProblem = true;
+    }
+    var msg = label + ': ' + actual + ' ' + op + ' ' + expected + ' ' +
+        player.name + ': ' + text;
+    console.log(msg);
+    msgs.push(msg);
+  }
+
+  function countCards(str) {
+    var split = str.split(/,/g);
+    return split.length;
+  }
+
+  var cardCount = 0;
+  var cardCountStr = '';
+
+  function addToCardCount(count) {
+    cardCount += count;
+    if (cardCountStr.length > 0) {
+      cardCountStr += '+';
+    }
+    cardCountStr += count;
+  }
+
+  function parseInfoNumber(str) {
+    return str == 'nothing' ? 0 : parseInt(str);
+  }
+
+  var player = trashPlayer;
+
+  var tests = [
+    { pat: /^Trash:\(?(nothing|\d+)/,
+      act: function(row, match) {
+        var count = parseInfoNumber(match[1]);
+        checkValue(count, trashPlayer.get('deck'), row.text());
+      }
+    },
+    { pat: /^—— (.*) ——/,
+      act: function(row, match) {
+        player = getPlayer(match[1]);
+      }
+    },
+    { pat: /^(?:Hand|Play\sarea):\s*([^\d].*)/,
+      act: function(row, match) {
+        addToCardCount(countCards(match[1]));
+      }
+    },
+    { pat: /^(?:Draw\spile|Hand):(nothing|\d+)/,
+      act: function(row, match) {
+        addToCardCount(parseInfoNumber(match[1]));
+      }
+    },
+    { pat: /^(Draw|Discard)\spile:/,
+      act: function(row, match) {
+        var isDiscard = (match[1] == "Discard");
+        var paddingSpec = $(row).find('span.discards').css('padding-left');
+        var count = 0;
+        match = paddingSpec.match(/([0-9]+)px/);
+        if (match) {
+          count = parseInt(match[1]) / 6;
+          addToCardCount(count);
+          if (isDiscard) {
+            checkValue(cardCount, player.get('deck'), cardCountStr);
+            cardCount = 0;
+            cardCountStr = '';
+          }
+        }
+      }
+    },
+    { pat: /Current\sscore:([0-9]+)/,
+      act: function(row, match) {
+        checkValue(parseInt(match[1]), player.get('score'), row.text());
+      }
+    }
+  ];
+
+  $(table).find('tr').each(function() {
+    var tr = $(this);
+    var text = tr.text();
+    for (var i = 0; i < tests.length; i++) {
+      var test = tests[i];
+      var match = test.pat.exec(text);
+      if (match) {
+        test.act(tr, match);
+        break;
+      }
+    }
+    // This will bring down the info window.
+    tr.click();
+  });
+
+  var infoTop = $("body > div.black");
+  infoTop.remove();
+
+  if (foundProblem) {
+    alert("Found problems with data: see console log");
+  }
 }
 
 function stripDuplicateLogs() {
@@ -1097,7 +1228,11 @@ function handleLogEntry(node) {
   ensureLogNodeSetup(node);
   maybeRewriteName(node);
 
-  if (maybeHandleTurnChange(node)) return;
+  if (maybeHandleTurnChange(node)) {
+    infoIsForTests = true;
+    $('button:contains(info)').click();
+    return;
+  }
   if (maybeHandleResignation(node)) return;
 
   // Make sure this isn't a duplicate possession entry.
@@ -1909,12 +2044,14 @@ function testActiveValuesVsYou() {
   });
   var stateMsg = (msgs.length == 0 ? 'valid' : 'INVALID') + ' @ ' + new Date() +
       ': ' + shownState + ' [shown] vs. ' + activeState + ' [active]';
-  console.log(stateMsg);
   if (msgs.length != 0) {
+    console.log(stateMsg);
     for (var i = 0; i < msgs.length; i++) {
       console.log('  ' + msgs[i]);
     }
     alert('Invalid active state: check console');
+  } else {
+    if (false) console.log(stateMsg);
   }
 }
 
@@ -1995,6 +2132,8 @@ function handle(doc) {
       handleChatText(doc.childNodes[1].innerText.slice(0, -1),
           doc.childNodes[2].nodeValue);
     }
+
+    maybeRunInternalTests(doc);
 
     // Something was added, this is a good time to update the display.
     if (!disabled) {
