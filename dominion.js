@@ -501,6 +501,17 @@ function Player(name, num) {
       this.updateCardDisplay(cardName);
     }
   };
+  
+  this.asideCount = function() {
+    var count = 0;
+    for (var cardName in this.cards_aside) {
+      var aside = this.cards_aside[cardName];
+      if (aside) {
+        count += aside;
+      }
+    }
+    return count;
+  };
 
   this.cardCountString = function(cardName) {
     var count = this.card_counts[cardName];
@@ -854,8 +865,16 @@ function maybeRunInternalTests(table) {
   }
 
   function countCards(str) {
-    var split = str.split(/,/g);
-    return split.length;
+    var split = str.split(/,|,?\s+and\b/g);
+    var count = split.length;
+    for (var i = 0; i < split.length; i++) {
+      var cardSpec = split[i];
+      var match = cardSpec.match(/^\d+/);
+      if (match) {
+        count += parseInt(match[0]) - 1;
+      }
+    }
+    return count;
   }
 
   var cardCount = 0;
@@ -879,7 +898,7 @@ function maybeRunInternalTests(table) {
     { pat: /^Trash:\(?(nothing|\d+)/,
       act: function(row, match) {
         var count = parseInfoNumber(match[1]);
-        checkValue(count, trashPlayer.get('deck'), row.text());
+        checkValue(count, trashPlayer.deck_size, row.text());
       }
     },
     { pat: /^—— (.*) ——/,
@@ -892,7 +911,18 @@ function maybeRunInternalTests(table) {
         addToCardCount(countCards(match[1]));
       }
     },
-    { pat: /^(?:Draw\spile|Hand):(nothing|\d+)/,
+    { pat: /^(.*)\s+(?:mat|aside):\s*(.*)/,
+      act: function(row, match) {
+        var count = countCards(match[2]);
+        if (match[1] == "Island") {
+          // cards held by islands are not in the deck count (as we show it)
+          checkValue(count, player.asideCount(), row.text());
+        } else {
+          addToCardCount(count);
+        }
+      }
+    },
+    { pat: /^(?:Hand|Draw\spile):(nothing|\d+)/,
       act: function(row, match) {
         addToCardCount(parseInfoNumber(match[1]));
       }
@@ -906,8 +936,9 @@ function maybeRunInternalTests(table) {
         if (match) {
           count = parseInt(match[1]) / 6;
           addToCardCount(count);
+          cardCountStr += '[' + paddingSpec + ']';
           if (isDiscard) {
-            checkValue(cardCount, player.get('deck'), cardCountStr);
+            checkValue(cardCount, player.deck_size, cardCountStr );
             cardCount = 0;
             cardCountStr = '';
           }
