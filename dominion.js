@@ -814,11 +814,22 @@ function maybeHandleTurnChange(node) {
   return false;
 }
 
+function markInfoAsOurs(table) {
+  table.parent().addClass("you");
+  var row = $('<tr/>');
+  var col = $('<td/>').attr('colspan', '2');
+  table.append(row);
+  row.append(col.html("<b><i>This info window is for internal testing purposes. " +
+      "It should have been dismissed automatically without you seeing it. " +
+      "If you see this, please dismiss it and let us know.</i></b>"));
+}
+
 function maybeRunInternalTests(table) {
   if (!infoIsForTests) return;
   if (table.tagName != 'TABLE') return;
   if (table.innerText.indexOf("Trash:") < 0) return;
 
+  table = $(table);
   infoIsForTests = false;
 
   var msgs = [];
@@ -910,7 +921,8 @@ function maybeRunInternalTests(table) {
     }
   ];
 
-  $(table).find('tr').each(function() {
+  markInfoAsOurs(table);
+  table.find('tr').each(function() {
     var tr = $(this);
     var text = tr.text();
     for (var i = 0; i < tests.length; i++) {
@@ -921,7 +933,7 @@ function maybeRunInternalTests(table) {
         break;
       }
     }
-    // This will bring down the info window.
+    // This will expose the info window.
     tr.click();
   });
 
