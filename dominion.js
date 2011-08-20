@@ -876,7 +876,7 @@ function maybeRunInternalTests(table) {
         player = getPlayer(match[1]);
       }
     },
-    { pat: /^(?:Hand|Play\sarea):\s*([^\d].*)/,
+    { pat: /^(?:Hand|Play\sarea|Previous\sduration):\s*([^\d].*)/,
       act: function(row, match) {
         addToCardCount(countCards(match[1]));
       }
