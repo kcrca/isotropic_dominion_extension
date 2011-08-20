@@ -501,7 +501,7 @@ function Player(name, num) {
       this.updateCardDisplay(cardName);
     }
   };
-  
+
   this.asideCount = function() {
     var count = 0;
     for (var cardName in this.cards_aside) {
@@ -830,7 +830,8 @@ function markInfoAsOurs(table) {
   var row = $('<tr/>');
   var col = $('<td/>').attr('colspan', '2');
   table.append(row);
-  row.append(col.html("<b><i>This info window is for internal testing purposes. " +
+  row.append(col
+      .html("<b><i>This info window is for internal testing purposes. " +
       "It should have been dismissed automatically without you seeing it. " +
       "If you see this, please dismiss it and let us know.</i></b>"));
 }
@@ -930,18 +931,20 @@ function maybeRunInternalTests(table) {
     { pat: /^(Draw|Discard)\spile:/,
       act: function(row, match) {
         var isDiscard = (match[1] == "Discard");
-        var paddingSpec = $(row).find('span.discards').css('padding-left');
         var count = 0;
-        match = paddingSpec.match(/([0-9]+)px/);
-        if (match) {
-          count = parseInt(match[1]) / 6;
-          addToCardCount(count);
-          cardCountStr += '[' + paddingSpec + ']';
-          if (isDiscard) {
-            checkValue(cardCount, player.deck_size, cardCountStr );
-            cardCount = 0;
-            cardCountStr = '';
+        var paddingSpec = $(row).find('span.discards').each(function() {
+          var paddingSpec = $(this).css('padding-left');
+          match = paddingSpec.match(/([0-9]+)px/);
+          if (match) {
+            count += parseInt(match[1]) / 6;
           }
+        });
+        addToCardCount(count);
+        cardCountStr += '[' + paddingSpec + ']';
+        if (isDiscard) {
+          checkValue(cardCount, player.deck_size, cardCountStr);
+          cardCount = 0;
+          cardCountStr = '';
         }
       }
     },
