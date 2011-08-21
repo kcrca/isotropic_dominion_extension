@@ -138,6 +138,18 @@ for (var i = 0; i < card_list.length; i++) {
   };
 }
 
+function patchCardBug(cardName, prop, correctValue) {
+  var tableValue = card_map[cardName][prop];
+  if (tableValue != correctValue) {
+    console.log('Note: patching card_list: changing ' + cardName + '.' + prop +
+        ' from ' + tableValue + ' to ' + correctValue);
+    card_map[cardName][prop] = correctValue;
+  }
+}
+
+patchCardBug('Horse Traders', 'Action', '1');
+patchCardBug('Hunting Party', 'Action', '1');
+
 function debugString(thing) {
   return JSON.stringify(thing);
 }
