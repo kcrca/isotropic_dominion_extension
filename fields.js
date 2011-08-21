@@ -320,3 +320,7 @@ function fieldTitleCase(str) {
 function fieldInvisibleIfEmpty(field) {
   return (field.get() != '');
 }
+
+function fieldInvisibleIfZero(field) {
+  return (field.get() != 0);
+}
