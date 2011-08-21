@@ -907,12 +907,12 @@ function maybeRunInternalTests(table) {
         player = getPlayer(match[1]);
       }
     },
-    { pat: /^(?:Hand|Play\sarea|Previous\sduration):\s*([^\d].*)/,
+    { pat: /^(?:Hand|Play area|Previous duration): *([^\d].*)/,
       act: function(row, match) {
         addToCardCount(countCards(match[1]));
       }
     },
-    { pat: /^(.*)\s+(?:mat|aside):\s*(.*)/,
+    { pat: /^(.*) (?:mat|aside): *(.*)/,
       act: function(row, match) {
         var count = countCards(match[2]);
         if (match[1] == "Island") {
@@ -923,12 +923,12 @@ function maybeRunInternalTests(table) {
         }
       }
     },
-    { pat: /^(?:Hand|Draw\spile):(nothing|\d+)/,
+    { pat: /^(?:Hand|Draw pile):(nothing|\d+)/,
       act: function(row, match) {
         addToCardCount(parseInfoNumber(match[1]));
       }
     },
-    { pat: /^(Draw|Discard)\spile:/,
+    { pat: /^(Draw|Discard) pile:/,
       act: function(row, match) {
         var isDiscard = (match[1] == "Discard");
         var count = 0;
@@ -948,7 +948,7 @@ function maybeRunInternalTests(table) {
         }
       }
     },
-    { pat: /Current\sscore:([0-9]+)/,
+    { pat: /Current score:([0-9]+)/,
       act: function(row, match) {
         checkValue(parseInt(match[1]), player.get('score'), row.text());
       }
@@ -958,7 +958,7 @@ function maybeRunInternalTests(table) {
   markInfoAsOurs(table);
   table.find('tr').each(function() {
     var tr = $(this);
-    var text = tr.text();
+    var text = tr.text().replace(/\s+/g, ' ');
     for (var i = 0; i < tests.length; i++) {
       var test = tests[i];
       var match = test.pat.exec(text);
@@ -1169,6 +1169,8 @@ function maybeHandleTournament(elems, text_arr, text) {
 }
 
 function maybeHandleIsland(elems, text_arr, text) {
+  // 'draw and set aside' is a library, not an island
+  if (text.match(/draw and sets? aside/)) return false;
   if (text.match(/ set(ting|s)? aside /)) {
     var player = getPlayer(text_arr[0]);
     if (player == null)
