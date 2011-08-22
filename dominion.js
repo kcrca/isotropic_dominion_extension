@@ -75,10 +75,6 @@ RegExp.quote = function(str) {
   return str.replace(/([.?*+^$[\]\\(){}-])/g, "\\$1");
 };
 
-// Variables for making the tooltips move around less.
-var tooltip;
-var tooltip_bottom = {};
-
 // id for testing active values
 var activeValueTiemout;
 
@@ -2172,11 +2168,6 @@ function handle(doc) {
       player_spot = doc;
     }
 
-    if (doc.id == 'sm2-container') {
-      setupTooltips(doc);
-      return;
-    }
-
     // The child nodes of "supply" tell us whether certain cards are in play.
     if (doc.parentNode.id == "supply") {
       show_action_count = false;
@@ -2278,8 +2269,6 @@ function enterLobby() {
     })
   }
 
-  setupTooltips($('#sm2-container').prev()[0]);
-
   my_icon = $('#log img').first()[0];
 
   $('.selfname').each(function() {
@@ -2287,45 +2276,6 @@ function enterLobby() {
     $this.addClass('you');
     $this.parent().addClass('you');
   })
-}
-
-function setupTooltips(node) {
-  tooltip = node;
-  $(tooltip).attr("xyzzy", "true");
-  var attr = tooltip.getAttributeNode('style');
-  tooltip.addEventListener('DOMSubtreeModified', positionFromBottom);
-  attr.addEventListener('DOMSubtreeModified', positionFromBottom);
-}
-
-function positionFromBottom() {
-  if (rewritingTree) return;
-
-  var jqDoc = $(tooltip);
-  var style = jqDoc.attr('style');
-  if (!style || style.match(/visibility:\s+hidden/) ||
-      style.match(/display:\s+none/)) {
-    tooltip_bottom = {};
-    return;
-  }
-
-  style = style.replace(/position:\s+absolute/, 'position: fixed');
-  var topRe = /\btop:\s*(-?[0-9]+)/;
-  var m = style.match(topRe);
-  if (m != null) {
-    var bottom = tooltip_bottom[jqDoc.html()];
-    if (!bottom) {
-      bottom = (document.height - parseInt(m[1]));
-      tooltip_bottom = {};
-      tooltip_bottom[jqDoc.html()] = bottom;
-//      console.log("now using " + bottom + "\n");
-    } else {
-//      console.log("reusing " + bottom + "\n");
-    }
-    style = style.replace(topRe, 'bottom: ' + bottom);
-    rewriteTree(function () {
-      jqDoc.attr('style', style);
-    });
-  }
 }
 
 setTimeout("enterLobby()", 600);
