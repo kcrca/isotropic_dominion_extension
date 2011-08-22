@@ -1,12 +1,14 @@
 {
    "content_scripts": [
      {
-       "js": [ "jquery.js", "card_list.js", "fields.js", "dominion.js", "options.js" ],
+       "js": [ "jquery.js", "card_list.js", "fields.js", "dominion.js",
+               "activeData.js", "options.js" ],
        "css": [ "playerData.css" ],
        "matches": [ "http://dominion.isotropic.org/play" ]
      },
      {
-       "js": [ "jquery.js", "card_list.js", "fields.js", "dominion.js", "options.js", "debugger.js" ],
+       "js": [ "jquery.js", "card_list.js", "fields.js", "dominion.js",
+               "options.js", "debugger.js" ],
        "css": [ "playerData.css" ],
        "matches": [ "http://*.dominion-point-counter.appspot.com/debug*" ]
      },
