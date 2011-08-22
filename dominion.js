@@ -138,6 +138,11 @@ for (var i = 0; i < card_list.length; i++) {
   };
 }
 
+// Special handling for some cards.
+card_map['Diadem'].getCoinCount = function() {
+  return 2 + activeData.get('actions');
+};
+
 function patchCardBug(cardName, prop, correctValue) {
   var tableValue = card_map[cardName][prop];
   if (tableValue != correctValue) {
@@ -149,6 +154,10 @@ function patchCardBug(cardName, prop, correctValue) {
 
 patchCardBug('Horse Traders', 'Action', '1');
 patchCardBug('Hunting Party', 'Action', '1');
+// With Trusty Steed, it lists all *possible* outcomes as *actual*
+patchCardBug('Trusty Steed', 'Actions', '0');
+patchCardBug('Trusty Steed', 'Treasure', '0');
+patchCardBug('Trusty Steed', 'Cards', '0');
 
 function debugString(thing) {
   return JSON.stringify(thing);
@@ -545,8 +554,12 @@ function Player(name, num) {
 
   this.set = function(field, value) {
     rewriteTree(function () {
-      this.fields.set(field, value);
+      self.fields.set(field, value);
     });
+  };
+
+  this.changeField = function(field, delta) {
+    this.set(field, this.get(field) + delta);
   };
 
   rewriteTree(function() {
@@ -555,7 +568,7 @@ function Player(name, num) {
         '" class="activePlayerData rowStretch"></td>' + '<td id="' +
         self.idFor('mark') + '" class="rowStretch markPlace"></td>' +
         '<td id="' + self.idFor('name') +
-        '" class="playerDataName" rowspan="0">' + self.name + '</td>');
+        '" class="playerDataName" rowspan="0" nowrap>' + self.name + '</td>');
     row1.attr('id', self.idFor('firstRow'));
 
     var stetchCells = row1.children('.rowStretch');
@@ -635,7 +648,7 @@ function ActiveData() {
     wrapper: fieldWrapInRow,
     keyClass: 'playerDataKey',
     valueClass: 'playerDataValue',
-    manageContainer: true
+    visibleAt: Field.visible_at_inserted
   });
 
   rewriteTree(function () {
@@ -944,15 +957,20 @@ function maybeRunInternalTests(table) {
       act: function(row, match) {
         var isDiscard = (match[1] == "Discard");
         var count = 0;
-        var paddingSpec = $(row).find('span.discards').each(function() {
+        var paddingStrs = '';
+        $(row).find('span.discards').each(function() {
           var paddingSpec = $(this).css('padding-left');
+          if (paddingStrs.length > 0) {
+            paddingStrs += '+';
+          }
           match = paddingSpec.match(/([0-9]+)px/);
           if (match) {
+            paddingStrs += match[1];
             count += parseInt(match[1]) / 6;
           }
         });
         addToCardCount(count);
-        cardCountStr += '[' + paddingSpec + ']';
+        cardCountStr += '[' + paddingStrs + 'px]';
         if (isDiscard) {
           checkValue(cardCount, player.deck_size, cardCountStr);
           cardCount = 0;
@@ -1421,12 +1439,6 @@ function addRow(tab, rowClass, innerHTML) {
   $(tab).append(r);
   r.html(innerHTML);
   return r;
-//  var r = document.createElement("tr");
-//  if (rowClass)
-//    r.setAttribute("class", rowClass);
-//  tab.appendChild(r);
-//  r.innerHTML = innerHTML;
-//  return r;
 }
 
 // Set up the card count cell for a given player+card combination in text mode.

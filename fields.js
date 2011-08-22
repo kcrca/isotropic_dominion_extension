@@ -1,29 +1,37 @@
-var default_id_source = function(name) {
+Field.default_id_source = function(name) {
   return toIdString(name);
 };
 
-var default_is_visible = function(field) {
+Field.default_is_visible = function(field) {
   return field.visible;
 };
 
-var default_field_params = {
-  idSource: default_id_source,
-  isVisible: default_is_visible,
+Field.visible_at_nodes = function(field) {
+  return [field.keyNode, field.valueNode];
+};
+
+Field.visible_at_inserted = function(field) {
+  return field.inserted;
+};
+
+Field.default_field_params = {
+  idSource: Field.default_id_source,
+  isVisible: Field.default_is_visible,
   visible: true,
+  visibleAt: Field.visible_at_nodes,
   initial: "",
   prefix: "",
   suffix: "",
   label: fieldTitleCase,
   tag: 'td',
   keyClass: undefined,
-  valueClass: undefined,
-  manageContainer: false
+  valueClass: undefined
 };
 
 function Field(name, fieldGroup, params) {
   this.name = name;
   this.fieldGroup = fieldGroup;
-  $.extend(this, default_field_params, params);
+  $.extend(this, Field.default_field_params, params);
 
   if (!this.label) {
     this.label = this.labelFor(name);
@@ -71,18 +79,23 @@ function Field(name, fieldGroup, params) {
   };
 
   this.updateVisibility = function () {
-    function setVisibilityForCell(node, visible) {
-      if (!node) return;
-      if (visible) {
+    var list = this.visibleAt;
+    if ($.isFunction(list)) {
+      list = list(this);
+    }
+    if (!$.isArray(list)) {
+      list = [list];
+    }
+    for (var i = 0; i < list.length; i++) {
+      var node = list[i];
+      if (!node) continue;
+      if (this.visible) {
         node.show();
       } else {
         node.hide();
       }
     }
 
-    setVisibilityForCell(this.keyNode, this.visible);
-    setVisibilityForCell(this.valueNode, this.visible);
-    setVisibilityForCell(this.container, this.visible);
   };
 
   this.set = function(value) {
@@ -126,11 +139,11 @@ function Field(name, fieldGroup, params) {
 }
 
 function FieldGroup(params) {
-  this.fieldDefaults = {idSource: default_id_source};
+  this.fieldDefaults = {idSource: Field.default_id_source};
   var fieldParams = {};
   var thisParams = {};
   for (var param in params) {
-    if (default_field_params.hasOwnProperty(param)) {
+    if (Field.default_field_params.hasOwnProperty(param)) {
       fieldParams[param] = params[param];
     } else {
       thisParams[param] = params[param];
@@ -237,13 +250,11 @@ function FieldGroup(params) {
     } else {
       throw "Insertion spec needs one of 'after', 'before', or 'under'";
     }
+    field.inserted = insertion.toInsert;
 
     if (insertion.toInsert == field.keyNode) {
       field.trailingNode = field.valueNode;
     } else {
-      if (field.manageContainer) {
-        field.container = insertion.toInsert;
-      }
       field.trailingNode = insertion.toInsert.last();
     }
   };
