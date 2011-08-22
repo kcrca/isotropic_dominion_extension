@@ -153,6 +153,11 @@ html {
     white-space: nowrap;
 }
 
+.internalInfoPage {
+    font: bold italic;
+}
+
+
 /*
  * Styles that apply only to image mode -- where needed they require a parent
  * node with the id "imageMode". Classes and ID's that exist only in image mode

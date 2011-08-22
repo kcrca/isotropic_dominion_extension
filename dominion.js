@@ -70,6 +70,8 @@ var extension_version = 'Unknown';
 // Tree is being rewritten, so should not process any tree change events.
 var rewritingTree = 0;
 
+var debug = {activeData: true, turnData: true};
+
 // Quotes a string so it matches literally in a regex.
 RegExp.quote = function(str) {
   return str.replace(/([.?*+^$[\]\\(){}-])/g, "\\$1");
@@ -419,7 +421,7 @@ function Player(name, num) {
     }
 
     var types = card.className.split("-").slice(1);
-    for (type_i in types) {
+    for (var type_i in types) {
       var type = types[type_i];
       if (type == "none" || type == "duration" || type == "action" ||
           type == "reaction") {
@@ -735,8 +737,8 @@ function stateStrings() {
   var state = '';
   for (var player in players) {
     player = players[player];
-    state += '<b>' + player.name + "</b>: " + player.getScore() +
-        " points [deck size is " + player.getDeckString() + "] - " +
+    state += player.name + ':' + player.getScore() + " points [deck size is " +
+        player.getDeckString() + "] - " +
         JSON.stringify(player.special_counts) + "<br>" +
         JSON.stringify(player.card_counts) + "<br>";
   }
@@ -847,14 +849,13 @@ function maybeHandleTurnChange(node) {
 }
 
 function markInfoAsOurs(table) {
-  table.parent().addClass("you");
+  table.parent().addClass('you').addClass('internalInfoPage');
   var row = $('<tr/>');
   var col = $('<td/>').attr('colspan', '2');
   table.append(row);
-  row.append(col
-      .html("<b><i>This info window is for internal testing purposes. " +
-      "It should have been dismissed automatically without you seeing it. " +
-      "If you see this, please dismiss it and let us know.</i></b>"));
+  row.append(col.html('This info window is for internal testing purposes. ' +
+      'It should have been dismissed automatically without you seeing it. ' +
+      'If you see this, please dismiss it and let us know.'));
 }
 
 function maybeRunInternalTests(table) {
@@ -882,7 +883,7 @@ function maybeRunInternalTests(table) {
     }
     var msg = label + ': ' + actual + ' ' + op + ' ' + expected + ' ' +
         player.name + ': ' + text;
-    console.log(msg);
+    logDebug('turnData', msg);
     msgs.push(msg);
   }
 
@@ -1141,6 +1142,7 @@ function maybeHandleSwindler(elems, text) {
 function maybeHandlePirateShip(elems, text_arr, text) {
   // Swallow gaining pirate ship tokens.
   // It looks like gaining a pirate ship otherwise.
+  //noinspection RedundantIfStatementJS
   if (text.indexOf("a Pirate Ship token") != -1) return true;
   return false;
 }
@@ -1353,20 +1355,24 @@ function handleLogEntry(node) {
   if (maybeHandleCoppersmith(elems, text, node.innerText)) return;
 
   if (text[0] == "trashing") {
-    var player = last_player;
+    var trasher = last_player;
     if (scopes[scopes.length - 1] == "Watchtower") {
-      player = last_gain_player;
+      trasher = last_gain_player;
     }
-    return handleGainOrTrash(player, elems, node.innerText, -1);
+    handleGainOrTrash(trasher, elems, node.innerText, -1);
+    return;
   }
   if (text[1].indexOf("trash") == 0) {
-    return handleGainOrTrash(getPlayer(text[0]), elems, node.innerText, -1);
+    handleGainOrTrash(getPlayer(text[0]), elems, node.innerText, -1);
+    return;
   }
   if (text[0] == "gaining") {
-    return handleGainOrTrash(last_player, elems, node.innerText, 1);
+    handleGainOrTrash(last_player, elems, node.innerText, 1);
+    return;
   }
   if (text[1].indexOf("gain") == 0) {
-    return handleGainOrTrash(getPlayer(text[0]), elems, node.innerText, 1);
+    handleGainOrTrash(getPlayer(text[0]), elems, node.innerText, 1);
+    return;
   }
 
   // Mark down if a player reveals cards.
@@ -1846,7 +1852,7 @@ function handleGameEnd(doc) {
       var win_log = document.getElementsByClassName("em");
       if (!announced_error && win_log && win_log.length == 1) {
         var summary = win_log[0].previousSibling.innerText;
-        for (player in players) {
+        for (var player in players) {
           var player_name = players[player].name;
           if (player_name == "You") {
             player_name = rewriteName(name);
@@ -1974,7 +1980,6 @@ function restoreHistory(node) {
     return false;
   }
 
-  console.log("--- restoring log ---" + "\n");
   // First build a DOM tree of the old log messages in a copy of the log
   // parent node.
   var storedLog = node.parentNode.cloneNode(false);
@@ -2123,9 +2128,9 @@ function testActiveValuesVsYou() {
     for (var i = 0; i < msgs.length; i++) {
       console.log('  ' + msgs[i]);
     }
-    alert('Invalid active state: check console');
+    if (debug['activeData']) alert('Invalid active state: check console');
   } else {
-    if (false) console.log(stateMsg);
+    logDebug('activeData', stateMsg);
   }
 }
 
@@ -2287,3 +2292,7 @@ document.body.addEventListener('DOMNodeInserted', function(ev) {
 chrome.extension.sendRequest({ type: "version" }, function(response) {
   extension_version = response;
 });
+
+function logDebug(area, msg) {
+  if (debug[area]) console.log(msg);
+}
