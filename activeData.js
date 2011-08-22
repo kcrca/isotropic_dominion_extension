@@ -1,6 +1,8 @@
 // Object for active player's data.
 var activeData;
 
+var last_card;
+
 var tracking_active_data = true;
 
 setupCards();
@@ -291,6 +293,7 @@ function removeActivePlayerData() {
 
 function activeDataTurnChange() {
   activeData.reset();
+  last_card = undefined;
 }
 
 // Adjust the value of a piece of active player data if there is a specification
@@ -369,4 +372,5 @@ function activeDataCardPlayed(count, card) {
   activeData.changeField('buys', -count);
   activeData.changeField('coins', -card.getCurrentCoinCost());
   activeData.changeField('potions', -card.getCurrentPotionCost());
+  last_card = card;
 }
