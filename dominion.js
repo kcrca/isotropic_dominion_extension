@@ -225,7 +225,7 @@ function Player(name, num) {
   };
 
   this.getScore = function() {
-    var score_str = this.score;
+    var score_str = this.score + "";
     var total_score = this.score;
 
     if (this.special_counts["Gardens"] != undefined) {
@@ -265,7 +265,7 @@ function Player(name, num) {
       total_score = total_score + fairgrounds * fairgrounds_points;
     }
 
-    if (total_score != this.score) {
+    if (score_str.indexOf("@") > 0) {
       score_str = score_str + "=" + total_score;
     }
     return score_str;
@@ -398,7 +398,6 @@ function Player(name, num) {
   };
 
   this.gainCard = function(card, count, trashing) {
-    trashing = trashing == undefined ? true : trashing;
     if (debug_mode) {
       $('#log').children().eq(-1).before('<div class="gain_debug">*** ' + name +
           " gains " + count + " " + card.innerText + "</div>");
@@ -409,22 +408,7 @@ function Player(name, num) {
     last_gain_player = this;
     count = parseInt(count);
     this.deck_size = this.deck_size + count;
-
-    var singular_card_name = getSingularCardName(card.innerText);
-    this.changeScore(pointsForCard(singular_card_name) * count);
-    this.recordSpecialCards(card, count);
-    this.recordCards(singular_card_name, count);
-    if (!supplied_cards[singular_card_name]) {
-      this.addOtherCard(card, count);
-    }
-
-    // If the count is going down, usually this is trashing a card.
-    if (!this.isTrash && count < 0 && trashing) {
-      trashPlayer.gainCard(card, -count);
-    }
-    if (trashing || this.isTrash) {
-      updateDeck(trashPlayer);
-    }
+    activeDataGainCard(this, trashing, card, count);
   };
 
   // This player has resigned; remember it.
@@ -789,7 +773,12 @@ function maybeRunInternalTests(table) {
     },
     { pat: /Current score:([0-9]+)/,
       act: function(row, match) {
-        checkValue(parseInt(match[1]), player.get('score'), row.text());
+        var scoreStr = player.get('score');
+        var equals = scoreStr.indexOf('=');
+        if (equals > 0) {
+          scoreStr = scoreStr.substring(equals + 1);
+        }
+        checkValue(parseInt(match[1]), parseInt(scoreStr), row.text());
       }
     }
   ];

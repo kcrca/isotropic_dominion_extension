@@ -118,12 +118,14 @@ function ActiveData() {
       // Consume the action for playing an action card.
       this.changeField('actions', -count);
     }
-    if (card.Treasure != "0") {
-      // The coins and potions from treasure cards are not reported.
+    if (card.isTreasure()) {
+      // The gains from treasure cards are not reported.
       var copperMult = (
           card.Singular == 'Copper' ? activeData.get('copper') : 1);
       this.changeField('coins', count * card.getCoinCount() * copperMult);
       this.changeField('potions', count * card.getPotionCount());
+      this.changeField('buys', count * card.getBuys());
+      this.changeField('actions', count * card.getActions());
     }
   };
 }
@@ -141,6 +143,11 @@ function setupCards() {
     card.isAction = function() {
       return this.Action != "0";
     };
+    card.isTreasure = function() {
+      return this.Treasure != "0";
+    };
+    card.getBuys = function() { return parseInt(this.Buys); };
+    card.getActions = function() { return parseInt(this.Actions); };
     card.getCoinCount = function() {
       return (
           this.Coins == "?" || this.Coins == "P" ? 0 : parseInt(this.Coins));
@@ -203,6 +210,25 @@ function setupCards() {
   patchCardBug('Trusty Steed', 'Actions', '0');
   patchCardBug('Trusty Steed', 'Treasure', '0');
   patchCardBug('Trusty Steed', 'Cards', '0');
+}
+
+function activeDataGainCard(player, trashing, card, count) {
+  trashing = trashing == undefined ? true : trashing;
+  var singular_card_name = getSingularCardName(card.innerText);
+  player.changeScore(pointsForCard(singular_card_name) * count);
+  player.recordSpecialCards(card, count);
+  player.recordCards(singular_card_name, count);
+  if (!supplied_cards[singular_card_name]) {
+    player.addOtherCard(card, count);
+  }
+
+  // If the count is going down, usually player is trashing a card.
+  if (!player.isTrash && count < 0 && trashing) {
+    trashPlayer.gainCard(card, -count);
+  }
+  if (trashing || player.isTrash) {
+    updateDeck(trashPlayer);
+  }
 }
 
 function activeDataMaybeRunTests() {
