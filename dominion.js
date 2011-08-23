@@ -289,7 +289,7 @@ function Player(name, num) {
       if (need_duchy_string) {
         special_types.push(this.special_counts["Duchy"] + "d");
       }
-      str += '(' + special_types.join(", ") + ')';
+      str += '(' + special_types.join(",") + ')';
     }
     return str;
   };
