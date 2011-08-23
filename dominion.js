@@ -840,10 +840,10 @@ function handleScoping(text_arr, text) {
       text.indexOf("You reveal a Watchtower") != -1) {
     scope = 'Watchtower';
   } else {
-    var re = new RegExp("You|" + player_re + "plays? an? ([^.]*).");
+    var re = new RegExp("(?:You|" + player_re + ") plays? an? ([^.]*)\\.");
     var arr = text.match(re);
-    if (arr && arr.length == 2) {
-      scope = arr[1];
+    if (arr && arr.length == 3) {
+      scope = arr[2];
     }
   }
   scopes.push(scope);
@@ -1849,13 +1849,11 @@ function handle(doc) {
     }
 
     if (doc.className && doc.className.indexOf("logline") >= 0) {
-      window.clearTimeout(activeValueTiemout);
+      activeDataSetupTests();
       if (logEntryForGame(doc)) {
         handleLogEntry(doc);
         if (started) {
-          if (last_player && last_player.name == 'You') {
-            window.setTimeout(testActiveValuesVsYou, 300);
-          }
+          activeDataMaybeRunTests();
           localStorage['log'] = doc.parentElement.innerHTML;
         }
       }

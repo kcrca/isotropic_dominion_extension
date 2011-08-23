@@ -51,8 +51,8 @@ function ActiveData() {
     fields.add('coins', { initial: 0, prefix: '$' });
     fields.add('copper',
         { initial: 1, prefix: '$', isVisible: isCopperValueVisible });
-    fields.add('VP', { initial: 0, prefix: '?', isVisible: isNotZero });
-    fields.add('potions', { initial: 0, prefix: '?' });
+    fields.add('VP', { initial: 0, prefix: '▼', isVisible: isNotZero });
+    fields.add('potions', { initial: 0, prefix: '◉' });
     fields.add('played', { initial: 0 });
   });
 
@@ -129,8 +129,15 @@ function ActiveData() {
 }
 
 function setupCards() {
+  var cardList = "\n";
   for (var i = 0; i < card_list.length; i++) {
     var card = card_list[i];
+    if (i % 10 != 0) cardList += ', ';
+    cardList += (card.Singular);
+    if (i % 10 == 9 || i == card_list.length - 1) {
+      console.log(cardList + "\n");
+      cardList = "\n";
+    }
     card.isAction = function() {
       return this.Action != "0";
     };
@@ -162,11 +169,7 @@ function setupCards() {
           var price = $(this).closest('tr').find('.price').each(setCost);
         });
       } else {
-        $('.cardname > span').each(function() {
-          if ($(this).text() == card.Singular) {
-            $(this).closest('.supplycard').find('.imprice').each(setCost);
-          }
-        });
+        $('div.supplycard[cardname="' + this.Singular + '"] .imprice').each(setCost);
       }
       if (costStr) {
         // The string has a leading '$' we need to skip.
@@ -200,6 +203,16 @@ function setupCards() {
   patchCardBug('Trusty Steed', 'Actions', '0');
   patchCardBug('Trusty Steed', 'Treasure', '0');
   patchCardBug('Trusty Steed', 'Cards', '0');
+}
+
+function activeDataMaybeRunTests() {
+  if (last_player && last_player.name == 'You') {
+    window.setTimeout(testActiveValuesVsYou, 300);
+  }
+}
+
+function activeDataSetupTests() {
+  window.clearTimeout(activeValueTiemout);
 }
 
 function testActiveValuesVsYou() {
@@ -360,7 +373,7 @@ function maybeHandleCoppersmith(elems, text_arr, text) {
 }
 
 function maybeHandleVp(text) {
-  var re = new RegExp("[+]([0-9]+) ?");
+  var re = new RegExp("[+]([0-9]+) ▼");
   var arr = text.match(re);
   if (arr && arr.length == 2) {
     last_player.changeScore(arr[1]);
@@ -368,9 +381,15 @@ function maybeHandleVp(text) {
   }
 }
 
+function isNormalBuy() {
+  return !(scopes.length > 1 && scopes[scopes.length - 2] == "Black Market");
+}
+
 function activeDataCardPlayed(count, card) {
-  activeData.changeField('buys', -count);
-  activeData.changeField('coins', -card.getCurrentCoinCost());
-  activeData.changeField('potions', -card.getCurrentPotionCost());
+  if (isNormalBuy()) {
+    activeData.changeField('buys', -count);
+  }
+  activeData.changeField('coins', -(count * card.getCurrentCoinCost()));
+  activeData.changeField('potions', -(count * card.getCurrentPotionCost()));
   last_card = card;
 }
