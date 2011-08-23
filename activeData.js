@@ -211,7 +211,7 @@ function testActiveValuesVsYou() {
   // When we're being told we're waiting for something, or being offered a
   // choice, sometimes we are ahead of the game's updates.
   var tempText = $('#temp_say').text();
-  if (tempText.indexOf('� waiting ') >= 0) return;
+  if (tempText.indexOf('� waiting ') >= 0) return;
   if ($('#choices').children().length > 0) return;
 
   var msgs = [];
@@ -241,7 +241,7 @@ function testActiveValuesVsYou() {
       break;
     case "to spend:":
       valueAbbrev = '';
-      var m = shownValue.match(/\$([0-9]+)(\s+???([0-9]+)?)?/);
+      var m = shownValue.match(/\$([0-9]+)(\s+◉×?([0-9]+)?)?/);
       if (!m) {
         return;
       }
