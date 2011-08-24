@@ -67,7 +67,7 @@ var extension_version = 'Unknown';
 // Tree is being rewritten, so should not process any tree change events.
 var rewritingTree = 0;
 
-var debug = {activeData: true, turnData: true};
+var debug = {activeData: true, infoData: true};
 
 // Quotes a string so it matches literally in a regex.
 RegExp.quote = function(str) {
@@ -656,11 +656,13 @@ function markInfoAsOurs(table) {
       'If you see this, please dismiss it and let us know.'));
 }
 
-function maybeRunInternalTests(table) {
+function maybeRunInfoWindowTests(table) {
   if (!infoIsForTests) return;
   if (table.tagName != 'TABLE') return;
   if (table.innerText.indexOf("Trash:") < 0) return;
 
+  logDebug('infoData', "--- running info tests ---\n");
+  console.log('infoData', "--- running info tests ---\n");
   table = $(table);
   infoIsForTests = false;
 
@@ -681,12 +683,12 @@ function maybeRunInternalTests(table) {
     }
     var msg = label + ': ' + actual + ' ' + op + ' ' + expected + ' ' +
         player.name + ': ' + text;
-    logDebug('turnData', msg);
+    logDebug('infoData', msg);
     msgs.push(msg);
   }
 
   function countCards(str) {
-    var split = str.split(/,|,?\s+and\b/g);
+    var split = str.split(/,\s*(?:\band\b\s*)?/g);
     var count = split.length;
     for (var i = 0; i < split.length; i++) {
       var cardSpec = split[i];
@@ -1324,6 +1326,7 @@ function maybeSetupCardCounts() {
 function setupPerPlayerInfoArea() {
   if (disabled) return;
 
+  //!! Show Native Village mat contents
   //!! Show how far through the deck each player is
   //!! Include sub-score areas for each 'extra' type (Duke, Fairgrounds, ...)
   //!! Show how much each 'extra' type would be worth (Duke, Fairgrounds, ...)
@@ -1889,7 +1892,7 @@ function handle(doc) {
           doc.childNodes[2].nodeValue);
     }
 
-    maybeRunInternalTests(doc);
+    maybeRunInfoWindowTests(doc);
 
     // Something was added, this is a good time to update the display.
     if (!disabled) {
@@ -1976,5 +1979,5 @@ chrome.extension.sendRequest({ type: "version" }, function(response) {
 });
 
 function logDebug(area, msg) {
-  if (debug[area]) console.log(msg);
+  if (debug[area]) console.log(area + ': ' + msg);
 }
