@@ -1142,7 +1142,7 @@ function handleLogEntry(node) {
     }
   } else if (action.indexOf("pass") == 0) {
     unpossessed(function() {
-      if (player_count != 2) {
+      if (player_count > 2) {
         maybeAnnounceFailure(">> Warning: Masquerade with more than 2 " +
             "players causes inaccurate score counting.");
       }
