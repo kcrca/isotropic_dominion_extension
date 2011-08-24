@@ -233,7 +233,7 @@ function activeDataGainCard(player, trashing, card, count) {
 
 function activeDataMaybeRunTests() {
   if (last_player && last_player.name == 'You') {
-    window.setTimeout(testActiveValuesVsYou, 300);
+    window.setTimeout(activeDataTestValuesVsYou, 300);
   }
 }
 
@@ -241,7 +241,7 @@ function activeDataSetupTests() {
   window.clearTimeout(activeValueTiemout);
 }
 
-function testActiveValuesVsYou() {
+function activeDataTestValuesVsYou() {
   if (!tracking_active_data) return;
   if (rewritingTree) return;
   if (!started) return;
@@ -330,9 +330,15 @@ function removeActivePlayerData() {
   removeActiveDataOption();
 }
 
-function activeDataTurnChange() {
+function activeDataStartTurn() {
   activeData.reset();
   last_card = undefined;
+}
+
+function activeDataEndTurn() {
+  // Before we switch to the next player, check the final values
+  if (last_player && last_player.name == "You")
+    activeDataTestValuesVsYou();
 }
 
 // Adjust the value of a piece of active player data if there is a specification
@@ -356,7 +362,8 @@ function activeDataStop() {
 // possibility of other useful data to be handled in this log line.
 function activeDataHandleCounts(elems, text) {
   // Handle lines like "You play a Foo", or "You play a Silver and 2 Coppers."
-  if (text.match(/ plays? /)) {
+  // But ignore "You trash xyz from your play area" after you buy a Mint.
+  if (text.match(/ plays? /) && !text.match(/ play area/)) {
     var parts = text.split(/,|,?\s+and\b/);
     var elemNum = 0;
     for (var i = 0; i < parts.length; i++) {
@@ -411,7 +418,7 @@ function isNormalBuy() {
   return !(scopes.length > 1 && scopes[scopes.length - 2] == "Black Market");
 }
 
-function activeDataCardPlayed(count, card) {
+function activeDataCardBought(count, card) {
   if (isNormalBuy()) {
     activeData.changeField('buys', -count);
   }

@@ -596,6 +596,8 @@ function maybeHandleTurnChange(node) {
   var text = node.innerText;
   if (text.indexOf("—") != -1) {
 
+    activeDataEndTurn();
+
     // This must be a turn start.
     if (text.match(/— Your (?:extra )?turn/)) {
       last_player = getPlayer("You");
@@ -614,7 +616,7 @@ function maybeHandleTurnChange(node) {
 
     markCurrentPlayer();
 
-    activeDataTurnChange();
+    activeDataStartTurn();
 
     // The start of the turn is styled to match the player's data area.
     $(node).addClass(last_player.classFor);
@@ -1136,7 +1138,7 @@ function handleLogEntry(node) {
     if (!possessed_turn) {
       var count = getCardCount(card_name, node.innerText);
       player.gainCard(card_elem, count);
-      activeDataCardPlayed(count, card);
+      activeDataCardBought(count, card);
     }
   } else if (action.indexOf("pass") == 0) {
     unpossessed(function() {
