@@ -660,6 +660,16 @@ function maybeRunInfoWindowTests(table) {
   if (!infoIsForTests) return;
   if (table.tagName != 'TABLE') return;
   if (table.innerText.indexOf("Trash:") < 0) return;
+  if ($('#choices span.stash-pos-marker').length > 0) {
+    // This check exists because it is possible to have the info window pop up
+    // when the user is being asked where to locate the Stash card in the deck.
+    // When that happens, the info window is incorrect (it doesn't show the
+    // cards already drawn before the shuffle). This means that we cannot tell
+    // how big the deck is, even if we count the number of cards shown in the
+    // span choice. This is rare, so we skip the tests in this case.
+    logDebug('infoData', "Skipping info window tests during stash placement\n");
+    return;
+  }
 
   logDebug('infoData', "--- running info tests ---\n");
   console.log('infoData', "--- running info tests ---\n");
@@ -688,7 +698,11 @@ function maybeRunInfoWindowTests(table) {
   }
 
   function countCards(str) {
-    var split = str.split(/,\s*|,?\s*\band\b\s*/g);
+    var sep = /(?:,\s*|,?\s*\band\b\s*)+/g;
+    var split = str.split(sep);
+    logDebug('infoData', 'pattern: ' + sep);
+    logDebug('infoData',
+        'split ' + split.length + ': |' + split.join('|') + '|');
     var count = split.length;
     for (var i = 0; i < split.length; i++) {
       var cardSpec = split[i];
