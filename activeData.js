@@ -336,9 +336,16 @@ function activeDataStartTurn() {
 }
 
 function activeDataEndTurn() {
-  // Before we switch to the next player, check the final values
-  if (last_player && last_player.name == "You")
-    activeDataTestValuesVsYou();
+  // This is currently unused; it used to invoke the active data test one last
+  // time on "you" if you were there the current player, but there were times
+  // when the shown data (against which the active data is compared) wasn't
+  // updated during the turn change (specifically, after the final buy of a
+  // multi-buy turn, the number of remaining buys is shown as 1, not 0). So that
+  // has been removed, but maybe it should be replaced at some point.
+
+//  // Before we switch to the next player, check the final values
+//  if (last_player && last_player.name == "You")
+//    activeDataTestValuesVsYou();
 }
 
 // Adjust the value of a piece of active player data if there is a specification
