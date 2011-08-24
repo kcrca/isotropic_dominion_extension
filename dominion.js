@@ -688,7 +688,7 @@ function maybeRunInfoWindowTests(table) {
   }
 
   function countCards(str) {
-    var split = str.split(/,\s*(?:\band\b\s*)?/g);
+    var split = str.split(/,\s*|,?\s*\band\b\s*/g);
     var count = split.length;
     for (var i = 0; i < split.length; i++) {
       var cardSpec = split[i];
