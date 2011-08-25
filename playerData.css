@@ -9,7 +9,7 @@
 /* !! The card count column widths are different for basic and kingdom cards. */
 
 #pointCounterOptions,
-.you, .you * {
+.you, .you *, #header > :not(.lobby) {
     background-color: #dbf8db;
 }
 

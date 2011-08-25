@@ -67,7 +67,7 @@ var extension_version = 'Unknown';
 // Tree is being rewritten, so should not process any tree change events.
 var rewritingTree = 0;
 
-var debug = {activeData: true, infoData: true};
+var debug = {activeData: true, infoData: true, handle: true};
 
 // Quotes a string so it matches literally in a regex.
 RegExp.quote = function(str) {
@@ -2004,11 +2004,6 @@ function enterLobby() {
 
   my_icon = $('#log img').first()[0];
 
-  $('.selfname').each(function() {
-    var $this = $(this);
-    $this.addClass('you');
-    $this.parent().addClass('you');
-  })
 }
 
 setTimeout("enterLobby()", 600);
