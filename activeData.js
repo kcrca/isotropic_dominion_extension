@@ -244,13 +244,11 @@ function activeDataGainCard(player, trashing, card, count) {
 
 function activeDataMaybeRunTests() {
   if (last_player && last_player.name == 'You') {
-    console.log("testing in 300 ms\n");
     activeValueTiemout = window.setTimeout(activeDataTestValuesVsYou, 300);
   }
 }
 
 function activeDataSetupTests() {
-  console.log("clearing the timeout\n");
   window.clearTimeout(activeValueTiemout);
 }
 
