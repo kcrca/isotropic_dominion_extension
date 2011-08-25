@@ -146,8 +146,12 @@ function setupCards() {
     card.isTreasure = function() {
       return this.Treasure != "0";
     };
-    card.getBuys = function() { return parseInt(this.Buys); };
-    card.getActions = function() { return parseInt(this.Actions); };
+    card.getBuys = function() {
+      return parseInt(this.Buys);
+    };
+    card.getActions = function() {
+      return parseInt(this.Actions);
+    };
     card.getCoinCount = function() {
       return (
           this.Coins == "?" || this.Coins == "P" ? 0 : parseInt(this.Coins));
@@ -176,7 +180,8 @@ function setupCards() {
           var price = $(this).closest('tr').find('.price').each(setCost);
         });
       } else {
-        $('div.supplycard[cardname="' + this.Singular + '"] .imprice').each(setCost);
+        $('div.supplycard[cardname="' + this.Singular + '"] .imprice')
+            .each(setCost);
       }
       if (costStr) {
         // The string has a leading '$' we need to skip.
@@ -298,14 +303,14 @@ function activeDataTestValuesVsYou() {
   });
   var stateMsg = (msgs.length == 0 ? 'valid' : 'INVALID') + ' @ ' + new Date() +
       ': ' + shownState + ' [shown] vs. ' + activeState + ' [active]';
-  if (msgs.length != 0) {
-    console.log(stateMsg);
+  logDebug('activeData', stateMsg);
+
+  var foundProblems = msgs.length != 0;
+  if (debug['activeData'] && foundProblems) {
     for (var i = 0; i < msgs.length; i++) {
-      console.log('  ' + msgs[i]);
+      logDebug('activeData', '  ' + msgs[i]);
     }
     if (debug['activeData']) alert('Invalid active state: check console');
-  } else {
-    logDebug('activeData', stateMsg);
   }
 }
 
