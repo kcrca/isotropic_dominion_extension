@@ -717,18 +717,26 @@ function maybeRunInfoWindowTests(table) {
   var cardCountStr = '';
 
   function addToCardCount(count) {
-    cardCount += count;
-    if (cardCountStr.length > 0) {
-      cardCountStr += '+';
+    player.activeTestCardCount += count;
+    if (player.activeTestCardCountStr.length > 0) {
+      player.activeTestCardCountStr += '+';
     }
-    cardCountStr += count;
+    player.activeTestCardCountStr += count;
   }
 
   function parseInfoNumber(str) {
     return str == 'nothing' ? 0 : parseInt(str);
   }
+  
+  function setCurrentPlayer(p) {
+    player = p;
+    player.activeTestCardCount = 0;
+    player.activeTestCardCountStr = '';
+    player.activeTestSeenIslandMat = false;
+  }
 
   var player = trashPlayer;
+  setCurrentPlayer(trashPlayer);
 
   var tests = [
     { pat: /^Trash:\(?(nothing|\d+)/,
@@ -739,7 +747,7 @@ function maybeRunInfoWindowTests(table) {
     },
     { pat: /^—— (.*) ——/,
       act: function(row, match) {
-        player = getPlayer(match[1]);
+        setCurrentPlayer(getPlayer(match[1]));
       }
     },
     { pat: /Current score:([0-9]+)/,
@@ -784,6 +792,7 @@ function maybeRunInfoWindowTests(table) {
         if (match[1] == "Island") {
           // cards held by islands are not in the deck count (as we show it)
           checkValue(count, player.asideCount(), row.text());
+          player.activeTestSeenIslandMat = true;
         } else if (match[1] == 'Pirate Ship') {
           //!! We should count and show pirate ship mat tokens
         } else {
@@ -800,6 +809,10 @@ function maybeRunInfoWindowTests(table) {
     { pat: /^(Draw|Discard) pile:/,
       act: function(row, match) {
         if (!debug['activeData']) return;
+        if (player == null) {
+          logDebug('activeData', "WARNING: Player is null!!\n");
+          return;
+        }
         var isDiscard = (match[1] == "Discard");
         var count = 0;
         var paddingStrs = '';
@@ -815,16 +828,14 @@ function maybeRunInfoWindowTests(table) {
           }
         });
         addToCardCount(count);
-        cardCountStr += '[' + paddingStrs + 'px]';
+        player.activeTestCardCountStr += '[' + paddingStrs + 'px]';
         if (isDiscard) {
-          if (player.name != 'You') {
-            // The info window is silent about the island mat for other players,
-            // so we have to expect the deck to include what's there.
-            cardCount -= player.asideCount()
+          if (!player.activeTestSeenIslandMat) {
+            // The info window is can be silent about the island mat for other
+            // players so we have to expect the deck to include what's there.
+            player.activeTestCardCount += player.asideCount()
           }
-          checkValue(cardCount, player.deck_size, cardCountStr);
-          cardCount = 0;
-          cardCountStr = '';
+          checkValue(player.activeTestCardCount, player.deck_size, player.activeTestCardCountStr);
         }
       }
     }
