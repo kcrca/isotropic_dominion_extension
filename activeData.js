@@ -18,6 +18,7 @@ function activeDataOption() {
     } else {
       activePlayerData.hide();
     }
+    debug['activeData'] = tracking_active_data;
   });
   $('#playerDataTable').each(function() {
     $(this).before(trackOption);

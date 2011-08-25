@@ -742,8 +742,20 @@ function maybeRunInfoWindowTests(table) {
         player = getPlayer(match[1]);
       }
     },
+    { pat: /Current score:([0-9]+)/,
+      act: function(row, match) {
+        var scoreStr = player.get('score');
+        var equals = scoreStr.indexOf('=');
+        if (equals > 0) {
+          scoreStr = scoreStr.substring(equals + 1);
+        }
+        checkValue(parseInt(match[1]), parseInt(scoreStr), row.text());
+      }
+    },
+    // The rest of the tests rely on active data, so they only run if it's on.
     { pat: /^(Hand|Play area|Previous duration): *([^\d].*)/,
       act: function(row, match) {
+        if (!debug['activeData']) return;
         addToCardCount(countCards(match[2]));
         if (match[1] == 'Previous duration') {
           // Each Haven in the duration implies another card set aside.
@@ -757,6 +769,7 @@ function maybeRunInfoWindowTests(table) {
     },
     { pat: /^(.*) (?:mat|aside): *(.*)/,
       act: function(row, match) {
+        if (!debug['activeData']) return;
         // Test set for the mat/aside area (includes chapel for thinning):
         // haven, horse traders, library, possession, island, native village, pirate ship, trade route, chapel
         // Island mat (also uses the term "aside" in the text)
@@ -780,11 +793,13 @@ function maybeRunInfoWindowTests(table) {
     },
     { pat: /^(?:Hand|Draw pile):(nothing|\d+)/,
       act: function(row, match) {
+        if (!debug['activeData']) return;
         addToCardCount(parseInfoNumber(match[1]));
       }
     },
     { pat: /^(Draw|Discard) pile:/,
       act: function(row, match) {
+        if (!debug['activeData']) return;
         var isDiscard = (match[1] == "Discard");
         var count = 0;
         var paddingStrs = '';
@@ -811,16 +826,6 @@ function maybeRunInfoWindowTests(table) {
           cardCount = 0;
           cardCountStr = '';
         }
-      }
-    },
-    { pat: /Current score:([0-9]+)/,
-      act: function(row, match) {
-        var scoreStr = player.get('score');
-        var equals = scoreStr.indexOf('=');
-        if (equals > 0) {
-          scoreStr = scoreStr.substring(equals + 1);
-        }
-        checkValue(parseInt(match[1]), parseInt(scoreStr), row.text());
       }
     }
   ];
