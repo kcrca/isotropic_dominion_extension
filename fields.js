@@ -53,7 +53,7 @@ function Field(name, fieldGroup, params) {
     if (this.keyClass) {
       this.keyNode.addClass(this.keyClass);
     }
-    this.keyNode.text(this.labelFor() + ':');
+    this.keyNode.text(this.labelFor() + ': ');
     this.valueNode = $('<' + this.tag + ' id="' + id + '"/>');
     this.valueNode.attr('id', id + 'Value');
     if (this.valueClass) {
