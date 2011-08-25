@@ -74,11 +74,6 @@ RegExp.quote = function(str) {
   return str.replace(/([.?*+^$[\]\\(){}-])/g, "\\$1");
 };
 
-// id for testing active values
-var activeValueTiemout;
-
-var infoIsForTests = false;
-
 // Keep a map from all card names (singular or plural) to the card object.
 var card_map = {};
 for (var i = 0; i < card_list.length; i++) {

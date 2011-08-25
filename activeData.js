@@ -5,6 +5,11 @@ var last_card;
 
 var tracking_active_data = true;
 
+// id for testing active values
+var activeValueTiemout;
+
+var infoIsForTests = false;
+
 setupCards();
 
 function activeDataOption() {
@@ -239,11 +244,13 @@ function activeDataGainCard(player, trashing, card, count) {
 
 function activeDataMaybeRunTests() {
   if (last_player && last_player.name == 'You') {
-    window.setTimeout(activeDataTestValuesVsYou, 300);
+    console.log("testing in 300 ms\n");
+    activeValueTiemout = window.setTimeout(activeDataTestValuesVsYou, 300);
   }
 }
 
 function activeDataSetupTests() {
+  console.log("clearing the timeout\n");
   window.clearTimeout(activeValueTiemout);
 }
 
@@ -256,7 +263,7 @@ function activeDataTestValuesVsYou() {
   // When we're being told we're waiting for something, or being offered a
   // choice, sometimes we are ahead of the game's updates.
   var tempText = $('#temp_say').text();
-  if (tempText.indexOf('� waiting ') >= 0) return;
+  if (tempText.indexOf('— waiting ') >= 0) return;
   if ($('#choices').children().length > 0) return;
 
   var msgs = [];
