@@ -403,7 +403,7 @@ function Player(name, num) {
           " gains " + count + " " + card.innerText + "</div>");
     }
     // You can't gain or trash cards while possessed.
-    if (possessed_turn && (this == last_player || this.isTrash)) return;
+    if (possessed_turn && this == last_player) return;
 
     last_gain_player = this;
     count = parseInt(count);
@@ -672,7 +672,6 @@ function maybeRunInfoWindowTests(table) {
   }
 
   logDebug('infoData', "--- running info tests ---\n");
-  console.log('infoData', "--- running info tests ---\n");
   table = $(table);
   infoIsForTests = false;
 
@@ -743,17 +742,37 @@ function maybeRunInfoWindowTests(table) {
         player = getPlayer(match[1]);
       }
     },
-    { pat: /^(?:Hand|Play area|Previous duration): *([^\d].*)/,
+    { pat: /^(Hand|Play area|Previous duration): *([^\d].*)/,
       act: function(row, match) {
-        addToCardCount(countCards(match[1]));
+        addToCardCount(countCards(match[2]));
+        if (match[1] == 'Previous duration') {
+          // Each Haven in the duration implies another card set aside.
+          // These cards are not listed in the info window, even for you.
+          var matches = match[2].match(/\bHaven\b/g);
+          if (matches) {
+            addToCardCount(matches.length);
+          }
+        }
       }
     },
     { pat: /^(.*) (?:mat|aside): *(.*)/,
       act: function(row, match) {
+        // Test set for the mat/aside area (includes chapel for thinning):
+        // haven, horse traders, library, possession, island, native village, pirate ship, trade route, chapel
+        // Island mat (also uses the term "aside" in the text)
+        // Native Village mat (also uses the term "aside" in the text)
+        // Pirate Ship mat
+        // Trade Route mat
+        // aside: Haven
+        // aside: Horse Traders (reaction)
+        // aside: Library (only during the turn)
+        // aside: Possession (only during the turn)
         var count = countCards(match[2]);
         if (match[1] == "Island") {
           // cards held by islands are not in the deck count (as we show it)
           checkValue(count, player.asideCount(), row.text());
+        } else if (match[1] == 'Pirate Ship') {
+          //!! We should count and show pirate ship mat tokens
         } else {
           addToCardCount(count);
         }
@@ -783,6 +802,11 @@ function maybeRunInfoWindowTests(table) {
         addToCardCount(count);
         cardCountStr += '[' + paddingStrs + 'px]';
         if (isDiscard) {
+          if (player.name != 'You') {
+            // The info window is silent about the island mat for other players,
+            // so we have to expect the deck to include what's there.
+            cardCount -= player.asideCount()
+          }
           checkValue(cardCount, player.deck_size, cardCountStr);
           cardCount = 0;
           cardCountStr = '';
@@ -813,8 +837,6 @@ function maybeRunInfoWindowTests(table) {
         break;
       }
     }
-    // This will expose the info window.
-    tr.click();
   });
 
   var infoTop = $("body > div.black");
@@ -1052,7 +1074,7 @@ function handleLogEntry(node) {
 
   if (!started) return;
 
-  // Ignore the purple log entries during posession.
+  // Ignore the purple log entries during Possession.
   // When someone is possessed, log entries with "possessed-log" are what
   // describe the "possession". The other (normal) log entries describe the
   // actual game effect. So we ignore the "possessed" entries because they
@@ -1067,8 +1089,10 @@ function handleLogEntry(node) {
   maybeRewriteName(node);
 
   if (maybeHandleTurnChange(node)) {
-    infoIsForTests = true;
-    $('button:contains(info)').click();
+    if (!rewritingTree) {
+      infoIsForTests = true;
+      $('button:contains(info)').click();
+    }
     return;
   }
   if (maybeHandleResignation(node)) return;
@@ -1149,13 +1173,13 @@ function handleLogEntry(node) {
   var player = getPlayer(text[0]);
   var action = text[1];
   if (action.indexOf("buy") == 0) {
+    var count = getCardCount(card_name, node.innerText);
     // In possessed turns, it isn't who buys something, it's who "gains" it
     // (and who gains it is stated in a separate log entry).
     if (!possessed_turn) {
-      var count = getCardCount(card_name, node.innerText);
       player.gainCard(card_elem, count);
-      activeDataCardBought(count, card);
     }
+    activeDataCardBought(count, card);
   } else if (action.indexOf("pass") == 0) {
     unpossessed(function() {
       if (player_count > 2) {
