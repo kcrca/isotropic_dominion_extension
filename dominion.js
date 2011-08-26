@@ -708,9 +708,6 @@ function maybeRunInfoWindowTests(table) {
     return count;
   }
 
-  var cardCount = 0;
-  var cardCountStr = '';
-
   function addToCardCount(count) {
     player.activeTestCardCount += count;
     if (player.activeTestCardCountStr.length > 0) {
