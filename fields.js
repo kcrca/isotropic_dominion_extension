@@ -95,7 +95,6 @@ function Field(name, fieldGroup, params) {
         node.hide();
       }
     }
-
   };
 
   this.set = function(value) {
@@ -282,7 +281,6 @@ function fieldWrapInRow(keyNode, field) {
  * Original by John Gruber - http://daringfireball.net/ - 10 May 2008
  * License: http://www.opensource.org/licenses/mit-license.php
  */
-
 (function() {
   var small = "(a|an|and|as|at|but|by|en|for|if|in|of|on|or|the|to|v[.]?|via|vs[.]?)";
   var punct = "([!\"#$%&'()*+,./:;<=>?@[\\\\\\]^_`{|}~-]*)";
