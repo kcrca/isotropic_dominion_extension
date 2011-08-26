@@ -401,8 +401,7 @@ function activeDataHandleCounts(elems, text) {
 }
 
 function maybeHandleIsland(elems, text_arr, text) {
-  // 'draw and set aside' is a library, not an island
-  if (text.match(/draw and sets? aside/)) return false;
+  if (scopes.length >= 2 && scopes[scopes.length - 2] != "Island") return false;
   if (text.match(/ set(ting|s)? aside /)) {
     var player = getPlayer(text_arr[0]);
     if (player == null)
