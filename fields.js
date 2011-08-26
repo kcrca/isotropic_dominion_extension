@@ -15,20 +15,37 @@ Field.visible_at_inserted = function(field) {
 };
 
 Field.default_field_params = {
+  // The source for ID's, which can be a function or an object with idFor(str)
   idSource: Field.default_id_source,
+  // Function to say if field is visible; the default returns field.visible.
   isVisible: Field.default_is_visible,
+  // For default isVisible(), whether the field is currently visible
   visible: true,
+  // Where visibility is set. Can be node, array of nodes, or function that
+  // returns either. These nodes are controlled by isVisible(). The default
+  // is a function returning the key and value nodes.
   visibleAt: Field.visible_at_nodes,
+  // The initial value for the field.
   initial: "",
+  // A prefix to appear before the value.
   prefix: "",
+  // A suffix to appear after the value.
   suffix: "",
+  // The label to use. Can be an object or a function that returns one. The
+  // label will be String() of that object. The default is to use the name
+  // capitalized (title cased) with a ":".
   label: fieldTitleCase,
+  // The HTML tag to use in created key and value nodes.
   tag: 'td',
+  // The class for key node, if not undefined.
   keyClass: undefined,
+  // The class for value node, if not undefined.
   valueClass: undefined
 };
 
+// A single field, usually crated via a FieldGroup
 function Field(name, fieldGroup, params) {
+  var self = this;
   this.name = name;
   this.fieldGroup = fieldGroup;
   $.extend(this, Field.default_field_params, params);
@@ -37,6 +54,7 @@ function Field(name, fieldGroup, params) {
     this.label = this.labelFor(name);
   }
 
+  // Function to generate the label. This default generates it from the name.
   this.labelFor = function() {
     if (typeof(this.label) == 'function') {
       return this.label(name);
@@ -44,30 +62,32 @@ function Field(name, fieldGroup, params) {
     return String(this.label);
   };
 
-  this.maybeBuildCells = function () {
-    if (this.valueNode) return;
+  // Build the cells if they need to be built.
+  var maybeBuildCells = function () {
+    if (self.valueNode) return;
 
-    var id = this.idFor();
-    this.keyNode = $('<' + this.tag + '/>');
-    this.keyNode.attr('id', id + 'Key');
-    if (this.keyClass) {
-      this.keyNode.addClass(this.keyClass);
+    var id = self.idFor();
+    self.keyNode = $('<' + self.tag + '/>');
+    self.keyNode.attr('id', id + 'Key');
+    if (self.keyClass) {
+      self.keyNode.addClass(self.keyClass);
     }
-    this.keyNode.text(this.labelFor() + ': ');
-    this.valueNode = $('<' + this.tag + ' id="' + id + '"/>');
-    this.valueNode.attr('id', id + 'Value');
-    if (this.valueClass) {
-      this.valueNode.addClass(this.valueClass);
+    self.keyNode.text(self.labelFor() + ': ');
+    self.valueNode = $('<' + self.tag + ' id="' + id + '"/>');
+    self.valueNode.attr('id', id + 'Value');
+    if (self.valueClass) {
+      self.valueNode.addClass(self.valueClass);
     }
-    this.fieldGroup.insertField(this);
+    self.fieldGroup.insertField(self);
     // If inserting didn't also insert the value node, put it after the key.
-    if (this.valueNode.parent().length == 0 &&
-        this.valueNode.prev().length == 0) {
-      this.keyNode.after(this.valueNode);
+    if (self.valueNode.parent().length == 0 &&
+        self.valueNode.prev().length == 0) {
+      self.keyNode.after(self.valueNode);
     }
-    this.updateVisibility();
+    updateVisibility();
   };
 
+  // Return the id base for this field; used to create key and value IDs
   this.idFor = function() {
     if (this.idPrefix) {
       return this.idPrefix + '_' + this.name;
@@ -78,10 +98,11 @@ function Field(name, fieldGroup, params) {
     return this.idSource.idFor(this.name);
   };
 
-  this.updateVisibility = function () {
-    var list = this.visibleAt;
-    if ($.isFunction(list)) {
-      list = list(this);
+  // update the visibility of this field to what it should be now.
+  var updateVisibility = function () {
+    var list = self.visibleAt;
+    while ($.isFunction(list)) {
+      list = list(self);
     }
     if (!$.isArray(list)) {
       list = [list];
@@ -89,7 +110,7 @@ function Field(name, fieldGroup, params) {
     for (var i = 0; i < list.length; i++) {
       var node = list[i];
       if (!node) continue;
-      if (this.visible) {
+      if (self.visible) {
         node.show();
       } else {
         node.hide();
@@ -97,15 +118,17 @@ function Field(name, fieldGroup, params) {
     }
   };
 
+  // Set the value for this field. The prefix and suffix (if any) are added.
   this.set = function(value) {
     this.valueType = typeof(value);
-    this.maybeBuildCells();
+    maybeBuildCells();
     this.valueNode.html(this.prefix + String(value) + this.suffix);
     this.setVisible(this.isVisible(this));
   };
 
+  // Get the value for this field. The prefix and suffix (if any) are dropped.
   this.get = function() {
-    this.maybeBuildCells();
+    maybeBuildCells();
     var val = this.valueNode.text();
     if (this.prefix && this.prefix.length > 0) {
       if (val.indexOf(this.prefix) == 0) {
@@ -127,18 +150,27 @@ function Field(name, fieldGroup, params) {
     }
   };
 
+  // Set whether this is visible or not.
   this.setVisible = function(visible) {
     if (visible == this.visible) return;
     this.visible = visible;
-    this.maybeBuildCells();
-    this.updateVisibility();
+    maybeBuildCells();
+    updateVisibility();
   };
 
   this.set(this.initial);
 }
 
+// A field group manages a set of Field objects. Any params passed in that are
+// Field parameters will be the default values for all fields in this group.
+// All other values are set on this object. Fields will be shown in the order
+// added.
+//
+// Values on this object are
+//    wrapper:  If defined, a function that wraps the key node before insertion.
+//              This is used by the default implementation of findInsert()
 function FieldGroup(params) {
-  this.fieldDefaults = {idSource: Field.default_id_source};
+  var fieldDefaults = {idSource: Field.default_id_source};
   var fieldParams = {};
   var thisParams = {};
   for (var param in params) {
@@ -148,10 +180,12 @@ function FieldGroup(params) {
       thisParams[param] = params[param];
     }
   }
-  $.extend(this.fieldDefaults, fieldParams);
+  $.extend(fieldDefaults, fieldParams);
 
+  // If you override this.order, fields will be displayed in that order.
   this.order = [];
-  this.fields = {};
+  
+  var fields = {};
 
   if (!this.wrapper) {
     //noinspection JSUnusedLocalSymbols
@@ -160,41 +194,62 @@ function FieldGroup(params) {
     }
   }
 
+  // Add a field to this group, overriding defaults using params
   this.add = function(name, params) {
-    if (this.fields[name]) return;
+    if (fields[name]) return;
 
     this.order.push(name);
     var toPass = {};
-    $.extend(toPass, this.fieldDefaults, params);
-    this.fields[name] = new Field(name, this, toPass);
+    $.extend(toPass, fieldDefaults, params);
+    fields[name] = new Field(name, this, toPass);
   };
 
+  // Set the value of a field; see Field.set()
   this.set = function(name, value) {
-    if (!this.fields[name]) {
+    if (!fields[name]) {
       this.add(name);
     }
-    this.fields[name].set(value);
+    fields[name].set(value);
   };
 
+  // Get the value of a field; see Field.get()
   this.get = function(name) {
-    if (!this.fields[name]) {
+    if (!fields[name]) {
       this.add(name);
     }
-    return this.fields[name].get();
+    return fields[name].get();
   };
 
+  // Return the values of all the fields as an array
   this.values = function() {
     var vals = {};
-    for (var name in this.fields) {
-      vals[name] = this.fields[name].get();
+    for (var name in fields) {
+      vals[name] = fields[name].get();
     }
     return vals;
   };
 
+  // Set whether the field is visible; see Field.setVisible()
   this.setVisible = function(name, visible) {
-    this.fields[name].setVisible(visible);
+    fields[name].setVisible(visible);
   };
 
+  // Find where to insert a new field's key. You can replace this.
+  //
+  // This function must return an object that says where to place the key. The
+  // fields of that object are:
+  //
+  //    before    Insert the key before this object;
+  //    after     Insert the key after this object.
+  //    under     Append the key to this object.
+  //    toInsert  Object to insert, which must be the key or contain it as a
+  //              descendant. (If toInsert doesn't contain the value node, the
+  //              value node will be placed immediately after the key node.)
+  //
+  // Exactly one of before, after, or under must be specified.
+  //
+  // This default implementation finds where it goes in the order, and places it
+  // after there, placing all the nodes under the field this.under.
   this.findInsert = function(field) {
     var insertion = {};
 
@@ -206,7 +261,7 @@ function FieldGroup(params) {
     var prev;
     if (i < this.order.length) {
       for (var p = i - 1; p >= 0; p--) {
-        var prevField = this.fields[this.order[p]];
+        var prevField = fields[this.order[p]];
         if (prevField.trailingNode) {
           prev = prevField.trailingNode;
           break;
@@ -237,6 +292,7 @@ function FieldGroup(params) {
     return insertion;
   };
 
+  // Called by the field to insert the field HTML nodes.
   this.insertField = function(field) {
     var insertion = this.findInsert(field);
 
