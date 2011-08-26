@@ -1762,6 +1762,7 @@ function maybeStartOfGame(node) {
 // Returns true if the log node should be handled as part of the game.
 function logEntryForGame(node) {
   if (inLobby()) {
+    localStorage.removeItem('log');
     return false;
   }
 
