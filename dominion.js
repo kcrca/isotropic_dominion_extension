@@ -541,14 +541,6 @@ function Player(name, num) {
   });
 }
 
-isCopperValueVisible = function(field) {
-  return field.get() != 1;
-};
-
-isNotZero = function(field) {
-  return field.get() != 0;
-};
-
 // Create a new "player" whose "deck" is the trash.
 function stateStrings() {
   var state = '';

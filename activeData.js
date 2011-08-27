@@ -38,6 +38,13 @@ function removeActiveDataOption() {
   })
 }
 
+isCopperValueVisible = function(field) {
+  return field.get() != 1;
+};
+
+isNotZero = function(field) {
+  return field.get() != 0;
+};
 // This object holds on to the active data for a single player.
 function ActiveData() {
   // This alias is used in nested functions that execute in other contexts
