@@ -674,6 +674,7 @@ function maybeRunInfoWindowTests(table) {
 
   var msgs = [];
   var foundProblem = false;
+  var ABORT_TESTS = "ABORT TESTS";
 
   function checkValue(actual, expected, text) {
     var valid = (actual == expected);
@@ -721,7 +722,7 @@ function maybeRunInfoWindowTests(table) {
   function parseInfoNumber(str) {
     return str == 'nothing' ? 0 : parseInt(str);
   }
-  
+
   function setCurrentPlayer(p) {
     player = p;
     player.activeTestCardCount = 0;
@@ -760,11 +761,14 @@ function maybeRunInfoWindowTests(table) {
         if (!debug['activeData']) return;
         addToCardCount(countCards(match[2]));
         if (match[1] == 'Previous duration') {
-          // Each Haven in the duration implies another card set aside.
-          // These cards are not listed in the info window, even for you.
+          // Each Haven in the duration implies one *or more* cards set aside.
+          // These cards are not listed in the info window, even for you. Which
+          // means that if there are Havens, we can't really tell how many cards
+          // are in the decks. (It can be more than one card if Haven was played
+          // with Throne Room or King's Court.)
           var matches = match[2].match(/\bHaven\b/g);
           if (matches) {
-            addToCardCount(matches.length);
+            throw ABORT_TESTS;
           }
         }
       }
@@ -829,25 +833,30 @@ function maybeRunInfoWindowTests(table) {
             // players so we have to expect the deck to include what's there.
             player.activeTestCardCount += player.asideCount()
           }
-          checkValue(player.activeTestCardCount, player.deck_size, player.activeTestCardCountStr);
+          checkValue(player.activeTestCardCount, player.deck_size,
+              player.activeTestCardCountStr);
         }
       }
     }
   ];
 
   markInfoAsOurs(table);
-  table.find('tr').each(function() {
-    var tr = $(this);
-    var text = tr.text().replace(/\s+/g, ' ');
-    for (var i = 0; i < tests.length; i++) {
-      var test = tests[i];
-      var match = test.pat.exec(text);
-      if (match) {
-        test.act(tr, match);
-        break;
+  try {
+    table.find('tr').each(function() {
+      var tr = $(this);
+      var text = tr.text().replace(/\s+/g, ' ');
+      for (var i = 0; i < tests.length; i++) {
+        var test = tests[i];
+        var match = test.pat.exec(text);
+        if (match) {
+          test.act(tr, match);
+          break;
+        }
       }
-    }
-  });
+    });
+  } catch(e) {
+    if (e != ABORT_TESTS) throw e;
+  }
 
   var infoTop = $("body > div.black");
   infoTop.remove();
