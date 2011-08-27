@@ -69,6 +69,8 @@ var rewritingTree = 0;
 
 var debug = {activeData: true, infoData: true, handle: true};
 
+var infoIsForTests = false;
+
 // Quotes a string so it matches literally in a regex.
 RegExp.quote = function(str) {
   return str.replace(/([.?*+^$[\]\\(){}-])/g, "\\$1");
@@ -862,15 +864,6 @@ function stripDuplicateLogs() {
       $this.remove();
     }
   })
-}
-
-function topScope() {
-  for (var i = scopes.length - 1; i >= 0; i--) {
-    if (scopes[i].length > 0) {
-      return scopes[i];
-    }
-  }
-  return undefined;
 }
 
 function handleScoping(text_arr, text) {

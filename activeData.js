@@ -8,8 +8,6 @@ var tracking_active_data = true;
 // id for testing active values
 var activeValueTiemout;
 
-var infoIsForTests = false;
-
 setupCards();
 
 function activeDataOption() {
