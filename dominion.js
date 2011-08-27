@@ -864,6 +864,15 @@ function stripDuplicateLogs() {
   })
 }
 
+function topScope() {
+  for (var i = scopes.length - 1; i >= 0; i--) {
+    if (scopes[i].length > 0) {
+      return scopes[i];
+    }
+  }
+  return undefined;
+}
+
 function handleScoping(text_arr, text) {
   var depth = 1;
   for (var t in text_arr) {

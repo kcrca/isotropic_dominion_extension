@@ -62,6 +62,8 @@ function ActiveData() {
     fields.add('played', { initial: 0 });
   });
 
+  this.lastPlayed = undefined;
+
   // The default value of each field is held was set above, so remember them.
   this.defaultValues = fields.values();
 
@@ -70,6 +72,7 @@ function ActiveData() {
     for (var f in this.defaultValues) {
       fields.set(f, this.defaultValues[f]);
     }
+    this.lastPlayed = undefined;
   };
 
   this.top = function() {
@@ -117,6 +120,8 @@ function ActiveData() {
       alert("Unknown card in playsCard(): " + cardName);
       return;
     }
+
+    this.lastPlayed = card;
 
     // Change 'played' field first because the values of some cards rely on it.
     this.changeField('played', count);
@@ -401,8 +406,8 @@ function activeDataHandleCounts(elems, text) {
 }
 
 function maybeHandleIsland(elems, text_arr, text) {
-  if (scopes.length >= 2 && scopes[scopes.length - 2] != "Island") return false;
-  if (text.match(/ set(ting|s)? aside /)) {
+  var lastPlayed = activeData.lastPlayed.Singular;
+  if (lastPlayed == "Island" && text.match(/ set(ting|s)? aside /)) {
     var player = getPlayer(text_arr[0]);
     if (player == null)
       player = last_player;
@@ -441,5 +446,4 @@ function activeDataCardBought(count, card) {
   }
   activeData.changeField('coins', -(count * card.getCurrentCoinCost()));
   activeData.changeField('potions', -(count * card.getCurrentPotionCost()));
-  last_card = card;
 }
