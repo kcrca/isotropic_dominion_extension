@@ -666,7 +666,6 @@ function maybeRunInfoWindowTests(table) {
 
   var msgs = [];
   var foundProblem = false;
-  var ABORT_TESTS = "ABORT TESTS";
 
   function checkValue(actual, expected, text) {
     var valid = (actual == expected);
@@ -704,6 +703,7 @@ function maybeRunInfoWindowTests(table) {
   }
 
   function addToCardCount(count) {
+    if (isNaN(player.activeTestCardCount)) return;
     player.activeTestCardCount += count;
     if (player.activeTestCardCountStr.length > 0) {
       player.activeTestCardCountStr += '+';
@@ -759,9 +759,9 @@ function maybeRunInfoWindowTests(table) {
           // means that if there are Havens, we can't really tell how many cards
           // are in the decks. (It can be more than one card if Haven was played
           // with Throne Room or King's Court.)
-          var matches = match[2].match(/\bHaven\b/g);
-          if (matches) {
-            throw ABORT_TESTS;
+          if (match[2].match(/\bHaven\b/g)) {
+            player.activeTestCardCount = NaN;
+            player.activeTestCardCountStr = 'Haven prevents deck size test';
           }
         }
       }
@@ -820,7 +820,7 @@ function maybeRunInfoWindowTests(table) {
         });
         addToCardCount(count);
         player.activeTestCardCountStr += '[' + paddingStrs + 'px]';
-        if (isDiscard) {
+        if (isDiscard && !isNaN(player.activeTestCardCount)) {
           if (!player.activeTestSeenIslandMat) {
             // The info window is can be silent about the island mat for other
             // players so we have to expect the deck to include what's there.
@@ -847,14 +847,13 @@ function maybeRunInfoWindowTests(table) {
         }
       }
     });
-  } catch(e) {
-    if (e != ABORT_TESTS) throw e;
+  } finally {
+    var infoTop = $("body > div.black");
+    infoTop.remove();
+    infoIsForTests = false;
   }
 
-  var infoTop = $("body > div.black");
-  infoTop.remove();
-
-  if (foundProblem) {
+  if (foundProblem && debug['infoData']) {
     alert("Found problems with data: see console log");
   }
 }
