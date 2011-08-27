@@ -406,6 +406,7 @@ function activeDataHandleCounts(elems, text) {
 }
 
 function maybeHandleIsland(elems, text_arr, text) {
+  if (!activeData || !activeData.lastPlayed) return false;
   var lastPlayed = activeData.lastPlayed.Singular;
   if (lastPlayed == "Island" && text.match(/ set(ting|s)? aside /)) {
     var player = getPlayer(text_arr[0]);
