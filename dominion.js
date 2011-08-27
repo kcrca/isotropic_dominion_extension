@@ -742,7 +742,8 @@ function maybeRunInfoWindowTests(table) {
     },
     { pat: /^—— (.*) ——/,
       act: function(row, match) {
-        setCurrentPlayer(getPlayer(match[1]));
+        var playerName = rewriteName(match[1]);
+        setCurrentPlayer(getPlayer(playerName));
       }
     },
     { pat: /Current score:([0-9]+)/,
