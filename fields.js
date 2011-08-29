@@ -67,13 +67,13 @@ function Field(name, fieldGroup, params) {
     if (self.valueNode) return;
 
     var id = self.idFor();
-    self.keyNode = $('<' + self.tag + '/>');
+    self.keyNode = $('<' + resolveStr(self.tag) + '/>');
     self.keyNode.attr('id', id + 'Key');
     if (self.keyClass) {
       self.keyNode.addClass(resolveStr(self.keyClass));
     }
     self.keyNode.text(resolveStr(self.label) + ': ');
-    self.valueNode = $('<' + self.tag + ' id="' + id + '"/>');
+    self.valueNode = $('<' + resolveStr(self.tag) + ' id="' + id + '"/>');
     self.valueNode.attr('id', id + 'Value');
     if (self.valueClass) {
       self.valueNode.addClass(resolveStr(self.valueClass));
