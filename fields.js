@@ -50,17 +50,17 @@ function Field(name, fieldGroup, params) {
   this.fieldGroup = fieldGroup;
   $.extend(this, Field.default_field_params, params);
 
-  if (!this.label) {
-    this.label = this.labelFor(name);
+  function resolve(value) {
+    while ($.isFunction(value)) {
+      value = value(self);
+    }
+    return value;
   }
 
-  // Function to generate the label. This default generates it from the name.
-  this.labelFor = function() {
-    if (typeof(this.label) == 'function') {
-      return this.label(name);
-    }
-    return String(this.label);
-  };
+  function resolveStr(value) {
+    value = resolve(value);
+    return value ? String(value) : value;
+  }
 
   // Build the cells if they need to be built.
   var maybeBuildCells = function () {
@@ -70,13 +70,13 @@ function Field(name, fieldGroup, params) {
     self.keyNode = $('<' + self.tag + '/>');
     self.keyNode.attr('id', id + 'Key');
     if (self.keyClass) {
-      self.keyNode.addClass(self.keyClass);
+      self.keyNode.addClass(resolveStr(self.keyClass));
     }
-    self.keyNode.text(self.labelFor() + ': ');
+    self.keyNode.text(resolveStr(self.label) + ': ');
     self.valueNode = $('<' + self.tag + ' id="' + id + '"/>');
     self.valueNode.attr('id', id + 'Value');
     if (self.valueClass) {
-      self.valueNode.addClass(self.valueClass);
+      self.valueNode.addClass(resolveStr(self.valueClass));
     }
     self.fieldGroup.insertField(self);
     // If inserting didn't also insert the value node, put it after the key.
@@ -90,9 +90,9 @@ function Field(name, fieldGroup, params) {
   // Return the id base for this field; used to create key and value IDs
   this.idFor = function() {
     if (this.idPrefix) {
-      return this.idPrefix + '_' + this.name;
+      return resolveStr(this.idPrefix) + '_' + this.name;
     }
-    if (typeof(this.idSource) == 'function') {
+    if ($.isFunction(this.idSource)) {
       return this.idSource(this.name);
     }
     return this.idSource.idFor(this.name);
@@ -100,10 +100,7 @@ function Field(name, fieldGroup, params) {
 
   // update the visibility of this field to what it should be now.
   var updateVisibility = function () {
-    var list = self.visibleAt;
-    while ($.isFunction(list)) {
-      list = list(self);
-    }
+    var list = resolve(self.visibleAt);
     if (!$.isArray(list)) {
       list = [list];
     }
@@ -158,7 +155,7 @@ function Field(name, fieldGroup, params) {
     updateVisibility();
   };
 
-  this.set(this.initial);
+  this.set(resolve(this.initial));
 }
 
 // A field group manages a set of Field objects. Any params passed in that are
@@ -169,10 +166,22 @@ function Field(name, fieldGroup, params) {
 // Values on this object are
 //    wrapper:  If defined, a function that wraps the key node before insertion.
 //              This is used by the default implementation of findInsert()
+//    order:    If provided, the order in which fields will be displayed. The
+//              default is to show them in the order they are inserted.
+//
 function FieldGroup(params) {
   var fieldDefaults = {idSource: Field.default_id_source};
   var fieldParams = {};
   var thisParams = {};
+
+  // If you override this.order, fields will be displayed in that order.
+  this.order = [];
+
+  //noinspection JSUnusedLocalSymbols
+  this.wrapper = function(keyNode, field) {
+    return keyNode;
+  };
+
   for (var param in params) {
     if (Field.default_field_params.hasOwnProperty(param)) {
       fieldParams[param] = params[param];
@@ -182,17 +191,7 @@ function FieldGroup(params) {
   }
   $.extend(fieldDefaults, fieldParams);
 
-  // If you override this.order, fields will be displayed in that order.
-  this.order = [];
-  
   var fields = {};
-
-  if (!this.wrapper) {
-    //noinspection JSUnusedLocalSymbols
-    this.wrapper = function(keyNode, field) {
-      return keyNode;
-    }
-  }
 
   // Add a field to this group, overriding defaults using params
   this.add = function(name, params) {
@@ -249,7 +248,8 @@ function FieldGroup(params) {
   // Exactly one of before, after, or under must be specified.
   //
   // This default implementation finds where it goes in the order, and places it
-  // after there, placing all the nodes under the field this.under.
+  // after there, placing all the nodes under the field this.under, or after
+  // this.after, depending on which is present.
   this.findInsert = function(field) {
     var insertion = {};
 
@@ -378,8 +378,8 @@ function fieldWrapInRow(keyNode, field) {
   }
 })();
 
-function fieldTitleCase(str) {
-  return titleCaps(str);
+function fieldTitleCase(field) {
+  return titleCaps(field.name);
 }
 
 function fieldInvisibleIfEmpty(field) {
