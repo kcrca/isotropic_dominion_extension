@@ -96,6 +96,10 @@ function ActiveData() {
       fields.set(field, value);
     });
   };
+  
+  this.getValues = function() {
+    return fields.get();
+  };
 
   // Change the value of a specific field.
   this.changeField = function(key, delta) {
@@ -274,7 +278,7 @@ function activeDataGainCard(player, trashing, card, count) {
 
 function activeDataMaybeRunTests() {
   if (last_player && last_player.name == 'You') {
-    activeValueTiemout = window.setTimeout(activeDataTestValuesVsYou, 50);
+    activeValueTiemout = window.setTimeout(activeDataLiveTests, 50);
   }
 }
 
@@ -282,10 +286,28 @@ function activeDataSetupTests() {
   window.clearTimeout(activeValueTiemout);
 }
 
-function activeDataTestValuesVsYou() {
+function activeDataLiveTests() {
   if (!tracking_active_data) return;
   if (rewritingTree) return;
   if (!started) return;
+  activeDataTestValuesVsYou();
+  activeDataTestSanity();
+}
+
+function activeDataTestSanity() {
+  var values = activeData.getValues();
+  var negatives = [];
+  for (var name in values) {
+    if (values[name] < 0) {
+      negatives.push(name);
+    }
+  }
+  if (negatives.length > 0) {
+    alert("Negative values in active data: " + negatives.join(", "));
+  }
+}
+
+function activeDataTestValuesVsYou() {
   if (!last_player || last_player.name != 'You') return;
 
   // When we're being told we're waiting for something, or being offered a
@@ -386,7 +408,7 @@ function activeDataEndTurn() {
 
 //  // Before we switch to the next player, check the final values
 //  if (last_player && last_player.name == "You")
-//    activeDataTestValuesVsYou();
+//    activeDataLiveTests();
 }
 
 // Adjust the value of a piece of active player data if there is a specification
