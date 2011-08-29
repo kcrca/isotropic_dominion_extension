@@ -238,7 +238,7 @@ function setupCards() {
 }
 
 function activeDataStartHandle(doc) {
-  if (debug['activeData']) {
+  if (debug['activeTime']) {
     var where = $(doc).closest('#log, #temp_say, #choices');
     if (where.length > 0) {
       var elapsed = 0;
