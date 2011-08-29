@@ -1872,14 +1872,14 @@ function rewriteTree(func) {
 }
 
 function handle(doc) {
+  // Ignore DOM events when we are rewritting the tree; see rewriteTree().
+  if (rewritingTree > 0) return;
+
   // When the lobby screen is built, make sure point tracker settings are used.
   if (doc.className && doc.className == "constr") {
     $('#tracker').attr('checked', true).attr('disabled', true);
     $('#autotracker').val('yes').attr('disabled', true);
   }
-
-  // Ignore DOM events when we are rewritting the tree; see rewriteTree().
-  if (rewritingTree > 0) return;
 
   try {
     // Detect the "Say" button so we can find some children
@@ -1891,6 +1891,8 @@ function handle(doc) {
       deck_spot = links[1];
       points_spot = links[2];
     }
+
+    activeDataStartHandle(doc);
 
     if (doc.className && doc.className.indexOf("logline") >= 0) {
       activeDataSetupTests();

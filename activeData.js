@@ -8,6 +8,9 @@ var tracking_active_data = true;
 // id for testing active values
 var activeValueTiemout;
 
+// Used for debugging how long we should set activeValueTimeout
+var lastTime;
+
 setupCards();
 
 function activeDataOption() {
@@ -231,6 +234,23 @@ function setupCards() {
   patchCardBug('Trusty Steed', 'Actions', '0');
   patchCardBug('Trusty Steed', 'Treasure', '0');
   patchCardBug('Trusty Steed', 'Cards', '0');
+  patchCardBug('Fortune Teller', 'Action', '1');
+}
+
+function activeDataStartHandle(doc) {
+  if (debug['activeData']) {
+    var where = $(doc).closest('#log, #temp_say, #choices');
+    if (where.length > 0) {
+      var elapsed = 0;
+      var now = new Date().getTime();
+      if (lastTime) {
+        elapsed = now - lastTime;
+      }
+      console.log("...... %5s %6d %s\n", where.attr('id'), elapsed,
+          doc.innerText);
+      lastTime = now;
+    }
+  }
 }
 
 function activeDataGainCard(player, trashing, card, count) {
@@ -254,7 +274,7 @@ function activeDataGainCard(player, trashing, card, count) {
 
 function activeDataMaybeRunTests() {
   if (last_player && last_player.name == 'You') {
-    activeValueTiemout = window.setTimeout(activeDataTestValuesVsYou, 300);
+    activeValueTiemout = window.setTimeout(activeDataTestValuesVsYou, 50);
   }
 }
 
