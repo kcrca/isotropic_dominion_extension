@@ -66,7 +66,7 @@ function Field(name, fieldGroup, params) {
   var maybeBuildCells = function () {
     if (self.valueNode) return;
 
-    var id = self.idFor();
+    var id = self.idFor(self.name);
     self.keyNode = $('<' + resolveStr(self.tag) + '/>');
     self.keyNode.attr('id', id + 'Key');
     if (self.keyClass) {

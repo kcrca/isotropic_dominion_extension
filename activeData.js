@@ -98,7 +98,7 @@ function ActiveData() {
   };
   
   this.getValues = function() {
-    return fields.get();
+    return fields.values();
   };
 
   // Change the value of a specific field.
