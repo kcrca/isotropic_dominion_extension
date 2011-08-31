@@ -71,6 +71,8 @@ var debug = {activeData: true, infoData: true, handle: true};
 
 var infoIsForTests = false;
 
+var testOnlyPlayerScore = false;
+
 // Quotes a string so it matches literally in a regex.
 RegExp.quote = function(str) {
   return str.replace(/([.?*+^$[\]\\(){}-])/g, "\\$1");
@@ -703,12 +705,12 @@ function maybeRunInfoWindowTests(table) {
   }
 
   function addToCardCount(count) {
-    if (isNaN(player.activeTestCardCount)) return;
-    player.activeTestCardCount += count;
-    if (player.activeTestCardCountStr.length > 0) {
-      player.activeTestCardCountStr += '+';
+    if (isNaN(player.testCardCount)) return;
+    player.testCardCount += count;
+    if (player.testCardCountStr.length > 0) {
+      player.testCardCountStr += '+';
     }
-    player.activeTestCardCountStr += count;
+    player.testCardCountStr += count;
   }
 
   function parseInfoNumber(str) {
@@ -717,9 +719,9 @@ function maybeRunInfoWindowTests(table) {
 
   function setCurrentPlayer(p) {
     player = p;
-    player.activeTestCardCount = 0;
-    player.activeTestCardCountStr = '';
-    player.activeTestSeenIslandMat = false;
+    player.testCardCount = 0;
+    player.testCardCountStr = '';
+    player.testSeenIslandMat = false;
   }
 
   var player = trashPlayer;
@@ -760,8 +762,8 @@ function maybeRunInfoWindowTests(table) {
           // are in the decks. (It can be more than one card if Haven was played
           // with Throne Room or King's Court.)
           if (match[2].match(/\bHaven\b/g)) {
-            player.activeTestCardCount = NaN;
-            player.activeTestCardCountStr = 'Haven prevents deck size test';
+            player.testCardCount = NaN;
+            player.testCardCountStr = 'Haven prevents deck size test';
           }
         }
       }
@@ -783,7 +785,7 @@ function maybeRunInfoWindowTests(table) {
         if (match[1] == "Island") {
           // cards held by islands are not in the deck count (as we show it)
           checkValue(count, player.asideCount(), row.text());
-          player.activeTestSeenIslandMat = true;
+          player.testSeenIslandMat = true;
         } else if (match[1] == 'Pirate Ship') {
           //!! We should count and show pirate ship mat tokens
         } else {
@@ -819,15 +821,16 @@ function maybeRunInfoWindowTests(table) {
           }
         });
         addToCardCount(count);
-        player.activeTestCardCountStr += '[' + paddingStrs + 'px]';
-        if (isDiscard && !isNaN(player.activeTestCardCount)) {
-          if (!player.activeTestSeenIslandMat) {
+        player.testCardCountStr += '[' + paddingStrs + 'px]';
+        if (testOnlyPlayerScore && player.name != "You") return;
+        if (isDiscard && !isNaN(player.testCardCount)) {
+          if (!player.testSeenIslandMat) {
             // The info window is can be silent about the island mat for other
             // players so we have to expect the deck to include what's there.
-            player.activeTestCardCount += player.asideCount()
+            player.testCardCount += player.asideCount()
           }
-          checkValue(player.activeTestCardCount, player.deck_size,
-              player.activeTestCardCountStr);
+          checkValue(player.testCardCount, player.deck_size,
+              player.testCardCountStr);
         }
       }
     }
@@ -1196,6 +1199,7 @@ function handleLogEntry(node) {
       if (player_count > 2) {
         maybeAnnounceFailure(">> Warning: Masquerade with more than 2 " +
             "players causes inaccurate score counting.");
+        testOnlyPlayerScore = true;
       }
       player.gainCard(card_elem, -1, false);
       var other_player = findTrailingPlayer(node.innerText);
@@ -1448,6 +1452,7 @@ function initialize(doc) {
   possessed_turn = false;
   announced_error = false;
   next_log_line_num = 0;
+  testOnlyPlayerScore = false;
 
   // Figure out which cards are in supply piles
   supplied_cards = {};
