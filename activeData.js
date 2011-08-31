@@ -96,7 +96,7 @@ function ActiveData() {
       fields.set(field, value);
     });
   };
-  
+
   this.getValues = function() {
     return fields.values();
   };
@@ -278,7 +278,7 @@ function activeDataGainCard(player, trashing, card, count) {
 
 function activeDataMaybeRunTests() {
   if (last_player && last_player.name == 'You') {
-    activeValueTiemout = window.setTimeout(activeDataLiveTests, 50);
+    activeValueTiemout = window.setTimeout(activeDataLiveTests, 100);
   }
 }
 
