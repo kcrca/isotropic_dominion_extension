@@ -22,8 +22,6 @@ var supplied_cards;
 // Places to print number of cards and points.
 var deck_spot;
 var points_spot;
-var player_spot;
-var gui_mode_spot;
 
 // How many different player classes are supported?
 var PLAYER_CLASS_COUNT = 4;
@@ -853,7 +851,6 @@ function maybeRunInfoWindowTests(table) {
   } finally {
     var infoTop = $("body > div.black");
     infoTop.remove();
-    infoIsForTests = false;
   }
 
   if (foundProblem && debug['infoData']) {
@@ -1103,6 +1100,7 @@ function handleLogEntry(node) {
   maybeRewriteName(node);
 
   if (maybeHandleTurnChange(node)) {
+    // Should not run these tests while restoring from log.
     if (!rewritingTree) {
       infoIsForTests = true;
       $('button:contains(info)').click();
@@ -1346,12 +1344,12 @@ function setupPlayerArea() {
     var game = document.getElementById("game");
     game.insertBefore(outerTable, game.firstElementChild);
   } else {
-    var tab = player_spot.firstElementChild;
+    var player_spot = $('#supply');
     // tab can be null at the end of a game when returning to the lobby
-    if (tab != null) {
+    if (player_spot.children().length > 0) {
       rewriteTree(function () {
         var outerCell = $('<td valign="bottom"/>');
-        $(player_spot).replaceWith(outerCell);
+        player_spot.replaceWith(outerCell);
         outerCell.append(ptab);
         outerCell.append(player_spot);
       });
@@ -1841,7 +1839,8 @@ function restoreHistory(node) {
 
 function inLobby() {
   // In the lobby there is no real supply region -- it's empty.
-  return (player_spot == undefined || player_spot.childElementCount == 0);
+  var playerTable = $('#player_table');
+  return (playerTable.length > 0);
 }
 
 // Drop any state related to knowing text vs. image mode.
@@ -1857,9 +1856,10 @@ function forgetGUIMode() {
 // cases it has the "playing" class, which allows CSS to tell the difference
 // between being in the lobby vs. playing an actual game.
 function discoverGUIMode() {
-  var href = gui_mode_spot.getAttribute("href");
-  // The link is to the "text" mode when it's in image mode and vice versa.
-  text_mode = href.indexOf("text") < 0;
+  $('#chat a[href^="/mode/"').each(function() {
+    // The link is to the "text" mode when it's in image mode and vice versa.
+    text_mode = $(this).text().indexOf("text") < 0;
+  });
 
   // Setting the class enables css selectors that distinguish between the modes.
   $("#body").addClass("playing").addClass(text_mode ? "textMode" : "imageMode");
@@ -1892,7 +1892,6 @@ function handle(doc) {
         doc.innerText.indexOf("Say") == 0) {
       // Pull out the links for future reference.
       var links = doc.getElementsByTagName("a");
-      gui_mode_spot = links[0];
       deck_spot = links[1];
       points_spot = links[2];
     }
@@ -1908,11 +1907,6 @@ function handle(doc) {
           localStorage['log'] = doc.parentElement.innerHTML;
         }
       }
-    }
-
-    // Remember the "supply" node for later use.
-    if (doc.id == "supply") {
-      player_spot = doc;
     }
 
     // The child nodes of "supply" tell us whether certain cards are in play.

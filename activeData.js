@@ -277,12 +277,18 @@ function activeDataGainCard(player, trashing, card, count) {
 }
 
 function activeDataMaybeRunTests() {
+  // Many tests will fail if the user is waiting for another player to act, or
+  // if the user is being prompted for a choice. When the log entry is added, we
+  // can't know whether this is *about* to happen, so we have a timeout: If some
+  // time has passed and a 'waiting' message or choice prompt have *not*
+  // appeared, it's probably OK to test.
   if (last_player && last_player.name == 'You') {
     activeValueTiemout = window.setTimeout(activeDataLiveTests, 100);
   }
 }
 
 function activeDataSetupTests() {
+  // See activeDataMaybeRunTests().
   window.clearTimeout(activeValueTiemout);
 }
 
@@ -307,14 +313,19 @@ function activeDataTestSanity() {
   }
 }
 
+function incompleteUpdate() {
+  var tempText = $('#temp_say').text();
+  return tempText.indexOf('— waiting ') >= 0 ||
+      $('#choices').children().length > 0;
+
+}
+
 function activeDataTestValuesVsYou() {
   if (!last_player || last_player.name != 'You') return;
 
   // When we're being told we're waiting for something, or being offered a
   // choice, sometimes we are ahead of the game's updates.
-  var tempText = $('#temp_say').text();
-  if (tempText.indexOf('— waiting ') >= 0) return;
-  if ($('#choices').children().length > 0) return;
+  if (incompleteUpdate()) return;
 
   var msgs = [];
 
