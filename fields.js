@@ -14,6 +14,20 @@ Field.visible_at_inserted = function(field) {
   return field.inserted;
 };
 
+Field.visible_by_contents = function(field, node) {
+  if (!field.visible) {
+    node.text('');
+  }
+};
+
+Field.visible_by_show = function(field, node) {
+  if (field.visible) {
+    node.show();
+  } else {
+    node.hide();
+  }
+};
+
 Field.default_field_params = {
   // The source for ID's, which can be a function or an object with idFor(str)
   idSource: Field.default_id_source,
@@ -26,6 +40,7 @@ Field.default_field_params = {
   // is a function returning the key and value nodes.
   visibleAt: Field.visible_at_nodes,
   // The initial value for the field.
+  visibleBy: Field.visible_by_show,
   initial: "",
   // A prefix to appear before the value.
   prefix: "",
@@ -50,33 +65,33 @@ function Field(name, fieldGroup, params) {
   this.fieldGroup = fieldGroup;
   $.extend(this, Field.default_field_params, params);
 
-  function resolve(value) {
+  this.resolve = function(value) {
     while ($.isFunction(value)) {
       value = value(self);
     }
     return value;
-  }
+  };
 
-  function resolveStr(value) {
-    value = resolve(value);
+  this.resolveStr = function(value) {
+    value = this.resolve(value);
     return value ? String(value) : value;
-  }
+  };
 
   // Build the cells if they need to be built.
   var maybeBuildCells = function () {
     if (self.valueNode) return;
 
     var id = self.idFor(self.name);
-    self.keyNode = $('<' + resolveStr(self.tag) + '/>');
+    self.keyNode = $('<' + self.resolveStr(self.tag) + '/>');
     self.keyNode.attr('id', id + 'Key');
     if (self.keyClass) {
-      self.keyNode.addClass(resolveStr(self.keyClass));
+      self.keyNode.addClass(self.resolveStr(self.keyClass));
     }
-    self.keyNode.text(resolveStr(self.label) + ': ');
-    self.valueNode = $('<' + resolveStr(self.tag) + ' id="' + id + '"/>');
+    self.keyNode.text(self.resolveStr(self.label) + ': ');
+    self.valueNode = $('<' + self.resolveStr(self.tag) + ' id="' + id + '"/>');
     self.valueNode.attr('id', id + 'Value');
     if (self.valueClass) {
-      self.valueNode.addClass(resolveStr(self.valueClass));
+      self.valueNode.addClass(self.resolveStr(self.valueClass));
     }
     self.fieldGroup.insertField(self);
     // If inserting didn't also insert the value node, put it after the key.
@@ -90,7 +105,7 @@ function Field(name, fieldGroup, params) {
   // Return the id base for this field; used to create key and value IDs
   this.idFor = function() {
     if (this.idPrefix) {
-      return resolveStr(this.idPrefix) + '_' + this.name;
+      return this.resolveStr(this.idPrefix) + '_' + this.name;
     }
     if ($.isFunction(this.idSource)) {
       return this.idSource(this.name);
@@ -100,18 +115,14 @@ function Field(name, fieldGroup, params) {
 
   // update the visibility of this field to what it should be now.
   var updateVisibility = function () {
-    var list = resolve(self.visibleAt);
+    var list = self.resolve(self.visibleAt);
     if (!$.isArray(list)) {
       list = [list];
     }
     for (var i = 0; i < list.length; i++) {
       var node = list[i];
       if (!node) continue;
-      if (self.visible) {
-        node.show();
-      } else {
-        node.hide();
-      }
+      self.visibleBy(self, node);
     }
   };
 
@@ -155,7 +166,7 @@ function Field(name, fieldGroup, params) {
     updateVisibility();
   };
 
-  this.set(resolve(this.initial));
+  this.set(this.resolve(this.initial));
 }
 
 // A field group manages a set of Field objects. Any params passed in that are
@@ -168,6 +179,9 @@ function Field(name, fieldGroup, params) {
 //              This is used by the default implementation of findInsert()
 //    order:    If provided, the order in which fields will be displayed. The
 //              default is to show them in the order they are inserted.
+//    ignoreUnknown:
+//              If set to true, fields with unknown names will be ignored, not
+//              added to the group.
 //
 function FieldGroup(params) {
   var fieldDefaults = {idSource: Field.default_id_source};
@@ -176,6 +190,8 @@ function FieldGroup(params) {
 
   // If you override this.order, fields will be displayed in that order.
   this.order = [];
+
+  this.ignoreUnknown = false;
 
   //noinspection JSUnusedLocalSymbols
   this.wrapper = function(keyNode, field) {
@@ -193,6 +209,16 @@ function FieldGroup(params) {
 
   var fields = {};
 
+  // Handle an unknown field (add or ignore). Returns true if the code can
+  // proceed assuming the field exists; false means it should proceed as if it
+  // doesn't exist.
+  this.handleUnknownField = function (name) {
+    if (fields[name]) return true;
+    if (this.ignoreUnknown) return false;
+    this.add(name);
+    return true;
+  };
+
   // Add a field to this group, overriding defaults using params
   this.add = function(name, params) {
     if (fields[name]) return;
@@ -205,18 +231,16 @@ function FieldGroup(params) {
 
   // Set the value of a field; see Field.set()
   this.set = function(name, value) {
-    if (!fields[name]) {
-      this.add(name);
+    if (this.handleUnknownField(name)) {
+      fields[name].set(value);
     }
-    fields[name].set(value);
   };
 
   // Get the value of a field; see Field.get()
   this.get = function(name) {
-    if (!fields[name]) {
-      this.add(name);
+    if (this.handleUnknownField(name)) {
+      return fields[name].get();
     }
-    return fields[name].get();
   };
 
   // Return the values of all the fields as an array
@@ -230,7 +254,9 @@ function FieldGroup(params) {
 
   // Set whether the field is visible; see Field.setVisible()
   this.setVisible = function(name, visible) {
-    fields[name].setVisible(visible);
+    if (this.handleUnknownField(name)) {
+      fields[name].setVisible(visible);
+    }
   };
 
   // Find where to insert a new field's key. You can replace this.
