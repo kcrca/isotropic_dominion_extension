@@ -530,11 +530,18 @@ function Player(name, num) {
       playerCell.children().first().before(self.icon.cloneNode(true))
     }
     var seenWide = false;
+    var firstWide = 'otherCards';
     var prev;
     var fieldInsertPos = function(field) {
+      seenWide |= (field.name == firstWide);
+      
+      var keyCell = $('<td/>').append(field.keyNode);
+      var valCell = $('<td/>').append(field.valueNode);
+      var cells = keyCell.add(valCell);
+      
       if (!self.seenFirst) {
         self.seenFirst = true;
-        return {toInsert: field.keyNode, after: $('#' + self.idFor('name'))};
+        return {toInsert: cells, after: $('#' + self.idFor('name'))};
       }
 
       function incrementRowspan(cell) {
@@ -544,17 +551,15 @@ function Player(name, num) {
         }
         cell.attr('rowspan', parseInt(curSpan) + 1);
       }
-
       stetchCells.each(function() {
         incrementRowspan($(this));
       });
 
-      seenWide |= (field.tag == 'span');
 
       var row = $('<tr/>').addClass(self.classFor);
       if (!seenWide) {
         incrementRowspan(playerCell);
-        row.append(field.keyNode);
+        row.append(cells);
       } else {
         var cell = $('<td/>').attr('colspan', 3).addClass('playerOtherCards');
         row.append(cell);
@@ -566,9 +571,10 @@ function Player(name, num) {
       return {toInsert: row, after: after};
     };
 
-    var fields = new FieldGroup({idSource: self, findInsert: fieldInsertPos,
+    var fields = new FieldGroup({idSource: self, tag: 'span',
+      findInsert: fieldInsertPos,
       keyClass: 'playerDataKey', valueClass: 'playerDataValue',
-      ignoreUnknown: this.isTrash});
+      ignoreUnknown: self.isTrash});
     self.fields = fields;
 
     if (self.isTrash) {
@@ -580,8 +586,8 @@ function Player(name, num) {
     }
     self.computeAverageHand();
     fields.add('otherCards', {label: 'Other Cards',
-      initial: self.otherCardsHTML(), tag: 'span',
-      isVisible: fieldInvisibleIfEmpty});
+      initial: self.otherCardsHTML(), isVisible: fieldInvisibleIfEmpty});
+    fields.setVisible('avgHand', false);
   });
 }
 
