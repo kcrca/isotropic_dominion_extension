@@ -534,11 +534,11 @@ function Player(name, num) {
     var prev;
     var fieldInsertPos = function(field) {
       seenWide |= (field.name == firstWide);
-      
+
       var keyCell = $('<td/>').append(field.keyNode);
       var valCell = $('<td/>').append(field.valueNode);
       var cells = keyCell.add(valCell);
-      
+
       if (!self.seenFirst) {
         self.seenFirst = true;
         return {toInsert: cells, after: $('#' + self.idFor('name'))};
@@ -551,10 +551,10 @@ function Player(name, num) {
         }
         cell.attr('rowspan', parseInt(curSpan) + 1);
       }
+
       stetchCells.each(function() {
         incrementRowspan($(this));
       });
-
 
       var row = $('<tr/>').addClass(self.classFor);
       if (!seenWide) {
@@ -583,6 +583,8 @@ function Player(name, num) {
       fields.add('score', {initial: self.getScore(), valueClass: 'scoreValue'});
       fields.add('deck', {initial: self.getDeckString()});
       fields.add('avgHand', {label: 'Avg $/Hand', prefix: '$' });
+      fields.add('pirateShipTokens', {label: 'Pirate ship', prefix: '$',
+            initial: 0, isVisible: fieldInvisibleIfZero});
     }
     self.computeAverageHand();
     fields.add('otherCards', {label: 'Other Cards',
@@ -1014,7 +1016,10 @@ function maybeHandlePirateShip(elems, text_arr, text) {
   // Swallow gaining pirate ship tokens.
   // It looks like gaining a pirate ship otherwise.
   //noinspection RedundantIfStatementJS
-  if (text.indexOf("a Pirate Ship token") != -1) return true;
+  if (text.indexOf("a Pirate Ship token") != -1) {
+    getPlayer(text_arr[0]).changeField('pirateShipTokens', 1);
+    return true;
+  }
   return false;
 }
 
