@@ -11,7 +11,7 @@ var activeValueTiemout;
 // Used for debugging how long we should set activeValueTimeout
 var lastTime;
 
-setupCards();
+activeDataSetupCards();
 
 function activeDataOption() {
   var trackOption = $('<input id="activeDataOption" type="checkbox"/>');
@@ -153,7 +153,7 @@ function ActiveData() {
   };
 }
 
-function setupCards() {
+function activeDataSetupCards() {
   var cardList = "\n";
   for (var i = 0; i < card_list.length; i++) {
     var card = card_list[i];

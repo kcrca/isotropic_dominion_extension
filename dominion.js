@@ -327,6 +327,7 @@ function Player(name, num) {
       this.special_counts["Uniques"] -= 1;
     }
     this.updateCardDisplay(name);
+    this.computeAverageHand();
   };
 
   this.recordSpecialCards = function(card, count) {
@@ -471,6 +472,49 @@ function Player(name, num) {
     this.set(field, this.get(field) + delta);
   };
 
+  this.computeAverageHand = function() {
+    var totalCoins = 0;
+    var totalCount = 0;
+    var bankCount;
+    for (var cardName in this.card_counts) {
+      var card = card_map[cardName];
+      if (card.isTreasure()) {
+        var coins;
+        switch (cardName) {
+        case "Philosopher's Stone":
+          // Impossible to get exactly right, just assume that the deck+discard
+          // is the deck size minus the initial hand plus one. This overstates
+          // the value if there are "+N card" cards in play, but it's the whole
+          // average is an imperfect estimate anyway.
+          coins = Math.floor(Math.max(0, (this.deck_size - 5) / 5));
+          break;
+
+        case "Bank":
+          bankCount = count;
+          coins = 0;
+          break;
+
+        default:
+          coins = card.getCoinCount();
+          break;
+        }
+        var count = this.card_counts[cardName];
+        totalCount += count;
+        totalCoins += coins * count;
+      }
+    }
+    if (bankCount) {
+      // Avg number of treasure cards in a hand with a banks occupying one slot;
+      // therefore $1 for the bank itself, plus the avg. number of treasure
+      // cards in the other four cards.
+      var treasureAvg = 1 + 4 * ((totalCount - 1) / this.deck_size);
+      totalCoins += treasureAvg * bankCount;
+    }
+    var avgCoinsPerCard = totalCoins / this.deck_size;
+    var avgCoinsPerHand = 5 * avgCoinsPerCard;
+    this.set('avgHand', avgCoinsPerHand.toFixed(1));
+  };
+
   rewriteTree(function() {
     var ptab = $('#playerDataTable')[0];
     var row1 = addRow(ptab, self.classFor, '<td id="' + self.idFor('active') +
@@ -523,18 +567,18 @@ function Player(name, num) {
     };
 
     var fields = new FieldGroup({idSource: self, findInsert: fieldInsertPos,
-      keyClass: 'playerDataKey', valueClass: 'playerDataValue'});
+      keyClass: 'playerDataKey', valueClass: 'playerDataValue',
+      ignoreUnknown: this.isTrash});
     self.fields = fields;
 
     if (self.isTrash) {
       fields.add('deck', {label: "Cards", initial: self.getDeckString()});
-    }
-    fields.add('score', {initial: self.getScore(), valueClass: 'scoreValue'});
-    if (!self.isTrash) {
-      fields.add('deck', {initial: self.getDeckString()});
     } else {
-      fields.setVisible('score', false);
+      fields.add('score', {initial: self.getScore(), valueClass: 'scoreValue'});
+      fields.add('deck', {initial: self.getDeckString()});
+      fields.add('avgHand', {label: 'Avg $/Hand', prefix: '$' });
     }
+    self.computeAverageHand();
     fields.add('otherCards', {label: 'Other Cards',
       initial: self.otherCardsHTML(), tag: 'span',
       isVisible: fieldInvisibleIfEmpty});
@@ -1951,13 +1995,14 @@ function handle(doc) {
       updateDeck();
     }
 
-  } catch (err) {
-    console.log(doc);
-    var error = '';
-    if (doc.innerText != undefined) {
-      error += "On '" + doc.innerText + "': ";
-    }
-    handleError("Javascript exception: " + debugString(err));
+//  } catch (err) {
+//    console.log(doc);
+//    var error = '';
+//    if (doc.innerText != undefined) {
+//      error += "On '" + doc.innerText + "': ";
+//    }
+//    handleError("Javascript exception: " + debugString(err));
+  } finally {
   }
 }
 
