@@ -1959,7 +1959,7 @@ function maybeWatchTradeRoute() {
 }
 
 function handle(doc) {
-  // Ignore DOM events when we are rewritting the tree; see rewriteTree().
+  // Ignore DOM events when we are rewriting the tree; see rewriteTree().
   if (rewritingTree > 0) return;
 
   // When the lobby screen is built, make sure point tracker settings are used.
