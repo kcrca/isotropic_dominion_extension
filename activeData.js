@@ -13,6 +13,11 @@ var lastTime;
 
 activeDataSetupCards();
 
+function activeDataColumn(player) {
+  return '<td id="' + player.idFor('active') +
+      '" class="activePlayerData rowStretch"></td>';
+}
+
 function activeDataOption() {
   var trackOption = $('<input id="activeDataOption" type="checkbox"/>');
   trackOption.attr('checked', tracking_active_data);

@@ -526,11 +526,12 @@ function Player(name, num) {
 
   rewriteTree(function() {
     var ptab = $('#playerDataTable')[0];
-    var row1 = addRow(ptab, self.classFor, '<td id="' + self.idFor('active') +
-        '" class="activePlayerData rowStretch"></td>' + '<td id="' +
-        self.idFor('mark') + '" class="rowStretch markPlace"></td>' +
-        '<td id="' + self.idFor('name') +
-        '" class="playerDataName" rowspan="0" nowrap>' + self.name + '</td>');
+    var row1 = addRow(ptab, self.classFor,
+        activeDataColumn(self) + '<td id="' + self.idFor('mark') +
+            '" class="rowStretch markPlace"></td>' + '<td id="' +
+            self.idFor('name') +
+            '" class="playerDataName" rowspan="0" nowrap>' + self.name +
+            '</td>');
     row1.attr('id', self.idFor('firstRow'));
 
     var stetchCells = row1.children('.rowStretch');
