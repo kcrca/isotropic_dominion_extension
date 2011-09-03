@@ -456,11 +456,12 @@ function activeDataStop() {
 function activeDataHandleCounts(elems, text) {
   // Handle lines like "You play a Foo", or "You play a Silver and 2 Coppers."
   // But ignore "You trash xyz from your play area" after you buy a Mint.
-  if (text.match(/ plays? /) && !text.match(/ play area/)) {
-    var parts = text.split(/,|,?\s+and\b/);
+  var match;
+  if ((match = text.match(/ plays? (.*)/)) && !text.match(/ play area/)) {
+    var parts = match[1].split(/,|,?\s+and\b/);
     var elemNum = 0;
     for (var i = 0; i < parts.length; i++) {
-      var match = /\b(an?|the|[0-9]+) (.*)/.exec(parts[i]);
+      match = /\b(an?|the|[0-9]+) (.*)/.exec(parts[i]);
       if (match == null) continue;
       var cardName = elems[elemNum++].innerText;
       activeData.cardHasBeenPlayed(match[1], cardName, !text.match(/^\.\.\. /));
