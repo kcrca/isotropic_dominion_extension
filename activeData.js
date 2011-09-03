@@ -490,7 +490,7 @@ function maybeHandleIsland(elems, text_arr, text) {
 
 //noinspection JSUnusedLocalSymbols
 function maybeHandleCoppersmith(elems, text_arr, text) {
-  var match = text.match(/ Copper is now worth \$([0-9]+)/);
+  var match = text.match(/ Copper (?:is now )?worth \$([0-9]+)/);
   if (match) {
     activeData.set('copper', parseInt(match[1]));
     return true;
