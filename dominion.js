@@ -2003,7 +2003,7 @@ function handle(doc) {
         if (elems[elem].innerText == "Duke") show_duchy_count = true;
       }
       if (tablePlayer) {
-        maybeWatchTradeRoute(doc);
+        maybeWatchTradeRoute();
       }
     }
 
@@ -2036,14 +2036,13 @@ function handle(doc) {
       updateDeck();
     }
 
-//  } catch (err) {
-//    console.log(doc);
-//    var error = '';
-//    if (doc.innerText != undefined) {
-//      error += "On '" + doc.innerText + "': ";
-//    }
-//    handleError("Javascript exception: " + debugString(err));
-  } finally {
+  } catch (err) {
+    console.log(doc);
+    var error = '';
+    if (doc.innerText != undefined) {
+      error += "On '" + doc.innerText + "': ";
+    }
+    handleError("Javascript exception: " + debugString(err));
   }
 }
 
