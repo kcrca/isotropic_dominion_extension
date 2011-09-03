@@ -13,11 +13,13 @@ var player_count = 0;
 var text_mode;
 
 // pseudo-player for Trash card counts
-var trashPlayer;
+var tablePlayer;
 
 // Map that contains the cards in the supply piles; other cards need to be shown
 // shown in other ways.
 var supplied_cards;
+
+var maxTradeRoute;
 
 // Places to print number of cards and points.
 var deck_spot;
@@ -162,13 +164,13 @@ function Player(name, num) {
   this.deck_size = 10;
   this.icon = undefined;
 
-  this.isTrash = name == "Trash";
+  this.isTable = name == "Table";
 
   // The set of "other" cards -- ones that aren't in the supply piles
   this.otherCards = {};
 
-  if (this.isTrash) {
-    this.idPrefix = "trash";
+  if (this.isTable) {
+    this.idPrefix = "table";
   } else {
     this.idPrefix = "player" + num;
   }
@@ -182,8 +184,8 @@ function Player(name, num) {
   // Define the general player class used for CSS styling
   if (name == "You") {
     this.classFor = "you";
-  } else if (this.isTrash) {
-    this.classFor = "trash";
+  } else if (this.isTable) {
+    this.classFor = "table";
   } else {
     // CSS cycles through PLAYER_CLASS_COUNT display classes
     this.classFor = "playerClass" + ((num - 1) % PLAYER_CLASS_COUNT + 1);
@@ -197,7 +199,7 @@ function Player(name, num) {
   this.card_counts = { "Copper" : 7, "Estate" : 3 };
   this.cards_aside = {};
 
-  if (this.isTrash) {
+  if (this.isTable) {
     this.special_counts = {};
     this.card_counts = {};
     this.deck_size = 0;
@@ -407,6 +409,7 @@ function Player(name, num) {
     count = parseInt(count);
     this.deck_size = this.deck_size + count;
     activeDataGainCard(this, trashing, card, count);
+    maybeWatchTradeRoute();
   };
 
   // This player has resigned; remember it.
@@ -465,6 +468,12 @@ function Player(name, num) {
   this.set = function(field, value) {
     rewriteTree(function () {
       self.fields.set(field, value);
+    });
+  };
+
+  this.add = function(name, params) {
+    rewriteTree(function() {
+      self.fields.add(name, params);
     });
   };
 
@@ -529,11 +538,13 @@ function Player(name, num) {
     if (self.icon != undefined) {
       playerCell.children().first().before(self.icon.cloneNode(true))
     }
-    var seenWide = false;
+    var seenWide = undefined;
     var firstWide = 'otherCards';
     var prev;
     var fieldInsertPos = function(field) {
-      seenWide |= (field.name == firstWide);
+      if (field.name == firstWide) {
+        seenWide = fields.order.length;
+      }
 
       var keyCell = $('<td/>').append(field.keyNode);
       var valCell = $('<td/>').append(field.valueNode);
@@ -557,7 +568,7 @@ function Player(name, num) {
       });
 
       var row = $('<tr/>').addClass(self.classFor);
-      if (!seenWide) {
+      if (!seenWide || $.inArray(field.name, fields.order) < seenWide) {
         incrementRowspan(playerCell);
         row.append(cells);
       } else {
@@ -574,26 +585,28 @@ function Player(name, num) {
     var fields = new FieldGroup({idSource: self, tag: 'span',
       findInsert: fieldInsertPos,
       keyClass: 'playerDataKey', valueClass: 'playerDataValue',
-      ignoreUnknown: self.isTrash});
+      ignoreUnknown: self.isTable});
     self.fields = fields;
 
-    if (self.isTrash) {
-      fields.add('deck', {label: "Cards", initial: self.getDeckString()});
+    if (self.isTable) {
+      fields.add('deck', {label: "Trash", initial: self.getDeckString()});
+      fields.prepare('tradeRoute', {label: "Trade Route", prefix: '$',
+        initial: 0 });
     } else {
       fields.add('score', {initial: self.getScore(), valueClass: 'scoreValue'});
       fields.add('deck', {initial: self.getDeckString()});
       fields.add('avgHand', {label: 'Avg $/Hand', prefix: '$' });
       fields.add('pirateShipTokens', {label: 'Pirate ship', prefix: '$',
-            initial: 0, isVisible: fieldInvisibleIfZero});
+        initial: 0, isVisible: fieldInvisibleIfZero});
     }
     self.computeAverageHand();
-    fields.add('otherCards', {label: 'Other Cards',
-      initial: self.otherCardsHTML(), isVisible: fieldInvisibleIfEmpty});
+    fields.add('otherCards',
+        {label: self.isTable ? 'Other Cards' : 'Other Trash',
+          initial: self.otherCardsHTML(), isVisible: fieldInvisibleIfEmpty});
     fields.setVisible('avgHand', false);
   });
 }
 
-// Create a new "player" whose "deck" is the trash.
 function stateStrings() {
   var state = '';
   for (var player in players) {
@@ -774,14 +787,14 @@ function maybeRunInfoWindowTests(table) {
     player.testSeenIslandMat = false;
   }
 
-  var player = trashPlayer;
-  setCurrentPlayer(trashPlayer);
+  var player = tablePlayer;
+  setCurrentPlayer(tablePlayer);
 
   var tests = [
     { pat: /^Trash:\(?(nothing|\d+)/,
       act: function(row, match) {
         var count = parseInfoNumber(match[1]);
-        checkValue(count, trashPlayer.deck_size, row.text());
+        checkValue(count, tablePlayer.deck_size, row.text());
       }
     },
     { pat: /^—— (.*) ——/,
@@ -1094,7 +1107,7 @@ function handleGainOrTrash(player, elems, text, multiplier) {
         player.gainCard(elems[elem], num);
         // If Thief is used to gain the trashed card, take it back out
         if (text.match(/ gain(s|ed)? the trashed /)) {
-          trashPlayer.gainCard(elems[elem], -num);
+          tablePlayer.gainCard(elems[elem], -num);
         }
       }
     }
@@ -1357,8 +1370,8 @@ function allPlayers(func) {
   for (var playerName in players) {
     func(players[playerName]);
   }
-  if (trashPlayer) {
-    func(trashPlayer);
+  if (tablePlayer) {
+    func(tablePlayer);
   }
 }
 
@@ -1506,6 +1519,7 @@ function initialize(doc) {
   announced_error = false;
   next_log_line_num = 0;
   testOnlyPlayerScore = false;
+  maxTradeRoute = undefined;
 
   // Figure out which cards are in supply piles
   supplied_cards = {};
@@ -1573,12 +1587,9 @@ function initialize(doc) {
   }
   player_re = '(' + other_player_names.join('|') + ')';
 
-  trashPlayer = new Player('Trash', i);
-  // The trash player is created first but should be listed last.
-  var trashRow = $('#' + trashPlayer.idFor('firstRow'));
-  $('.trash').each(function() {
-    trashRow.closest('table').append($(this));
-  });
+  // Create a new "player" representing the playing table, mostly the trash.
+  tablePlayer = new Player('Table', i);
+  maybeWatchTradeRoute();
 
   if (!disabled) {
     updateScores();
@@ -1931,6 +1942,21 @@ function rewriteTree(func) {
   }
 }
 
+function maybeWatchTradeRoute() {
+  if (!tablePlayer) return;
+
+  var stars = $('#supply').find('span.trade-route-star');
+  rewriteTree(function () {
+    if (stars.length > 0 && !maxTradeRoute) {
+      maxTradeRoute = stars.length;
+      tablePlayer.add('tradeRoute', {suffix: '/' + maxTradeRoute});
+    }
+    if (maxTradeRoute) {
+      tablePlayer.set('tradeRoute', maxTradeRoute - stars.length);
+    }
+  });
+}
+
 function handle(doc) {
   // Ignore DOM events when we are rewritting the tree; see rewriteTree().
   if (rewritingTree > 0) return;
@@ -1974,6 +2000,9 @@ function handle(doc) {
         if (elems[elem].innerText == "Vineyard") show_action_count = true;
         if (elems[elem].innerText == "Fairgrounds") show_unique_count = true;
         if (elems[elem].innerText == "Duke") show_duchy_count = true;
+      }
+      if (tablePlayer) {
+        maybeWatchTradeRoute(doc);
       }
     }
 

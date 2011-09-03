@@ -268,11 +268,11 @@ function activeDataGainCard(player, trashing, card, count) {
   }
 
   // If the count is going down, usually player is trashing a card.
-  if (!player.isTrash && count < 0 && trashing) {
-    trashPlayer.gainCard(card, -count);
+  if (!player.isTable && count < 0 && trashing) {
+    tablePlayer.gainCard(card, -count);
   }
-  if (trashing || player.isTrash) {
-    updateDeck(trashPlayer);
+  if (trashing || player.isTable) {
+    updateDeck(tablePlayer);
   }
 }
 

@@ -57,7 +57,7 @@
     visibility: hidden;
 }
 
-.trash, .trash * {
+.table, .table * {
     background: #f2f2f2;
 }
 
@@ -127,7 +127,7 @@
     background: white;
 }
 
-.textMode #supply td.trash + td:empty {
+.textMode #supply td.table + td:empty {
     width: 1em;
 }
 
@@ -241,7 +241,7 @@ td.kingdom-column, td.basic-column {
     white-space: nowrap;
 }
 
-.textMode #supply td.trash + td:empty {
+.textMode #supply td.table + td:empty {
     width: 2em;
 }
 

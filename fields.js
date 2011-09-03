@@ -208,12 +208,18 @@ function FieldGroup(params) {
   $.extend(fieldDefaults, fieldParams);
 
   var fields = {};
+  var prepared = {};
 
   // Handle an unknown field (add or ignore). Returns true if the code can
   // proceed assuming the field exists; false means it should proceed as if it
   // doesn't exist.
   this.handleUnknownField = function (name) {
     if (fields[name]) return true;
+    if (prepared[name]) {
+      this.add(name, {});
+      delete prepared[name];
+      return true;
+    }
     if (this.ignoreUnknown) return false;
     this.add(name);
     return true;
@@ -225,9 +231,23 @@ function FieldGroup(params) {
 
     this.order.push(name);
     var toPass = {};
-    $.extend(toPass, fieldDefaults, params);
+    $.extend(toPass, fieldDefaults, this.preparedParams(name), params);
     fields[name] = new Field(name, this, toPass);
   };
+  
+  // Prepare to add a field to this group. It will get added automatically with
+  // the provided parameters if it is every used in get, set, etc.
+  this.prepare = function(name, params) {
+    if (fields[name]) return;
+    prepared[name] = params;
+    this.order.push(name);
+  };
+  
+  this.preparedParams = function(name) {
+    var params = prepared[name];
+    if (!params) params = {};
+    return params;
+  }
 
   // Set the value of a field; see Field.set()
   this.set = function(name, value) {
@@ -279,13 +299,11 @@ function FieldGroup(params) {
   this.findInsert = function(field) {
     var insertion = {};
 
-    for (var i = 0; i < this.order.length; i++) {
-      if (this.order[i] == field.name) break;
-    }
+    var i = $.inArray(field.name, this.order);
 
     // Find the previous field that has a cell.
     var prev;
-    if (i < this.order.length) {
+    if (i >= 0) {
       for (var p = i - 1; p >= 0; p--) {
         var prevField = fields[this.order[p]];
         if (prevField.trailingNode) {
