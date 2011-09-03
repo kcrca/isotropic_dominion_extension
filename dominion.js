@@ -1695,8 +1695,8 @@ function removePlayerData() {
 }
 
 function stopCounting() {
-  deck_spot.innerHTML = "exit";
-  points_spot.innerHTML = "faq";
+  if (deck_spot) deck_spot.innerHTML = "exit";
+  if (points_spot) points_spot.innerHTML = "faq";
 
   localStorage.removeItem("log");
   activeDataStop();

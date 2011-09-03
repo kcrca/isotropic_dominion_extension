@@ -282,6 +282,7 @@ function activeDataGainCard(player, trashing, card, count) {
 }
 
 function activeDataMaybeRunTests() {
+  activeDataTestSanity();
   // Many tests will fail if the user is waiting for another player to act, or
   // if the user is being prompted for a choice. When the log entry is added, we
   // can't know whether this is *about* to happen, so we have a timeout: If some
@@ -297,15 +298,19 @@ function activeDataSetupTests() {
   window.clearTimeout(activeValueTiemout);
 }
 
+function runActiveDataTests() {
+  return last_player != null && started && tracking_active_data &&
+      !rewritingTree;
+}
+
 function activeDataLiveTests() {
-  if (!tracking_active_data) return;
-  if (rewritingTree) return;
-  if (!started) return;
-  activeDataTestValuesVsYou();
-  activeDataTestSanity();
+  if (runActiveDataTests()) {
+    activeDataTestValuesVsYou();
+  }
 }
 
 function activeDataTestSanity() {
+  if (!runActiveDataTests()) return;
   var values = activeData.getValues();
   var negatives = [];
   for (var name in values) {
@@ -315,6 +320,8 @@ function activeDataTestSanity() {
   }
   if (negatives.length > 0) {
     alert("Negative values in active data: " + negatives.join(", "));
+  } else {
+    console.log('activeData', "sanity checks passed for " + last_player.name);
   }
 }
 
