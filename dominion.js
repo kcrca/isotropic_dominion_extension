@@ -543,7 +543,7 @@ function Player(name, num) {
     var prev;
     var fieldInsertPos = function(field) {
       if (field.name == firstWide) {
-        seenWide = fields.order.length;
+        seenWide = $.inArray(field.name, fields.order);
       }
 
       var keyCell = $('<td/>').append(field.keyNode);
@@ -575,6 +575,7 @@ function Player(name, num) {
         var cell = $('<td/>').attr('colspan', 3).addClass('playerOtherCards');
         row.append(cell);
         cell.append(field.keyNode);
+        field.keyNode.after(field.valueNode);
       }
 
       var after = (prev ? prev : $('#' + self.idFor('firstRow')));
@@ -601,9 +602,8 @@ function Player(name, num) {
     }
     self.computeAverageHand();
     fields.add('otherCards',
-        {label: self.isTable ? 'Other Cards' : 'Other Trash',
+        {label: self.isTable ? 'Other Trash' : 'Other Cards',
           initial: self.otherCardsHTML(), isVisible: fieldInvisibleIfEmpty});
-    fields.setVisible('avgHand', false);
   });
 }
 
