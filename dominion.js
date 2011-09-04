@@ -1424,14 +1424,10 @@ function setupPlayerArea() {
       });
     }
   }
-
-  activeDataOption();
 }
 
 // As needed, set per-card count columns.
 function maybeSetupCardCounts() {
-  if (!optionSet('show_card_counts')) return;
-
   rewriteTree(function () {
     if (text_mode) {
       setupPerPlayerTextCardCounts();
@@ -1439,6 +1435,7 @@ function maybeSetupCardCounts() {
       setupPerPlayerImageCardCounts('kingdom');
       setupPerPlayerImageCardCounts('basic');
     }
+    updateCardCountVisibility();
   });
 }
 
@@ -1923,6 +1920,8 @@ function forgetGUIMode() {
 // cases it has the "playing" class, which allows CSS to tell the difference
 // between being in the lobby vs. playing an actual game.
 function discoverGUIMode() {
+  if (inLobby()) return;
+
   $('#chat a[href^="/mode/"').each(function() {
     // The link is to the "text" mode when it's in image mode and vice versa.
     text_mode = $(this).text().indexOf("text") < 0;
@@ -1958,6 +1957,31 @@ function maybeWatchTradeRoute() {
   });
 }
 
+function updateCardCountVisibility() {
+  var countCols = $('.playerCardCountCol');
+  if (optionButtons['show_card_counts'].attr('checked')) {
+    countCols.show();
+  } else {
+    countCols.hide();
+  }
+}
+
+function addOptionHandler(name, updateVisibility) {
+  var button = optionButtons[name];
+  button.change(updateVisibility);
+  button.change();
+}
+
+function addOptionControls(game) {
+  var holder = $('<tr id="optionPanelHolder"/>');
+  var controls = optionBuildControls('td', false);
+  controls.attr('colspan', 2);
+  holder.append(controls);
+  game.after(holder);
+  addOptionHandler('show_card_counts', updateCardCountVisibility);
+  addOptionHandler('show_active_data', activeDataUpdateVisibility);
+}
+
 function handle(doc) {
   // Ignore DOM events when we are rewriting the tree; see rewriteTree().
   if (rewritingTree > 0) return;
@@ -1966,6 +1990,17 @@ function handle(doc) {
   if (doc.className && doc.className == "constr") {
     $('#tracker').attr('checked', true).attr('disabled', true);
     $('#autotracker').val('yes').attr('disabled', true);
+  }
+
+  var game = $('#game');
+  if (game.length > 0) {
+    var optPanelHolder = $('#optionPanelHolder');
+    if (optPanelHolder.length == 0) {
+      addOptionControls(game);
+    } else if (game.next()[0].id != optPanelHolder[0].id) {
+      // If something has been added so it isn't where it should be, move it.
+      game.after(optPanelHolder);
+    }
   }
 
   try {
@@ -2096,7 +2131,6 @@ function enterLobby() {
   }
 
   my_icon = $('#log img').first()[0];
-
 }
 
 setTimeout("enterLobby()", 600);

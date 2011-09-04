@@ -13,12 +13,13 @@
        "matches": [ "http://*.dominion-point-counter.appspot.com/debug*" ]
      },
      {
-       "js": [ "jquery.js", "options.js" ],
+       "js": [ "jquery.js", "earlyPage.js", "options.js" ],
        "css": [ "playerData.css" ],
        "matches": [ "http://dominion.isotropic.org/" ]
      },
      {
-       "js": [ "login.js" ],
+       "js": [ "login.js", "jquery.js", "earlyPage.js", "options.js" ],
+       "css": [ "playerData.css" ],
        "matches": [ "http://dominion.isotropic.org/*loggedin*" ]
      }
    ],

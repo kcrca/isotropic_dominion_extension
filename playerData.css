@@ -8,7 +8,7 @@
 
 /* !! The card count column widths are different for basic and kingdom cards. */
 
-#pointCounterOptions,
+#optionPanel,
 .you, .you *, #header > :not(.lobby) {
     background-color: #dbf8db;
 }
@@ -157,7 +157,6 @@ html {
     font: bold italic;
 }
 
-
 /*
  * Styles that apply only to image mode -- where needed they require a parent
  * node with the id "imageMode". Classes and ID's that exist only in image mode
@@ -181,8 +180,13 @@ td.kingdom-column, td.basic-column {
     display: inline-block;
 }
 
-.imageMode #game {
+.imageMode #game, .imageMode #optionPanelHolder {
     display: table-row !important;
+}
+
+.imageMode #optionPanel {
+    display: table-cell;
+    width: 100%;
 }
 
 .imageMode #supply {
@@ -253,13 +257,31 @@ td.kingdom-column, td.basic-column {
  * Styles for the options.
  */
 
-#pointCounterOptions {
-	padding: 1px 1em 1.75em;
+#optionPanel {
+    padding: 0.5em;
+    width: 100%;
 }
 
-#pointCounterOptions > label {
-	display: block;
+#optionPanel, #optionPanelHolder {
+    display: block;
 }
 
-#pointCounterOptions .optionNote {
+.playing #optionPanelHolder {
+    display: table-row;
+}
+
+.playing #optionPanel {
+    display: table-cell;
+}
+
+#optionPanel > label {
+    display: block;
+}
+
+#optionPanel .optionNote {
+    font-style: italic;
+}
+
+.playing .notInGame {
+    display: none !important;
 }

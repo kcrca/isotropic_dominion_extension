@@ -18,32 +18,14 @@ function activeDataColumn(player) {
       '" class="activePlayerData rowStretch"></td>';
 }
 
-function activeDataOption() {
-  var trackOption = $('<input id="activeDataOption" type="checkbox"/>');
-  trackOption.attr('checked', tracking_active_data);
-  trackOption.change(function() {
-    tracking_active_data = trackOption.attr('checked');
-    var activePlayerData = $('.activePlayerData');
-    if (tracking_active_data) {
-      activePlayerData.show();
-    } else {
-      activePlayerData.hide();
-    }
-    debug['activeData'] = tracking_active_data;
-  });
-  $('#playerDataTable').each(function() {
-    $(this).before(trackOption);
-    trackOption.after($('<label for="activeDataOption"/>')
-        .text("Track active data"));
-  });
-  trackOption.change();
-}
-
-function removeActiveDataOption() {
-  $('#activeDataOption').each(function() {
-    $(this).next().remove();
-    $(this).remove();
-  })
+function activeDataUpdateVisibility() {
+  tracking_active_data = optionButtons['show_active_data'].attr('checked');
+  var activePlayerData = $('.activePlayerData');
+  if (tracking_active_data) {
+    activePlayerData.show();
+  } else {
+    activePlayerData.hide();
+  }
 }
 
 isCopperValueVisible = function(field) {
@@ -407,13 +389,13 @@ function activeDataPlace() {
   rewriteTree(function() {
     cell.empty();
     cell.append(activeData.top());
+    activeDataUpdateVisibility();
   });
 }
 
 // Remove the active player data from the page.
 function removeActivePlayerData() {
   activeData.top().remove();
-  removeActiveDataOption();
 }
 
 function activeDataStartTurn() {

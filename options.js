@@ -1,6 +1,14 @@
-var optionButtons;
+// All the option buttons.
+var optionButtons = {};
+var inGameName = ['show_card_counts', 'show_active_data'];
+var inGame = {};
+(function() {
+  for (var i = 0; i < inGameName.length; i++) {
+    inGame[inGameName[i]] = true;
+  }
+})();
 
-function setupOption(name, default_value) {
+function optionSetup(name, default_value) {
   if (localStorage[name] == undefined) {
     localStorage[name] = default_value;
   }
@@ -11,58 +19,68 @@ function optionSet(name) {
   return localStorage[name] == "true";
 }
 
-function loadOptions() {
-  setupOption("allow_disable", true);
-  setupOption("status_announce", false);
-  setupOption('show_card_counts', true);
+function optionLoadAll() {
+  optionSetup("allow_disable", true);
+  optionSetup("status_announce", false);
+  optionSetup('show_card_counts', true);
+  optionSetup('show_active_data', false);
 }
 
-function generateOptionButton(name, desc) {
+function optionGenerateButton(name, desc) {
   var control = $('<label/>').attr('for', name);
   var button = $('<input type="checkbox"/>').attr('id', name).attr('name',
       name);
-  button.change(saveOption);
+  button.change(optionSave);
   control.append(button).append(desc);
-  button.attr('checked', localStorage[name]);
-  optionButtons.push(button);
+  button.attr('checked', optionSet(name));
+  optionButtons[name] = button;
+  var nextAll = control.nextAll();
+  var andSelf = nextAll.andSelf();
+  andSelf.addClass(inGame[name] ? 'inGame' : 'notInGame');
   return control;
 }
 
-function generateOption(name, under, option_desc, extra_desc) {
+function optionGenerate(name, under, option_desc, extra_desc) {
   if (extra_desc) {
     option_desc += ' <span class="optionNote">(' + extra_desc + ')</span>';
   }
-  var button = generateOptionButton(name, option_desc);
+  var button = optionGenerateButton(name, option_desc);
   under.append(button);
   return button;
 }
 
-function saveOption(evt) {
+function optionSave(evt) {
   var button = $(evt.target);
   var name = button.attr('id');
   localStorage[name] = button.attr('checked');
 }
 
-function insertOptions(under) {
-  optionButtons = [];
+function optionBuildControls(tag, showTitle) {
+  showTitle = showTitle != undefined ? showTitle : true;
+  tag = tag || 'div';
 
-  var div = $('<div/>').attr('id', 'pointCounterOptions');
-  div.append('<h3>Dominion Point Counter Options</h3>');
-  generateOption('allow_disable', div,
+  var div = $('<' + tag + '/>').attr('id', 'optionPanel');
+  if (showTitle) {
+    div.append('<h3>Dominion Point Counter Options</h3>');
+  }
+
+  optionButtons = {};
+  optionGenerate('allow_disable', div,
       "Allow opponents to disable point counter with !disable.");
-  generateOption('status_announce', div,
+  optionGenerate('status_announce', div,
       "Change lobby status to announce you use point counter.",
       "Mandatory if disabling is not allowed.");
-  generateOption('show_card_counts', div,
+  optionGenerate('show_card_counts', div,
       "Show every player's card counts for each card");
-  under.append(div);
+  optionGenerate('show_active_data', div,
+      "Show current data for the active player", "Beta feature");
 
-  loadOptions();
+  optionLoadAll();
 
-  var disableButton = $('#allow_disable');
-  var annouceButton = $('#status_announce');
+  var disableButton = optionButtons['allow_disable'];
+  var annouceButton = optionButtons['status_announce'];
 
-  $('#allow_disable').change(function() {
+  disableButton.change(function() {
     if (disableButton.attr('checked')) {
       annouceButton.attr('disabled', false);
     } else {
@@ -71,13 +89,14 @@ function insertOptions(under) {
     }
   });
 
-  for (var i = 0; i < optionButtons.length; i++) {
-    optionButtons[i].change();
+  // Make each button act as if changed to its current value to trigger effects.
+  for (var name in optionButtons) {
+    optionButtons[name].change();
   }
+  return div;
 }
 
-$(document).ready(function() {
-  if ($('body > p.info').length > 0) {
-    insertOptions($(document.body))
-  }
-});
+function optionUpdateVisibility() {
+  var playing = $('#body.playing').length > 0;
+
+}
