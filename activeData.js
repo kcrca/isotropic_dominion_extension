@@ -244,7 +244,7 @@ function activeDataStartHandle(doc) {
   }
 }
 
-function activeDataGainCard(player, trashing, cardName, count) {
+function activeDataGainCard(player, elem, count, trashing, cardName) {
   trashing = trashing == undefined ? true : trashing;
   if (!supplied_cards[cardName]) {
     player.addOtherCard(cardName, count);
@@ -252,7 +252,7 @@ function activeDataGainCard(player, trashing, cardName, count) {
 
   // If the count is going down, usually player is trashing a card.
   if (!player.isTable && count < 0 && trashing) {
-    tablePlayer.gainCard(cardName, -count);
+    tablePlayer.gainCard(elem, -count);
   }
   if (trashing || player.isTable) {
     updateDeck(tablePlayer);

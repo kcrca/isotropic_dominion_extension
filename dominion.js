@@ -405,7 +405,6 @@ function Player(name, num) {
     // You can't gain or trash cards while possessed.
     if (possessed_turn && this == last_player) return;
 
-    last_gain_player = this;
     count = parseInt(count);
     this.deck_size = this.deck_size + count;
 
@@ -414,7 +413,9 @@ function Player(name, num) {
     this.recordSpecialCards(elem, count);
     this.recordCards(singular_card_name, count);
 
-    activeDataGainCard(this, trashing, singular_card_name, count);
+    activeDataGainCard(this, elem, count, trashing, singular_card_name);
+
+    last_gain_player = this;
   };
 
   // This player has resigned; remember it.
