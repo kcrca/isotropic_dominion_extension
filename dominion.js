@@ -477,6 +477,12 @@ function Player(name, num) {
     });
   };
 
+  this.change = function(name, params) {
+    rewriteTree(function() {
+      self.fields.change(name, params);
+    });
+  };
+
   this.changeField = function(field, delta) {
     this.set(field, this.get(field) + delta);
   };
@@ -592,8 +598,8 @@ function Player(name, num) {
 
     if (self.isTable) {
       fields.add('deck', {label: "Trash", initial: self.getDeckString()});
-      fields.prepare('tradeRoute', {label: "Trade Route", prefix: '$',
-        initial: 0 });
+      fields.add('tradeRoute', {label: "Trade Route", prefix: '$',
+        initial: 0, visible: false });
     } else {
       fields.add('score', {initial: self.getScore(), valueClass: 'scoreValue'});
       fields.add('deck', {initial: self.getDeckString()});
@@ -1956,7 +1962,8 @@ function maybeWatchTradeRoute() {
   rewriteTree(function () {
     if (stars.length > 0 && !maxTradeRoute) {
       maxTradeRoute = stars.length;
-      tablePlayer.add('tradeRoute', {suffix: '/' + maxTradeRoute});
+      tablePlayer.change('tradeRoute',
+          {suffix: '/' + maxTradeRoute, visible: true});
     }
     if (maxTradeRoute) {
       tablePlayer.set('tradeRoute', maxTradeRoute - stars.length);
