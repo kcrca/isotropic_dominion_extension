@@ -82,23 +82,28 @@ function Field(name, fieldGroup, params) {
     if (self.valueNode) return;
 
     var id = self.idFor(self.name);
-    self.keyNode = $('<' + self.resolveStr(self.tag) + '/>');
-    self.keyNode.attr('id', id + 'Key');
-    if (self.keyClass) {
-      self.keyNode.addClass(self.resolveStr(self.keyClass));
+
+    function makeNode(which) {
+      var node = $('<' + self.resolveStr(self.tag) + '/>');
+      node.attr('id', id + which);
+      var classParam = self[which + 'Class'];
+      if (classParam) {
+        node.addClass(self.resolveStr(classParam));
+      }
+      return node;
     }
+
+    self.keyNode = makeNode('key');
     self.keyNode.text(self.resolveStr(self.label) + ': ');
-    self.valueNode = $('<' + self.resolveStr(self.tag) + ' id="' + id + '"/>');
-    self.valueNode.attr('id', id + 'Value');
-    if (self.valueClass) {
-      self.valueNode.addClass(self.resolveStr(self.valueClass));
-    }
+    self.valueNode = makeNode('value');
+
     self.fieldGroup.insertField(self);
     // If inserting didn't also insert the value node, put it after the key.
     if (self.valueNode.parent().length == 0 &&
         self.valueNode.prev().length == 0) {
       self.keyNode.after(self.valueNode);
     }
+
     updateVisibility();
   };
 
@@ -125,15 +130,6 @@ function Field(name, fieldGroup, params) {
       self.visibleBy(self, node);
     }
   };
-
-  // Set the value for this field. The prefix and suffix (if any) are added.
-  this.set = function(value) {
-    this.valueType = typeof(value);
-    maybeBuildCells();
-    this.valueNode.html(this.prefix + String(value) + this.suffix);
-    this.setVisible(this.isVisible(this));
-  };
-
   // Get the value for this field. The prefix and suffix (if any) are dropped.
   this.get = function() {
     maybeBuildCells();
@@ -155,6 +151,26 @@ function Field(name, fieldGroup, params) {
       return Number(val);
     default:
       return val;
+    }
+  };
+
+  // Set the value for this field. The prefix and suffix (if any) are added.
+  this.set = function(value) {
+    this.valueType = typeof(value);
+    maybeBuildCells();
+    this.valueNode.html(this.prefix + String(value) + this.suffix);
+    this.setVisible(this.isVisible(this));
+  };
+
+  this.change = function(params) {
+    var value = this.get();
+    var orig = {};
+    $.extend(orig, this);
+    $.extend(this, params);
+    this.set(value);
+    if (params.visible) {
+      this.visible = orig.visible;
+      this.setVisible(params.visible);
     }
   };
 
@@ -208,18 +224,12 @@ function FieldGroup(params) {
   $.extend(fieldDefaults, fieldParams);
 
   var fields = {};
-  var prepared = {};
 
   // Handle an unknown field (add or ignore). Returns true if the code can
   // proceed assuming the field exists; false means it should proceed as if it
   // doesn't exist.
   this.handleUnknownField = function (name) {
     if (fields[name]) return true;
-    if (prepared[name]) {
-      this.add(name, {});
-      delete prepared[name];
-      return true;
-    }
     if (this.ignoreUnknown) return false;
     this.add(name);
     return true;
@@ -229,25 +239,20 @@ function FieldGroup(params) {
   this.add = function(name, params) {
     if (fields[name]) return;
 
-    this.order.push(name);
+    if ($.inArray(name, this.order) < 0) {
+      this.order.push(name);
+    }
     var toPass = {};
-    $.extend(toPass, fieldDefaults, this.preparedParams(name), params);
+    $.extend(toPass, fieldDefaults, params);
     fields[name] = new Field(name, this, toPass);
   };
-  
-  // Prepare to add a field to this group. It will get added automatically with
-  // the provided parameters if it is every used in get, set, etc.
-  this.prepare = function(name, params) {
-    if (fields[name]) return;
-    prepared[name] = params;
-    this.order.push(name);
+
+  // Get the value of a field; see Field.get()
+  this.get = function(name) {
+    if (this.handleUnknownField(name)) {
+      return fields[name].get();
+    }
   };
-  
-  this.preparedParams = function(name) {
-    var params = prepared[name];
-    if (!params) params = {};
-    return params;
-  }
 
   // Set the value of a field; see Field.set()
   this.set = function(name, value) {
@@ -256,10 +261,9 @@ function FieldGroup(params) {
     }
   };
 
-  // Get the value of a field; see Field.get()
-  this.get = function(name) {
+  this.change = function(name, params) {
     if (this.handleUnknownField(name)) {
-      return fields[name].get();
+      fields[name].change(params);
     }
   };
 
