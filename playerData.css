@@ -57,6 +57,7 @@
     visibility: hidden;
 }
 
+body.textMode [grown]:not(:empty),
 .table, .table * {
     background: #f2f2f2;
 }
