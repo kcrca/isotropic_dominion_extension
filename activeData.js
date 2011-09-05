@@ -423,6 +423,9 @@ function adjustActive(key, spec) {
 
 function activeDataInitialize() {
   activeData = new ActiveData();
+}
+
+function activeDataHandleFirstTurn() {
   activeData.setUsesPotions(supplied_cards['Potion'] != undefined);
 }
 

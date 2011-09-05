@@ -38,6 +38,7 @@ var show_unique_count = false;
 var show_duchy_count = false;
 var possessed_turn = false;
 var announced_error = false;
+var seen_first_turn = false;
 
 // Enabled by debugger when analyzing game logs.
 var debug_mode = false;
@@ -659,11 +660,29 @@ function maybeHandleResignation(node) {
   return false;
 }
 
+function maybeHandleFirstTurn() {
+  if (seen_first_turn) return;
+
+  seen_first_turn = true;
+
+  // It may be hidden during veto.
+  $('#playerDataTable').show();
+
+  // Figure out which cards are in supply piles
+  supplied_cards = {};
+  $("[cardname]").each(function() {
+    supplied_cards[$(this).attr("cardname")] = true;
+  });
+
+  maybeWatchTradeRoute();
+
+  activeDataHandleFirstTurn();
+}
+
 function maybeHandleTurnChange(node) {
   var text = node.innerText;
   if (text.indexOf("—") != -1) {
-    // It may be hidden during veto.
-    $('#playerDataTable').show();
+    maybeHandleFirstTurn();
 
     activeDataEndTurn();
 
@@ -1545,12 +1564,7 @@ function initialize(doc) {
   next_log_line_num = 0;
   testOnlyPlayerScore = false;
   maxTradeRoute = undefined;
-
-  // Figure out which cards are in supply piles
-  supplied_cards = {};
-  $("[cardname]").each(function() {
-    supplied_cards[$(this).attr("cardname")] = true;
-  });
+  seen_first_turn = false;
 
   last_gain_player = null;
   scopes = [];
@@ -1614,7 +1628,6 @@ function initialize(doc) {
 
   // Create a new "player" representing the playing table, mostly the trash.
   tablePlayer = new Player('Table', i);
-  maybeWatchTradeRoute();
 
   if (!disabled) {
     updateScores();
