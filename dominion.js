@@ -397,10 +397,10 @@ function Player(name, num) {
     return otherCards;
   };
 
-  this.gainCard = function(card, count, trashing) {
+  this.gainCard = function(elem, count, trashing) {
     if (debug_mode) {
       $('#log').children().eq(-1).before('<div class="gain_debug">*** ' + name +
-          " gains " + count + " " + card.innerText + "</div>");
+          " gains " + count + " " + elem.innerText + "</div>");
     }
     // You can't gain or trash cards while possessed.
     if (possessed_turn && this == last_player) return;
@@ -408,8 +408,13 @@ function Player(name, num) {
     last_gain_player = this;
     count = parseInt(count);
     this.deck_size = this.deck_size + count;
-    activeDataGainCard(this, trashing, card, count);
-    maybeWatchTradeRoute();
+
+    var singular_card_name = getSingularCardName(elem.innerText);
+    this.changeScore(pointsForCard(singular_card_name) * count);
+    this.recordSpecialCards(elem, count);
+    this.recordCards(singular_card_name, count);
+
+    activeDataGainCard(this, trashing, singular_card_name, count);
   };
 
   // This player has resigned; remember it.

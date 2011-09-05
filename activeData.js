@@ -187,7 +187,7 @@ function activeDataSetupCards() {
       var card = this;
       if (text_mode) {
         $('a[cardname="' + this.Singular + '"]').each(function() {
-          var price = $(this).closest('tr').find('.price').each(setCost);
+          $(this).prev().each(setCost);
         });
       } else {
         $('div.supplycard[cardname="' + this.Singular + '"] .imprice')
@@ -244,23 +244,20 @@ function activeDataStartHandle(doc) {
   }
 }
 
-function activeDataGainCard(player, trashing, card, count) {
+function activeDataGainCard(player, trashing, cardName, count) {
   trashing = trashing == undefined ? true : trashing;
-  var singular_card_name = getSingularCardName(card.innerText);
-  player.changeScore(pointsForCard(singular_card_name) * count);
-  player.recordSpecialCards(card, count);
-  player.recordCards(singular_card_name, count);
-  if (!supplied_cards[singular_card_name]) {
-    player.addOtherCard(card, count);
+  if (!supplied_cards[cardName]) {
+    player.addOtherCard(cardName, count);
   }
 
   // If the count is going down, usually player is trashing a card.
   if (!player.isTable && count < 0 && trashing) {
-    tablePlayer.gainCard(card, -count);
+    tablePlayer.gainCard(cardName, -count);
   }
   if (trashing || player.isTable) {
     updateDeck(tablePlayer);
   }
+  maybeWatchTradeRoute();
 }
 
 function activeDataMaybeRunTests() {
