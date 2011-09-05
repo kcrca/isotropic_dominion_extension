@@ -1316,6 +1316,30 @@ function setupCardCountCellForPlayer(player, cardName) {
   }
 }
 
+// Any row that spans a number of columns should span the added columns.
+// Use the attribute "grown" to avoid adjusting the same thing multiple times.
+function growHeaderColumns() {
+  var toAdd = player_count + 1; // the extra is for the trash player
+
+  $("#supply > table > tbody > tr > td[colspan]:not([grown])").each(function() {
+    var $this = $(this);
+    var origSpanStr = $this.attr('colspan');
+    var origSpan = parseInt(origSpanStr);
+    $this.attr('colspan', (origSpan + toAdd));
+    $this.attr('grown', toAdd);
+  });
+}
+
+function ungrowHeaderColumns() {
+  $('#supply td[grown]').each(function() {
+    var $this = $(this);
+    var grownBy = $this.attr('grown');
+    var colspan = $this.attr('colspan');
+    $this.attr('colspan', (parseInt(colspan) - parseInt(grownBy)));
+    $this.removeAttr('grown');
+  });
+}
+
 // Set up the card count cells for all players (including the trash player) in
 // text mode.
 function setupPerPlayerTextCardCounts() {
@@ -1333,18 +1357,7 @@ function setupPerPlayerTextCardCounts() {
       }
     });
   });
-
-  // Any row that spans a number of columns should span the added columns.
-  // Use the attribute "grown" to avoid adjusting the same thing multiple times.
-  var toAdd = player_count + 1; // the extra is for the trash player
-
-  $("#supply > table > tbody > tr > td[colspan]:not([grown])").each(function() {
-    var $this = $(this);
-    var origSpanStr = $this.attr('colspan');
-    var origSpan = parseInt(origSpanStr);
-    $this.attr('colspan', (origSpan + toAdd) + "");
-    $this.attr('grown', toAdd + "");
-  });
+  growHeaderColumns();
 }
 
 // Set up the per-player card counts in image mode for a given column.
@@ -1482,13 +1495,7 @@ function removePlayerArea() {
     ptab.parentNode.removeChild(ptab);
   }
   removeCardCounts();
-  $('#supply td[grown]').each(function() {
-    var $this = $(this);
-    var grownBy = $this.attr('grown');
-    var colspan = $this.attr('colspan');
-    $this.attr('colspan', (parseInt(colspan) - parseInt(grownBy)));
-    $this.removeAttr('grown');
-  });
+  ungrowHeaderColumns();
 }
 
 function getDecks() {
@@ -1922,7 +1929,7 @@ function forgetGUIMode() {
 function discoverGUIMode() {
   if (inLobby()) return;
 
-  $('#chat a[href^="/mode/"').each(function() {
+  $('#chat ~ a[href^="/mode/"]').each(function() {
     // The link is to the "text" mode when it's in image mode and vice versa.
     text_mode = $(this).text().indexOf("text") < 0;
   });
@@ -1960,8 +1967,10 @@ function maybeWatchTradeRoute() {
 function updateCardCountVisibility() {
   var countCols = $('.playerCardCountCol');
   if (optionButtons['show_card_counts'].attr('checked')) {
+    growHeaderColumns();
     countCols.show();
   } else {
+    ungrowHeaderColumns();
     countCols.hide();
   }
 }
@@ -1994,13 +2003,15 @@ function handle(doc) {
 
   var game = $('#game');
   if (game.length > 0) {
-    var optPanelHolder = $('#optionPanelHolder');
-    if (optPanelHolder.length == 0) {
-      addOptionControls(game);
-    } else if (game.next()[0].id != optPanelHolder[0].id) {
-      // If something has been added so it isn't where it should be, move it.
-      game.after(optPanelHolder);
-    }
+    rewriteTree(function () {
+      var optPanelHolder = $('#optionPanelHolder');
+      if (optPanelHolder.length == 0) {
+        addOptionControls(game);
+      } else if (game.next()[0].id != optPanelHolder[0].id) {
+        // If something has been added so it isn't where it should be, move it.
+        game.after(optPanelHolder);
+      }
+    });
   }
 
   try {
