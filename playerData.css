@@ -266,11 +266,11 @@ td.kingdom-column, td.basic-column {
     display: block;
 }
 
-.playing #optionPanelHolder {
+.imageMode #optionPanelHolder {
     display: table-row;
 }
 
-.playing #optionPanel {
+.imageMode #optionPanel {
     display: table-cell;
 }
 
