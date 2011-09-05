@@ -221,11 +221,11 @@ function activeDataSetupCards() {
 
   patchCardBug('Horse Traders', 'Action', '1');
   patchCardBug('Hunting Party', 'Action', '1');
+  patchCardBug('Fortune Teller', 'Action', '1');
   // With Trusty Steed, it lists all *possible* outcomes as *actual*
   patchCardBug('Trusty Steed', 'Actions', '0');
   patchCardBug('Trusty Steed', 'Treasure', '0');
   patchCardBug('Trusty Steed', 'Cards', '0');
-  patchCardBug('Fortune Teller', 'Action', '1');
 }
 
 function activeDataStartHandle(doc) {
