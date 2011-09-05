@@ -1162,6 +1162,9 @@ function unpossessed(action) {
 }
 
 function handleLogEntry(node) {
+  // These are used for messages from the administrator, and should be ignored.
+  if (node.innerText.indexOf("»»»") == 0) return;
+
   if (maybeHandleGameStart(node)) return;
 
   if (!started) return;
