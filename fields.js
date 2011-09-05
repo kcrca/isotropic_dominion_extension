@@ -162,6 +162,7 @@ function Field(name, fieldGroup, params) {
     this.setVisible(this.isVisible(this));
   };
 
+  //!! Make this work for all values.
   this.change = function(params) {
     var value = this.get();
     var orig = {};
