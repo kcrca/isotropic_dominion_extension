@@ -247,7 +247,7 @@ function activeDataStartHandle(doc) {
 function activeDataGainCard(player, elem, count, trashing, cardName) {
   trashing = trashing == undefined ? true : trashing;
   if (!supplied_cards[cardName]) {
-    player.addOtherCard(cardName, count);
+    player.addOtherCard(elem, count);
   }
 
   // If the count is going down, usually player is trashing a card.
