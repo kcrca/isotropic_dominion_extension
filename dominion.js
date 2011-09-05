@@ -662,6 +662,8 @@ function maybeHandleResignation(node) {
 function maybeHandleTurnChange(node) {
   var text = node.innerText;
   if (text.indexOf("—") != -1) {
+    // It may be hidden during veto.
+    $('#playerDataTable').show();
 
     activeDataEndTurn();
 
@@ -1422,36 +1424,39 @@ function updateScores() {
 
 // Set up the player area in which per-player info will be displayed.
 function setupPlayerArea() {
-  var ptab = document.createElement("table");
-  if (!text_mode) {
-    ptab.setAttribute("align", "right");
+  if ($('#playerDataTable').length > 0) {
+    return;
   }
-  ptab.id = 'playerDataTable';
+
+  var ptab = $('<table/>');
+  if (!text_mode) {
+    ptab.attr('align', 'right');
+  }
+  ptab.attr('id', 'playerDataTable');
 
   if (text_mode) {
-    var outerTable = document.createElement("table");
-    outerTable.id = "playerDataArranger";
+    var outerTable = $('<table/>');
+    outerTable.attr('id', 'playerDataArranger');
     var row = addRow(outerTable, null,
         '<td id="playerDataContainer" valign="bottom"></td>' +
             '<td id="logContainer" valign="bottom"></td>');
-    row = row[0]; //!! Change this code to jquery code
-    row.firstChild.appendChild(ptab);
-    row.lastChild.appendChild(document.getElementById("log"));
-    row.lastChild.appendChild(document.getElementById("choices"));
-    var game = document.getElementById("game");
-    game.insertBefore(outerTable, game.firstElementChild);
+    var kids = row.children();
+    kids.first().append(ptab);
+    kids.last().append($('#log').add($('#choices')));
+    $('#game > :first-child').before(outerTable);
   } else {
     var player_spot = $('#supply');
     // tab can be null at the end of a game when returning to the lobby
-    if (player_spot.children().length > 0) {
-      rewriteTree(function () {
-        var outerCell = $('<td valign="bottom"/>');
-        player_spot.replaceWith(outerCell);
-        outerCell.append(ptab);
-        outerCell.append(player_spot);
-      });
-    }
+    rewriteTree(function () {
+      var outerCell = $('<td valign="bottom"/>');
+      player_spot.replaceWith(outerCell);
+      outerCell.append(ptab);
+      outerCell.append(player_spot);
+    });
   }
+  // Start out hidden until the first turn, so if veto mode is going on, we
+  // aren't showing the in-play data area.
+  ptab.hide();
 }
 
 // As needed, set per-card count columns.
