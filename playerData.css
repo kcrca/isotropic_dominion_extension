@@ -8,7 +8,7 @@
 
 /* !! The card count column widths are different for basic and kingdom cards. */
 
-#optionPanel,
+#optionPanel, .testInfo div.black,
 .you, .you *, #header > :not(.lobby) {
     background-color: #dbf8db;
 }

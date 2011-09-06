@@ -39,6 +39,7 @@ var show_duchy_count = false;
 var possessed_turn = false;
 var announced_error = false;
 var seen_first_turn = false;
+var restoring_history = false;
 
 // Enabled by debugger when analyzing game logs.
 var debug_mode = false;
@@ -735,7 +736,7 @@ function maybeHandleTurnChange(node) {
 }
 
 function markInfoAsOurs(table) {
-  table.parent().addClass('you').addClass('internalInfoPage');
+  table.parent().addClass('internalInfoPage');
   var row = $('<tr/>');
   var col = $('<td/>').attr('colspan', '2');
   table.append(row);
@@ -746,8 +747,21 @@ function markInfoAsOurs(table) {
 
 function maybeRunInfoWindowTests(table) {
   if (!infoIsForTests) return;
+
+  // Make sure the table we're looking at is the info table
   if (table.tagName != 'TABLE') return;
   if (table.innerText.indexOf("Trash:") < 0) return;
+
+  try {
+    infoWindowTests($(table));
+  } finally {
+    infoIsForTests = false;
+    $('#body').removeClass('.testInfo');
+    $("body > div.black").remove();
+  }
+}
+
+function infoWindowTests(table) {
   if ($('#choices span.stash-pos-marker').length > 0) {
     // This check exists because it is possible to have the info window pop up
     // when the user is being asked where to locate the Stash card in the deck.
@@ -755,13 +769,12 @@ function maybeRunInfoWindowTests(table) {
     // cards already drawn before the shuffle). This means that we cannot tell
     // how big the deck is, even if we count the number of cards shown in the
     // span choice. This is rare, so we skip the tests in this case.
-    logDebug('infoData', "Skipping info window tests during stash placement\n");
+    logDebug('infoData',
+        "--- Skipping info window tests during stash placement\n");
     return;
   }
 
-  logDebug('infoData', "--- running info tests ---\n");
-  table = $(table);
-  infoIsForTests = false;
+  logDebug('infoData', "--- Running info tests ---\n");
 
   var msgs = [];
   var foundProblem = false;
@@ -934,23 +947,18 @@ function maybeRunInfoWindowTests(table) {
   ];
 
   markInfoAsOurs(table);
-  try {
-    table.find('tr').each(function() {
-      var tr = $(this);
-      var text = tr.text().replace(/\s+/g, ' ');
-      for (var i = 0; i < tests.length; i++) {
-        var test = tests[i];
-        var match = test.pat.exec(text);
-        if (match) {
-          test.act(tr, match);
-          break;
-        }
+  table.find('tr').each(function() {
+    var tr = $(this);
+    var text = tr.text().replace(/\s+/g, ' ');
+    for (var i = 0; i < tests.length; i++) {
+      var test = tests[i];
+      var match = test.pat.exec(text);
+      if (match) {
+        test.act(tr, match);
+        break;
       }
-    });
-  } finally {
-    var infoTop = $("body > div.black");
-    infoTop.remove();
-  }
+    }
+  });
 
   if (foundProblem && debug['infoData']) {
     alert("Found problems with data: see console log");
@@ -1182,6 +1190,15 @@ function unpossessed(action) {
   }
 }
 
+function startInfoWIndowTests() {
+  // Should not run these tests while restoring from log.
+  if (!restoring_history) {
+    $('#body').addClass('.testInfo');
+    infoIsForTests = true;
+    $('button:contains(info)').click();
+  }
+}
+
 function handleLogEntry(node) {
   // These are used for messages from the administrator, and should be ignored.
   if (node.innerText.indexOf("»»»") == 0) return;
@@ -1205,11 +1222,7 @@ function handleLogEntry(node) {
   maybeRewriteName(node);
 
   if (maybeHandleTurnChange(node)) {
-    // Should not run these tests while restoring from log.
-    if (!rewritingTree) {
-      infoIsForTests = true;
-      $('button:contains(info)').click();
-    }
+    startInfoWIndowTests();
     return;
   }
   if (maybeHandleResignation(node)) return;
@@ -1862,9 +1875,14 @@ function maybeStartOfGame(node) {
     localStorage.removeItem("log");
     localStorage.removeItem("disabled");
   } else {
-    console.log("--- replaying history ---");
-    disabled = localStorage['disabled'];
-    if (!restoreHistory(node)) return;
+    try {
+      restoringHistory = true;
+      console.log("--- replaying history ---");
+      disabled = localStorage['disabled'];
+      if (!restoreHistory(node)) return;
+    } finally {
+      restoringHistory = false;
+    }
   }
   started = true;
 }
