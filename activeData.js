@@ -244,22 +244,6 @@ function activeDataStartHandle(doc) {
   }
 }
 
-function activeDataGainCard(player, elem, count, trashing, cardName) {
-  trashing = trashing == undefined ? true : trashing;
-  if (!supplied_cards[cardName]) {
-    player.addOtherCard(elem, count);
-  }
-
-  // If the count is going down, usually player is trashing a card.
-  if (!player.isTable && count < 0 && trashing) {
-    tablePlayer.gainCard(elem, -count);
-  }
-  if (trashing || player.isTable) {
-    updateDeck(tablePlayer);
-  }
-  maybeWatchTradeRoute();
-}
-
 function activeDataMaybeRunTests() {
   activeDataTestSanity();
   // Many tests will fail if the user is waiting for another player to act, or

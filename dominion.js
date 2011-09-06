@@ -415,7 +415,19 @@ function Player(name, num) {
     this.recordSpecialCards(elem, count);
     this.recordCards(singular_card_name, count);
 
-    activeDataGainCard(this, elem, count, trashing, singular_card_name);
+    trashing = trashing == undefined ? true : trashing;
+    if (!supplied_cards[singular_card_name]) {
+      this.addOtherCard(elem, count);
+    }
+
+    // If the count is going down, usually player is trashing a card.
+    if (!this.isTable && count < 0 && trashing) {
+      tablePlayer.gainCard(elem, -count);
+    }
+    if (trashing || this.isTable) {
+      updateDeck(tablePlayer);
+    }
+    maybeWatchTradeRoute();
 
     last_gain_player = this;
   };
