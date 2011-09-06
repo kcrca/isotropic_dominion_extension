@@ -95,8 +95,3 @@ function optionBuildControls(tag, showTitle) {
   }
   return div;
 }
-
-function optionUpdateVisibility() {
-  var playing = $('#body.playing').length > 0;
-
-}
