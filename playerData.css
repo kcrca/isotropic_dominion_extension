@@ -1,3 +1,9 @@
+.spacer {
+	height: 5em; 
+	display: block; 
+	width:  10ex; 
+}
+
 /*
  * Styles that apply to both text and image mode -- where needed (to avoid
  * any problems in the lobby usually) they require a parent node with the id
@@ -17,35 +23,35 @@
     background-color: #2de52d;
 }
 
-.playerClass1, .playerClass1 * {
+.player1, .player1 * {
     background: #fdfed3;
 }
 
-.playerClass1:not(.resigned) *.activeMark {
+.player1:not(.resigned) *.activeMark {
     background: #f1f600;
 }
 
-.playerClass2, .playerClass2 * {
+.player2, .player2 * {
     background: #feefd3;
 }
 
-.playerClass2:not(.resigned) *.activeMark {
+.player2:not(.resigned) *.activeMark {
     background: #ffb733;
 }
 
-.playerClass3, .playerClass3 * {
+.player3, .player3 * {
     background: #e7fefe;
 }
 
-.playerClass3:not(.resigned) *.activeMark {
+.player3:not(.resigned) *.activeMark {
     background: #19ffff;
 }
 
-.playerClass4, .playerClass4 * {
+.player4, .player4 * {
     background: #fee5fe;
 }
 
-.playerClass4:not(.resigned) *.activeMark {
+.player4:not(.resigned) *.activeMark {
     background: #f200f2;
 }
 

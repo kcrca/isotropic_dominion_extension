@@ -190,11 +190,8 @@ function Player(name, num) {
     this.classFor = "table";
   } else {
     // CSS cycles through PLAYER_CLASS_COUNT display classes
-    this.classFor = "playerClass" + ((num - 1) % PLAYER_CLASS_COUNT + 1);
+    this.classFor = "player" + ((num - 1) % PLAYER_CLASS_COUNT + 1);
   }
-  // The CSS class is always the general player styling class plus the data
-  // for this specific player.
-  this.classFor += ' ' + this.idFor("data");
 
   // Map from special counts (such as number of gardens) to count.
   this.special_counts = { "Treasure" : 7, "Victory" : 3, "Uniques" : 2 };
