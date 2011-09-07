@@ -371,32 +371,59 @@ function Player(name, num) {
     }
   };
 
-  // Add an "other" card. These always are unique, so count really should always
-  // be either +1 or -1. Adding in the 'cardname' attribute means that hovering
-  // over the card will pop up the tooltip window about the card.
-  this.addOtherCard = function(cardElem, count) {
-    var cardName = cardElem.innerText;
-    if (count > 0) {
-      var addingAttr = cardElem.getAttribute('cardname') == undefined;
-      if (addingAttr) cardElem.setAttribute('cardname', cardName);
-      this.otherCards[cardName] = cardElem.outerHTML;
-      if (addingAttr) cardElem.removeAttribute('cardname');
-    } else {
-      delete this.otherCards[cardName];
+  // Add a card to a group of cards. Adding in the 'cardname' attribute means
+  // that hovering over the card will pop up the tooltip window about the card.
+  this.addToCardGroup = function(which, cardElem, count) {
+    var group = this[which];
+    if (!group) group = this[which] = {};
+    var cardName = getSingularCardName(cardElem.text());
+    var cardInfo = group[cardName];
+    if (!cardInfo) {
+      cardInfo = group[cardName] = new Object();
+      cardInfo.count = 0;
+      cardInfo.card = card_map[cardName];
+      if (!cardElem.attr('cardname')) {
+        // we need a copy so we can add the 'cardname' attribute to it
+        cardElem = cardElem.clone();
+        cardElem.attr('cardname', cardName);
+      }
+      cardInfo.html = cardElem[0].outerHTML;
     }
-    this.fields.set('otherCards', this.otherCardsHTML());
+    cardInfo.count += count;
+    if (cardInfo.count <= 0) {
+      delete group[cardName];
+    }
+    this.fields.set(which, this.cardGroupHtml(which));
   };
 
-  // Return HTML string to display the "other" cards this player has.
-  this.otherCardsHTML = function() {
-    var otherCards = '';
-    for (var name in this.otherCards) {
-      if (otherCards.length > 0) {
-        otherCards += ", ";
+  // Return HTML string to display the give card group.
+  this.cardGroupHtml = function(which) {
+    var group = this[which];
+    var html = '';
+    for (var name in group) {
+      if (html.length > 0) {
+        html += ", ";
       }
-      otherCards += this.otherCards[name];
+      var cardInfo = group[name];
+      if (cardInfo.count == 1) {
+        html += cardInfo.html;
+      } else {
+        var card = cardInfo.card;
+        var cardElemHtml = cardInfo.html;
+        if (card.Singular != card.Plural) {
+          // we use the '>' because we don't want to change the cardname attr.
+          cardElemHtml =
+              cardElemHtml.replace('>' + card.Singular, '>' + card.Plural);
+        }
+        html += cardInfo.count + '&nbsp;' + cardElemHtml;
+      }
     }
-    return otherCards;
+    return html;
+  };
+
+  this.clearCardGroup = function(which) {
+    this[which] = {};
+    this.fields.set(which, this.cardGroupHtml(which));
   };
 
   this.gainCard = function(elem, count, trashing) {
@@ -417,7 +444,7 @@ function Player(name, num) {
 
     trashing = trashing == undefined ? true : trashing;
     if (!supplied_cards[singular_card_name]) {
-      this.addOtherCard(elem, count);
+      this.addToCardGroup('otherCards', $(elem), count);
     }
 
     // If the count is going down, usually player is trashing a card.
@@ -550,6 +577,8 @@ function Player(name, num) {
     this.set('avgHand', avgCoinsPerHand.toFixed(1));
   };
 
+  activeDataSetupPlayer(this);
+
   rewriteTree(function() {
     var ptab = $('#playerDataTable')[0];
     var row1 = addRow(ptab, self.classFor,
@@ -630,7 +659,13 @@ function Player(name, num) {
     self.computeAverageHand();
     fields.add('otherCards',
         {label: self.isTable ? 'Other Trash' : 'Other Cards',
-          initial: self.otherCardsHTML(), isVisible: fieldInvisibleIfEmpty});
+          initial: self.cardGroupHtml('otherCard'),
+          isVisible: fieldInvisibleIfEmpty});
+    if (!self.isTable) {
+      fields.add('durations', {
+            initial: self.cardGroupHtml('durations'),
+            isVisible: fieldInvisibleIfEmpty});
+    }
   });
 }
 
@@ -765,10 +800,12 @@ function maybeRunInfoWindowTests(table) {
   if (table.innerText.indexOf("Trash:") < 0) return;
 
   try {
-    infoWindowTests($(table));
+    table = $(table);
+    markInfoAsOurs(table);
+    infoWindowTests(table);
   } finally {
     infoIsForTests = false;
-    $('#body').removeClass('.testInfo');
+    $('#body').removeClass('testInfo');
     $("body > div.black").remove();
   }
 }
@@ -810,6 +847,9 @@ function infoWindowTests(table) {
   }
 
   function countCards(str) {
+    if (str == 'nothing') {
+      return 0;
+    }
     var sep = /(?:,\s*|,?\s*\band\b\s*)+/g;
     var split = str.split(sep);
     logDebug('infoData', 'pattern: ' + sep);
@@ -958,7 +998,6 @@ function infoWindowTests(table) {
     }
   ];
 
-  markInfoAsOurs(table);
   table.find('tr').each(function() {
     var tr = $(this);
     var text = tr.text().replace(/\s+/g, ' ');

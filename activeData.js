@@ -35,6 +35,7 @@ isCopperValueVisible = function(field) {
 isNotZero = function(field) {
   return field.get() != 0;
 };
+
 // This object holds on to the active data for a single player.
 function ActiveData() {
   // This alias is used in nested functions that execute in other contexts
@@ -140,6 +141,10 @@ function ActiveData() {
   };
 }
 
+function activeDataSetupPlayer(player) {
+
+}
+
 function activeDataSetupCards() {
   var cardList = "\n";
   for (var i = 0; i < card_list.length; i++) {
@@ -155,6 +160,9 @@ function activeDataSetupCards() {
     };
     card.isTreasure = function() {
       return this.Treasure != "0";
+    };
+    card.isDuration = function() {
+      return this.Duration != "0";
     };
     card.getBuys = function() {
       return parseInt(this.Buys);
@@ -381,6 +389,7 @@ function removeActivePlayerData() {
 
 function activeDataStartTurn() {
   activeData.reset();
+  last_player.clearCardGroup('durations');
   last_card = undefined;
 }
 
@@ -423,14 +432,20 @@ function activeDataHandleCounts(elems, text) {
   // Handle lines like "You play a Foo", or "You play a Silver and 2 Coppers."
   // But ignore "You trash xyz from your play area" after you buy a Mint.
   var match;
-  if ((match = text.match(/ plays? (.*)/)) && !text.match(/ play area/)) {
+  if ((match = text.match(/ play(?:s?|ing) (.*)/)) &&
+      !text.match(/ play area/)) {
     var parts = match[1].split(/,|,?\s+and\b/);
     var elemNum = 0;
     for (var i = 0; i < parts.length; i++) {
       match = /\b(an?|the|[0-9]+) (.*)/.exec(parts[i]);
       if (match == null) continue;
-      var cardName = elems[elemNum++].innerText;
+      var cardElem = $(elems[elemNum++]);
+      var cardName = cardElem.text();
+      var card = card_map[cardName];
       activeData.cardHasBeenPlayed(match[1], cardName, !text.match(/^\.\.\. /));
+      if (card.isDuration()) {
+        last_player.addToCardGroup('durations', cardElem, 1);
+      }
     }
     return elemNum > 0;
   }
