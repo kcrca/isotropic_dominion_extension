@@ -40,12 +40,13 @@ isNotZero = function(field) {
 function ActiveData() {
   // This alias is used in nested functions that execute in other contexts
   var dataTable = $('<table id="activePlayerDataTable"/>');
-  var fields = new FieldGroup({idPrefix: 'active', under: dataTable,
+  this.fields = new FieldGroup({idPrefix: 'active', under: dataTable,
     wrapper: fieldWrapInRow,
     keyClass: 'playerDataKey',
     valueClass: 'playerDataValue',
     visibleAt: Field.visible_at_inserted
   });
+  var fields = this.fields;
 
   rewriteTree(function () {
     fields.add('actions', { initial: 1 });
@@ -90,8 +91,14 @@ function ActiveData() {
   };
 
   // Change the value of a specific field.
-  this.changeField = function(key, delta) {
-    fields.set(key, this.get(key) + delta);
+  this.changeField = function(field, delta) {
+    var before = fields.get(field);
+    var after = before + delta;
+    if (after != before) {
+      logDebug('actiData',
+          "Active: change " + field + ": " + before + " → " + after);
+      fields.set(field, after);
+    }
   };
 
   this.setUsesPotions = function(usesPotions) {
@@ -282,6 +289,7 @@ function activeDataLiveTests() {
 
 function activeDataTestSanity() {
   if (!runActiveDataTests()) return;
+  logDebug('actiData', last_player.name + ": " + activeData.fields);
   var values = activeData.getValues();
   var negatives = [];
   for (var name in values) {
@@ -292,7 +300,7 @@ function activeDataTestSanity() {
   if (negatives.length > 0) {
     alert("Negative values in active data: " + negatives.join(", "));
   } else {
-    console.log('activeData', "sanity checks passed for " + last_player.name);
+    logDebug('actiData', "sanity checks passed for " + last_player.name);
   }
 }
 
@@ -355,14 +363,14 @@ function activeDataTestValuesVsYou() {
   });
   var stateMsg = (msgs.length == 0 ? 'valid' : 'INVALID') + ' @ ' + new Date() +
       ': ' + shownState + ' [shown] vs. ' + activeState + ' [active]';
-  logDebug('activeData', stateMsg);
+  logDebug('actiData', stateMsg);
 
   var foundProblems = msgs.length != 0;
-  if (debug['activeData'] && foundProblems) {
+  if (debug['actiData'] && foundProblems) {
     for (var i = 0; i < msgs.length; i++) {
-      logDebug('activeData', '  ' + msgs[i]);
+      logDebug('actiData', '  ' + msgs[i]);
     }
-    if (debug['activeData']) alert('Invalid active state: check console');
+    if (debug['actiData']) alert('Invalid active state: check console');
   }
 }
 

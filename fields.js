@@ -184,6 +184,10 @@ function Field(name, fieldGroup, params) {
   };
 
   this.set(this.resolve(this.initial));
+
+  this.toString = function() {
+    return this.name + ': ' + this.get();
+  }
 }
 
 // A field group manages a set of Field objects. Any params passed in that are
@@ -365,6 +369,15 @@ function FieldGroup(params) {
 
   // Putting it here allows it to override findInsert()
   $.extend(this, thisParams);
+  
+  this.toString = function() {
+    var strs = [];
+    for (var i = 0; i < this.order.length; i++) {
+      var name = this.order[i];
+      strs.push(fields[name].toString());
+    }
+    return strs.join(", ");
+  }
 }
 
 // Return the string used for DOM ID's for a given (card) name -- we

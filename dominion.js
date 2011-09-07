@@ -69,7 +69,7 @@ var extension_version = 'Unknown';
 // Tree is being rewritten, so should not process any tree change events.
 var rewritingTree = 0;
 
-var debug = {activeData: true, infoData: true, handle: true};
+var debug = {'actiData': true, 'infoData': true };
 
 var infoIsForTests = false;
 
@@ -528,7 +528,13 @@ function Player(name, num) {
   };
 
   this.changeField = function(field, delta) {
-    this.set(field, this.get(field) + delta);
+    var before = this.get(field);
+    var after = before + delta;
+    if (before != after) {
+      logDebug('infoData',
+          this.name + ": change " + field + ": " + before + " → " + after);
+      this.set(field, after);
+    }
   };
 
   this.computeAverageHand = function() {
@@ -660,8 +666,8 @@ function Player(name, num) {
           isVisible: fieldInvisibleIfEmpty});
     if (!self.isTable) {
       fields.add('durations', {
-            initial: self.cardGroupHtml('durations'),
-            isVisible: fieldInvisibleIfEmpty});
+        initial: self.cardGroupHtml('durations'),
+        isVisible: fieldInvisibleIfEmpty});
     }
   });
 }
@@ -833,7 +839,7 @@ function infoWindowTests(table) {
       label = 'valid';
       op = '==';
     } else {
-      label = 'INVALID';
+      label = '==INVALID==';
       op = '!=';
       foundProblem = true;
     }
@@ -849,8 +855,8 @@ function infoWindowTests(table) {
     }
     var sep = /(?:,\s*|,?\s*\band\b\s*)+/g;
     var split = str.split(sep);
-    logDebug('infoData', 'pattern: ' + sep);
-    logDebug('infoData',
+    logDebug('infoDataDetailed', 'pattern: ' + sep);
+    logDebug('infoDataDetailed',
         'split ' + split.length + ': |' + split.join('|') + '|');
     var count = split.length;
     for (var i = 0; i < split.length; i++) {
@@ -912,7 +918,7 @@ function infoWindowTests(table) {
     // The rest of the tests rely on active data, so they only run if it's on.
     { pat: /^(Hand|Play area|Previous duration): *([^\d].*)/,
       act: function(row, match) {
-        if (!debug['activeData']) return;
+        if (!debug['actiData']) return;
         addToCardCount(countCards(match[2]));
         if (match[1] == 'Previous duration') {
           // Each Haven in the duration implies one *or more* cards set aside.
@@ -929,7 +935,7 @@ function infoWindowTests(table) {
     },
     { pat: /^(.*) (?:mat|aside): *(.*)/,
       act: function(row, match) {
-        if (!debug['activeData']) return;
+        if (!debug['actiData']) return;
         // Test set for the mat/aside area (includes chapel for thinning):
         // haven, horse traders, library, possession, island, native village, pirate ship, trade route, chapel
         // Island mat (also uses the term "aside" in the text)
@@ -954,15 +960,15 @@ function infoWindowTests(table) {
     },
     { pat: /^(?:Hand|Draw pile):(nothing|\d+)/,
       act: function(row, match) {
-        if (!debug['activeData']) return;
+        if (!debug['actiData']) return;
         addToCardCount(parseInfoNumber(match[1]));
       }
     },
     { pat: /^(Draw|Discard) pile:/,
       act: function(row, match) {
-        if (!debug['activeData']) return;
+        if (!debug['actiData']) return;
         if (player == null) {
-          logDebug('activeData', "WARNING: Player is null!!\n");
+          logDebug('actiData', "WARNING: Player is null!!\n");
           return;
         }
         var isDiscard = (match[1] == "Discard");
@@ -1223,6 +1229,7 @@ function ensureLogNodeSetup(node) {
     node.id = nextLogId();
   }
   node.addEventListener("DOMNodeRemovedFromDocument", reinsert);
+  logDebug('infoData', '"' + node.innerText.replace("\n", "") + '"');
 }
 
 // Perform a function that should behave the same whether or not the current
@@ -1924,12 +1931,12 @@ function maybeStartOfGame(node) {
     localStorage.removeItem("disabled");
   } else {
     try {
-      restoringHistory = true;
+      restoring_history = true;
       console.log("--- replaying history ---");
       disabled = localStorage['disabled'];
       if (!restoreHistory(node)) return;
     } finally {
-      restoringHistory = false;
+      restoring_history = false;
     }
   }
   started = true;
