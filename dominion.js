@@ -73,7 +73,7 @@ var debug = {'actiData': true, 'infoData': true };
 
 var infoIsForTests = false;
 
-var testOnlyPlayerScore = false;
+var test_only_my_score = false;
 
 // Quotes a string so it matches literally in a regex.
 RegExp.quote = function(str) {
@@ -587,9 +587,8 @@ function Player(name, num) {
     var row1 = addRow(ptab, self.classFor,
         activeDataColumn(self) + '<td id="' + self.idFor('mark') +
             '" class="rowStretch markPlace"></td>' + '<td id="' +
-            self.idFor('name') +
-            '" class="playerDataName" rowspan="0" nowrap>' + self.name +
-            '</td>');
+            self.idFor('name') + '" class="playerDataName" rowspan="0">' +
+            originalName(self.name) + '</td>');
     row1.attr('id', self.idFor('firstRow'));
 
     var stetchCells = row1.children('.rowStretch');
@@ -907,6 +906,7 @@ function infoWindowTests(table) {
     },
     { pat: /Current score:([0-9]+)/,
       act: function(row, match) {
+        if (test_only_my_score && player.name != "You") return;
         var scoreStr = player.get('score');
         var equals = scoreStr.indexOf('=');
         if (equals > 0) {
@@ -987,7 +987,6 @@ function infoWindowTests(table) {
         });
         addToCardCount(count);
         player.testCardCountStr += '[' + paddingStrs + 'px]';
-        if (testOnlyPlayerScore && player.name != "You") return;
         if (isDiscard && !isNaN(player.testCardCount)) {
           if (!player.testSeenIslandMat) {
             // The info window is can be silent about the island mat for other
@@ -1370,7 +1369,7 @@ function handleLogEntry(node) {
       if (player_count > 2) {
         maybeAnnounceFailure(">> Warning: Masquerade with more than 2 " +
             "players causes inaccurate score counting.");
-        testOnlyPlayerScore = true;
+        test_only_my_score = true;
       }
       player.gainCard(card_elem, -1, false);
       var other_player = findTrailingPlayer(node.innerText);
@@ -1630,7 +1629,7 @@ function initialize(doc) {
   possessed_turn = false;
   announced_error = false;
   next_log_line_num = 0;
-  testOnlyPlayerScore = false;
+  test_only_my_score = false;
   maxTradeRoute = undefined;
   seen_first_turn = false;
 
@@ -1721,6 +1720,15 @@ function maybeRewriteName(doc) {
       doc.innerHTML = doc.innerHTML.replace(player, player_rewrites[player]);
     }
   }
+}
+
+function originalName(maybeRewrittenName) {
+  for (var name in player_rewrites) {
+    if (player_rewrites[name] == maybeRewrittenName) {
+      return name;
+    }
+  }
+  return maybeRewrittenName;
 }
 
 function maybeIntroducePlugin() {

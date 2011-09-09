@@ -1,7 +1,7 @@
 .spacer {
-	height: 5em; 
-	display: block; 
-	width:  10ex; 
+    height: 5em;
+    display: block;
+    width: 10ex;
 }
 
 /*
@@ -291,4 +291,38 @@ td.kingdom-column, td.basic-column {
 
 .playing .notInGame {
     display: none !important;
+}
+
+/*
+ * Used to improve the look of things
+ */
+
+.card-treasure {
+    background: #fce992 !important;
+}
+
+.card-curse {
+    background: #e8cfe9 !important;
+}
+
+.card-victory {
+    background: #c0e4b1 !important;
+}
+
+.card-reaction {
+    background: #c1e1f4 !important;
+}
+
+.card-duration {
+    background: #ffcc99 !important;
+}
+
+.card-victory-action {
+    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.3, #f0f0f0), color-stop(0.7, #c0e4b1)) !important;
+    background-image: -moz-linear-gradient(left center, #f0f0f0 30%, #c0e4b1 70%) !important;
+}
+
+.card-victory-treasure {
+    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.3, #fce992), color-stop(0.7, #c0e4b1)) !important;
+    background-image: -moz-linear-gradient(left center, #fce992 30%, #c0e4b1 70%) !important;
 }
