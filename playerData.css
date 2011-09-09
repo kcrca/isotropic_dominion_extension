@@ -222,13 +222,13 @@ td.kingdom-column, td.basic-column {
     display: table-cell;
 }
 
-.playing #log {
+.playing #visible_log {
     height: auto !important;
     overflow-y: auto;
     margin-left: 2em;
 }
 
-.playing #log > .logline > div[style] {
+.playing #visible_log > .logline > div[style] {
     height: 0 !important;
 }
 
