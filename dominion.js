@@ -1322,7 +1322,7 @@ function handlePlayLog(node) {
 
   if (text[0] == "trashing") {
     var trasher = last_player;
-    if (scopes[scopes.length - 1] == "Watchtower") {
+    if (findScope() == "Watchtower") {
       trasher = last_gain_player;
     }
     handleGainOrTrash(trasher, elems, node.innerText, -1);
@@ -1617,6 +1617,17 @@ function updateDeck(player) {
   rewriteTree(function() {
     player.updateDeck();
   });
+}
+
+function findScope(skipping) {
+  skipping = skipping || 0;
+  for (var i = scopes.length - 1; i >= 0; i--) {
+    var scope = scopes[i];
+    if (scope && scope.length > 0) {
+      if (--skipping < 0) return scopes[i];
+    }
+  }
+  return undefined;
 }
 
 function initialize(doc) {

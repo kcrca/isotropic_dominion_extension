@@ -110,42 +110,48 @@ function ActiveData() {
   // +1 action is not handled here because the interface reports that there
   // has been +1 action, but the coins from a treasure are not separately
   // reported, so we handle it here.
-  this.cardHasBeenPlayed = function(countIndicator, cardName, userAction) {
-    // Convert the "count" string to a number; may be digits or "a', "the", etc.
-    var count = NaN;
-    try {
-      count = parseInt(countIndicator);
-    } catch (ignored) {
-      // a, an, the
-      count = 1;
-    }
-    if (isNaN(count))
-      count = 1;
+  this.cardHasBeenPlayed =
+      function(countIndicator, cardName, userAction, isAgain) {
+        // Convert the "count" string to a number; may be digits or "a', "the", etc.
+        var count = NaN;
+        try {
+          count = parseInt(countIndicator);
+        } catch (ignored) {
+          // a, an, the
+          count = 1;
+        }
+        if (isNaN(count))
+          count = 1;
 
-    var card = card_map[cardName];
-    if (card == null) {
-      alert("Unknown card in playsCard(): " + cardName);
-      return;
-    }
+        var card = card_map[cardName];
+        if (card == null) {
+          alert("Unknown card in cardHasBeenPlayed(): " + cardName);
+          return;
+        }
 
-    this.lastPlayed = card;
+        this.lastPlayed = card;
 
-    // Change 'played' field first because the values of some cards rely on it.
-    this.changeField('played', count);
-    if (userAction && card.isAction()) {
-      // Consume the action for playing an action card.
-      this.changeField('actions', -count);
-    }
-    if (card.isTreasure()) {
-      // The gains from treasure cards are not reported.
-      var copperMult = (
-          card.Singular == 'Copper' ? activeData.get('copper') : 1);
-      this.changeField('coins', count * card.getCoinCount() * copperMult);
-      this.changeField('potions', count * card.getPotionCount());
-      this.changeField('buys', count * card.getBuys());
-      this.changeField('actions', count * card.getActions());
-    }
-  };
+        // Change 'played' field first because the values of some cards rely on it.
+        var scope = findScope(1);
+        if ((scope == "King's Court" || scope == "Throne Room") && isAgain) {
+          // In this case it's the same card played again, not a new card played.
+        } else {
+          this.changeField('played', count);
+        }
+        if (userAction && card.isAction()) {
+          // Consume the action for playing an action card.
+          this.changeField('actions', -count);
+        }
+        if (card.isTreasure()) {
+          // The gains from treasure cards are not reported.
+          var copperMult = (
+              card.Singular == 'Copper' ? activeData.get('copper') : 1);
+          this.changeField('coins', count * card.getCoinCount() * copperMult);
+          this.changeField('potions', count * card.getPotionCount());
+          this.changeField('buys', count * card.getBuys());
+          this.changeField('actions', count * card.getActions());
+        }
+      };
 }
 
 function activeDataSetupPlayer(player) {
@@ -450,7 +456,9 @@ function activeDataHandleCounts(elems, text) {
       var cardElem = $(elems[elemNum++]);
       var cardName = cardElem.text();
       var card = card_map[cardName];
-      activeData.cardHasBeenPlayed(match[1], cardName, !text.match(/^\.\.\. /));
+      var userAction = !text.match(/^\.\.\. /);
+      var isAgain = text.match(/ (again|a ([^ ]*) time)\.$/);
+      activeData.cardHasBeenPlayed(match[1], cardName, userAction, isAgain);
       if (card.isDuration()) {
         last_player.addToCardGroup('durations', cardElem, 1);
       }
@@ -498,7 +506,7 @@ function maybeHandleVp(text) {
 }
 
 function isNormalBuy() {
-  return !(scopes.length > 1 && scopes[scopes.length - 2] == "Black Market");
+  return findScope(1) != "Black Market";
 }
 
 function activeDataCardBought(count, card) {
