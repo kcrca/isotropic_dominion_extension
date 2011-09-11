@@ -69,7 +69,7 @@ var extension_version = 'Unknown';
 // Tree is being rewritten, so should not process any tree change events.
 var rewritingTree = 0;
 
-var debug = {'actiData': true, 'infoData': true };
+var debug = {'actiData': true, 'infoData': true, 'logShown': true };
 
 var infoIsForTests = false;
 
@@ -1248,6 +1248,8 @@ function startInfoWIndowTests() {
 function handleLogEntry(node) {
   // These are used for messages from the administrator, and should be ignored.
   if (node.innerText.indexOf("»»»") == 0) return;
+  
+  logDebug('logShown', node.innerText);
 
   if (maybeHandleGameStart(node)) return;
 
