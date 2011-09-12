@@ -3,7 +3,7 @@
 var player_rewrites = new Object();
 
 // Map from player name to Player object.
-var players = new Object();
+var players = undefined;
 // Regular expression that is an OR of players other than "You".
 var player_re = "";
 // Count of the number of players in the game.
@@ -39,7 +39,6 @@ var show_duchy_count = false;
 var possessed_turn = false;
 var announced_error = false;
 var seen_first_turn = false;
-var restoring_history = false;
 
 // Enabled by debugger when analyzing game logs.
 var debug_mode = false;
@@ -65,7 +64,7 @@ var scopes = [];
 // The version of the extension currently loaded.
 var extension_version = 'Unknown';
 
-var restoring_log = false;
+var restoring_history = false;
 
 // Tree is being rewritten, so should not process any tree change events.
 var rewritingTree = 0;
@@ -742,10 +741,10 @@ function createFullLog() {
 }
 
 function maybeAddToFullLog(node) {
-  if (!restoring_log) {
+  if (!restoring_history) {
     $('#copied_temp_say').remove();
-    $('#full_log').append($(node).clone());
   }
+  $('#full_log').append($(node).clone());
 }
 
 function findTrailingPlayer(text) {
@@ -1285,9 +1284,20 @@ function startInfoWIndowTests() {
   }
 }
 
+function maybeOfferToPlay(node) {
+  var innerText = node.innerText;
+  if (innerText && innerText.indexOf("play this game ") == 0) {
+    // If you get an offer to play a game, you aren't in the middle of one.
+    removeLog();
+    return true;
+  }
+  return false;
+}
+
 function handleLogEntry(node) {
   // These are used for messages from the administrator, and should be ignored.
   if (node.innerText.indexOf("»»»") == 0) return;
+  if (node.parentNode.id == 'full_log') return;
 
   logDebug('logShown', node.innerText);
 
@@ -1756,7 +1766,7 @@ function initialize(doc) {
 
   // Assume it's already introduced if it's rewriting the tree for a reload.
   // Otherwise setup to maybe introduce the extension.
-  if (!restoring_log) {
+  if (!restoring_history) {
     var wait_time = 200 * Math.floor(Math.random() * 10 + 5);
     if (self_index != -1) {
       wait_time = 300 * self_index;
@@ -1852,9 +1862,13 @@ function maybeShowStatus(request, request_time) {
 }
 
 function storeLog() {
-  if (!debug_mode) {
+  if (!debug_mode && !restoring_history) {
     localStorage["log"] = $('#full_log').html();
   }
+}
+
+function removeLog() {
+  localStorage.removeItem("log");
 }
 
 function hideExtension() {
@@ -1936,9 +1950,10 @@ function stopCounting() {
   if (deck_spot) deck_spot.innerHTML = "exit";
   if (points_spot) points_spot.innerHTML = "faq";
 
-  localStorage.removeItem("log");
+  removeLog();
   activeDataStop();
   text_mode = undefined;
+  players = undefined;
 }
 
 function handleGameEnd(doc) {
@@ -1951,7 +1966,7 @@ function handleGameEnd(doc) {
       $(doc).children('a:contains(return)').each(function() {
         $(this).click(removePlayerData);
       });
-      localStorage.removeItem("log");
+      removeLog();
       // Collect information about the game.
       var href = childNode.href;
       var game_id_str = href.substring(href.lastIndexOf("/") + 1);
@@ -2013,32 +2028,29 @@ function maybeStartOfGame(node) {
     return;
   }
 
-  if (nodeText.indexOf("play this game ") == 0) {
-    // If you get an offer to play a game, you aren't in the middle of one.
-    localStorage.removeItem("log");
-    return;
-  }
-
-  var maybeSolitaireStart = nodeText.indexOf("Your turn 1 —") != -1;
-  if (localStorage.getItem("log") == undefined && maybeSolitaireStart) {
-    // We don't have a log but it's your turn 1. This must be a solitaire game.
-    // Create a fake (and invisible) setup line. We'll get called back again
-    // with it.
+  if (!localStorage["log"] && nodeText.indexOf("Your turn 1 —") != -1) {
+    // We don't have a any players but it's your turn 1. This must be a
+    // solitaire game. Create a fake (and invisible) setup line. We'll get
+    // called back again with it by the simple act of adding it (which is why
+    // this code is *not* wrapped in rewriteTree()).
     console.log("Single player game.");
     node = $('<div class="logline" style="display:none;">' +
         'Turn order is you.</div>)').insertBefore(node)[0];
     return;
   }
 
+  // Either this is a turn-order log, the start of a new game, or there is a
+  // log to restore from, or it isn't the start of any game.
+  var isTurnOrder = nodeText.indexOf("Turn order") == 0;
+  if (!isTurnOrder && !localStorage["log"]) return;
+
   createFullLog();
 
-  // The first line of actual text is either "Turn order" or something in
-  // the middle of the game.
-  if (nodeText.indexOf("Turn order") == 0) {
+  if (isTurnOrder) {
     // The game is starting, so put in the initial blank entries and clear
     // out any local storage.
     console.log("--- starting game ---");
-    localStorage.removeItem("log");
+    removeLog();
     localStorage.removeItem("disabled");
   } else {
     try {
@@ -2050,6 +2062,7 @@ function maybeStartOfGame(node) {
       restoring_history = false;
     }
   }
+
   started = true;
 }
 
@@ -2075,17 +2088,15 @@ function restoreHistory(node) {
     return false;
   }
 
-  restoring_log = true;
-
   // First build a DOM tree of the old log messages in a copy of the log.
   var log_entries = $('<pre id="temp"></pre>').html(logHistory).children();
+  var full_log = $('#full_log');
   log_entries.each(function() {
     var entry = $(this);
     if (entry.html() == node.innerHTML) return false;
     handleLogEntry(entry[0]);
     return true;
   });
-  restoring_log = false;
   return true;
 }
 
@@ -2201,6 +2212,8 @@ function handle(doc) {
   if (doc.parentNode.id == 'full_log') return;
 
   try {
+    if (!started && maybeOfferToPlay(doc)) return;
+
     // Detect the "Say" button so we can find some children
     if (doc.constructor == HTMLDivElement &&
         doc.innerText.indexOf("Say") == 0) {
