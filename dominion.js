@@ -76,6 +76,11 @@ var infoIsForTests = false;
 
 var test_only_my_score = false;
 
+// This is to let us play around with prefix characters for generated text.
+var chat_prefix_symbols = "⟣⟡∷⊹";
+var chat_prefix_num = 0;
+var chat_prefix = chat_prefix_symbols[chat_prefix_num];
+
 // Quotes a string so it matches literally in a regex.
 RegExp.quote = function(str) {
   return str.replace(/([.?*+^$[\]\\(){}-])/g, "\\$1");
@@ -371,7 +376,8 @@ function Player(name, num) {
 
   // Add a card to a group of cards. Adding in the 'cardname' attribute means
   // that hovering over the card will pop up the tooltip window about the card.
-  this.addToCardGroup = function(which, cardElem, count) {
+  this.addToCardGroup = function(which, cardElem, count, updateField) {
+    updateField = updateField != undefined ? updateField : true;
     var group = this[which];
     if (!group) group = this[which] = {};
     var cardName = getSingularCardName(cardElem.text());
@@ -391,14 +397,25 @@ function Player(name, num) {
     if (cardInfo.count <= 0) {
       delete group[cardName];
     }
-    this.fields.set(which, this.cardGroupHtml(which));
+    if (updateField) {
+      this.fields.set(which, this.cardGroupHtml(which));
+    }
   };
 
   // Return HTML string to display the give card group.
-  this.cardGroupHtml = function(which) {
+  this.cardGroupHtml = function(which, sort) {
+    sort = sort != undefined ? sort : false;
     var group = this[which];
     var html = '';
-    for (var name in group) {
+    var keys = [];
+    for (var key in group) {
+      keys.push(key);
+    }
+    if (sort) {
+      keys.sort();
+    }
+    for (var i = 0; i < keys.length; i++) {
+      var name = keys[i];
       if (html.length > 0) {
         html += ", ";
       }
@@ -581,6 +598,25 @@ function Player(name, num) {
     this.set('avgHand', avgCoinsPerHand.toFixed(1));
   };
 
+  this.countString = function() {
+    this.deckCards = {};
+    var scratchElem = $('<span/>');
+    for (var cardName in this.card_counts) {
+      var count = this.card_counts[cardName];
+      scratchElem.text(cardName);
+      this.addToCardGroup('deckCards', scratchElem, count, false);
+    }
+
+    var str = htmlToText(this.cardGroupHtml('deckCards', true));
+    if (str.length == 0) str = "none";
+    var myName = this.isTable ? "Trash" : this.name;
+    return myName + ': ' + str;
+  };
+
+  this.infoString = function() {
+    return this.name + ': ' + this.fields.toString();
+  };
+
   activeDataSetupPlayer(this);
 
   rewriteTree(function() {
@@ -670,6 +706,10 @@ function Player(name, num) {
         isVisible: fieldInvisibleIfEmpty});
     }
   });
+}
+
+function htmlToText(html) {
+  return $('<span/>').html(html).text()
 }
 
 function stateStrings() {
@@ -1382,7 +1422,7 @@ function handlePlayLog(node) {
   } else if (action.indexOf("pass") == 0) {
     unpossessed(function() {
       if (player_count > 2) {
-        maybeAnnounceFailure(">> Warning: Masquerade with more than 2 " +
+        maybeAnnounceFailure("⚠ Warning: Masquerade with more than 2 " +
             "players causes inaccurate score counting.");
         test_only_my_score = true;
       }
@@ -1756,24 +1796,70 @@ function originalName(maybeRewrittenName) {
   return maybeRewrittenName;
 }
 
+function writeHelp() {
+  writeText("Type !status to see player score and deck info.");
+  writeText("Type !counts to see card counts.");
+  activeDataWriteTextPrompt();
+  if (canDisable()) {
+    writeText("Type !disable by turn 5 to disable the point counter.");
+  }
+}
+
 function maybeIntroducePlugin() {
   if (!introduced && !disabled) {
     writeText("★ Game scored by Dominion Point Counter ★");
     writeText("http://goo.gl/iDihS");
-    writeText("Type !status to see the current score.");
-    if (optionSet('allow_disable')) {
-      writeText("Type !disable by turn 5 to disable the point counter.");
-    }
+    writeHelp();
   }
 }
 
-function maybeShowStatus(request_time) {
+function maybeShowStatus(request, request_time) {
+  if (!started) return;
+
+  //noinspection ConstantIfStatementJS
+  if (true) {
+    // This code lets us loop through a set of possible prefix chars to choose
+    // one we like.
+    chat_prefix = chat_prefix_symbols[chat_prefix_num++];
+    if (chat_prefix_num >= chat_prefix_symbols.length) {
+      chat_prefix_num = 0;
+    }
+  }
+
   if (last_status_print < request_time) {
     last_status_print = new Date().getTime();
-    var to_show = ">> " + getDecks() + " | " + getScores();
+
     var my_name = localStorage["name"];
     if (my_name == undefined || my_name == null) my_name = "Me";
-    writeText(to_show.replace(/You=/g, my_name + "="));
+    function writeStatus(msg) {
+      writeText(chat_prefix + " " +
+          msg.replace(/\bYou([:=])/g, my_name + "$1"));
+    }
+
+    switch (request) {
+    case "status":
+      writeStatus(getDecks() + " | " + getScores());
+      break;
+    case "counts":
+      allPlayers(function(player) {
+        writeStatus(player.countString());
+      });
+      break;
+    case "info":
+      allPlayers(function(player) {
+        writeStatus(player.infoString());
+      });
+      break;
+    case "active":
+      writeStatus(activeDataString());
+      break;
+    case 'all':
+      writeStatus(activeDataString());
+      allPlayers(function(player) {
+        writeStatus(player.countString());
+        writeStatus(player.infoString());
+      });
+    }
   }
 }
 
@@ -1790,25 +1876,33 @@ function hideExtension() {
   storeLog();
 }
 
+function canDisable() {
+  return optionSet('allow_disable') && turn_number <= 5;
+}
+
 function handleChatText(speaker, text) {
   if (!text) return;
   if (disabled) return;
-  if (text == " !status") {
+
+  var match = text.match("!(status|counts|" + activeDataCommands() + "all)");
+  if (match) {
     var time = new Date().getTime();
-    var command = "maybeShowStatus(" + time + ")";
+    var command = "maybeShowStatus('" + match[1] + "', " + time + ")";
     var wait_time = 200 * Math.floor(Math.random() * 10 + 1);
     // If we introduced the extension, we get first dibs on answering.
     if (i_introduced) wait_time = 100;
     setTimeout(command, wait_time);
-  }
-  if (optionSet('allow_disable') && text == " !disable" && turn_number <= 5) {
+  } else if (text == " !disable" && canDisable()) {
     localStorage['disabled'] = "t";
     disabled = true;
     hideExtension();
-    writeText(">> Point counter disabled.");
+    writeText("☠ Point counter disabled.");
+  } else if (text.indexOf(' !') == 0) {
+    writeText("⚠ Unknown command:" + text);
+    writeHelp();
   }
 
-  if (text.indexOf(" >> ") == 0) {
+  if (text.indexOf(" " + chat_prefix + " ") == 0) {
     last_status_print = new Date().getTime();
   }
   if (!introduced && text.indexOf(" ★ ") == 0) {

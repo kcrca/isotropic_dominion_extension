@@ -186,7 +186,8 @@ function Field(name, fieldGroup, params) {
   this.set(this.resolve(this.initial));
 
   this.toString = function() {
-    return this.name + ': ' + this.get();
+    maybeBuildCells();
+    return this.keyNode.text() + this.valueNode.text();
   }
 }
 
@@ -374,7 +375,10 @@ function FieldGroup(params) {
     var strs = [];
     for (var i = 0; i < this.order.length; i++) {
       var name = this.order[i];
-      strs.push(fields[name].toString());
+      var field = fields[name];
+      if (field.visible) {
+        strs.push(field.toString());
+      }
     }
     return strs.join(", ");
   }

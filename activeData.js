@@ -152,6 +152,10 @@ function ActiveData() {
           this.changeField('actions', count * card.getActions());
         }
       };
+
+  this.toString = function() {
+    return fields.toString();
+  }
 }
 
 //noinspection JSUnusedLocalSymbols
@@ -507,7 +511,7 @@ function maybeHandleVp(text) {
 }
 
 function isNormalBuy() {
-  return findScope(1) != "Black Market";
+  return findScope() != "Black Market";
 }
 
 function activeDataCardBought(count, card) {
@@ -516,4 +520,18 @@ function activeDataCardBought(count, card) {
   }
   activeData.changeField('coins', -(count * card.getCurrentCoinCost()));
   activeData.changeField('potions', -(count * card.getCurrentPotionCost()));
+}
+
+function activeDataWriteTextPrompt() {
+  if (tracking_active_data) {
+    writeText("Type !active to see active player's counts.");
+  }
+}
+
+function activeDataCommands() {
+  return "active|";
+}
+
+function activeDataString() {
+  return "Active: " + last_player.name + ", " + activeData.toString();
 }
