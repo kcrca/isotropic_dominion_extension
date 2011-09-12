@@ -25,9 +25,6 @@ var maxTradeRoute;
 var deck_spot;
 var points_spot;
 
-// Our copy of the log, which is visible
-var visible_log;
-
 // How many different player classes are supported?
 var PLAYER_CLASS_COUNT = 4;
 
@@ -51,6 +48,8 @@ var last_player = null;
 var last_reveal_player = null;
 var last_reveal_card = null;
 
+var turn_number = 0;
+
 // The player's own icon
 var my_icon = null;
 
@@ -65,6 +64,8 @@ var scopes = [];
 
 // The version of the extension currently loaded.
 var extension_version = 'Unknown';
+
+var restoring_log = false;
 
 // Tree is being rewritten, so should not process any tree change events.
 var rewritingTree = 0;
@@ -692,6 +693,19 @@ function getPlayer(name) {
   return players[name];
 }
 
+function createFullLog() {
+  // Create the full log blob and hide the normal log part.
+  $('#full_log').remove();
+  $('#log').hide().before($('<pre id="full_log">'));
+}
+
+function maybeAddToFullLog(node) {
+  if (!restoring_log) {
+    $('#copied_temp_say').remove();
+    $('#full_log').append($(node).clone());
+  }
+}
+
 function findTrailingPlayer(text) {
   var arr = text.match(/ ([^\s.]+)\.[\s]*$/);
   if (arr != null && arr.length == 2) {
@@ -733,6 +747,9 @@ function maybeHandleTurnChange(node) {
   var text = node.innerText;
   if (text.indexOf("—") != -1) {
     maybeHandleFirstTurn();
+
+    var maybe_number = text.match(/([0-9]+) —/);
+    if (maybe_number) turn_number = maybe_number[1];
 
     activeDataEndTurn();
 
@@ -1215,12 +1232,8 @@ function maybeHandleGameStart(node) {
     return false;
   }
   initialize(node);
-  ensureLogNodeSetup(node);
+  maybeAddToFullLog(node);
   return true;
-}
-
-function ensureLogNodeSetup(node) {
-  visible_log.append($(node).clone());
 }
 
 // Perform a function that should behave the same whether or not the current
@@ -1248,7 +1261,7 @@ function startInfoWIndowTests() {
 function handleLogEntry(node) {
   // These are used for messages from the administrator, and should be ignored.
   if (node.innerText.indexOf("»»»") == 0) return;
-  
+
   logDebug('logShown', node.innerText);
 
   if (maybeHandleGameStart(node)) return;
@@ -1269,8 +1282,8 @@ function handleLogEntry(node) {
   try {
     handlePlayLog(node);
   } finally {
-    // make sure we are working on the node after any rewrites
-    ensureLogNodeSetup(node);
+    // make sure we are using the node after any rewrites
+    maybeAddToFullLog(node);
   }
 }
 
@@ -1643,6 +1656,7 @@ function initialize(doc) {
   test_only_my_score = false;
   maxTradeRoute = undefined;
   seen_first_turn = false;
+  turn_number = 0;
 
   last_gain_player = null;
   scopes = [];
@@ -1714,7 +1728,7 @@ function initialize(doc) {
 
   // Assume it's already introduced if it's rewriting the tree for a reload.
   // Otherwise setup to maybe introduce the extension.
-  if (!rewritingTree) {
+  if (!restoring_log) {
     var wait_time = 200 * Math.floor(Math.random() * 10 + 5);
     if (self_index != -1) {
       wait_time = 300 * self_index;
@@ -1748,7 +1762,7 @@ function maybeIntroducePlugin() {
     writeText("http://goo.gl/iDihS");
     writeText("Type !status to see the current score.");
     if (optionSet('allow_disable')) {
-      writeText("Type !disable to disable the point counter.");
+      writeText("Type !disable by turn 5 to disable the point counter.");
     }
   }
 }
@@ -1763,6 +1777,19 @@ function maybeShowStatus(request_time) {
   }
 }
 
+function storeLog() {
+  if (!debug_mode) {
+    localStorage["log"] = $('#full_log').html();
+  }
+}
+
+function hideExtension() {
+  stopCounting();
+  removePlayerData();
+  $('div[reinserted="true"]').css('display', 'none');
+  storeLog();
+}
+
 function handleChatText(speaker, text) {
   if (!text) return;
   if (disabled) return;
@@ -1774,13 +1801,10 @@ function handleChatText(speaker, text) {
     if (i_introduced) wait_time = 100;
     setTimeout(command, wait_time);
   }
-  if (optionSet('allow_disable') && text == " !disable") {
+  if (optionSet('allow_disable') && text == " !disable" && turn_number <= 5) {
     localStorage['disabled'] = "t";
     disabled = true;
-    stopCounting();
-    removePlayerData();
-    $('div[reinserted="true"]').css('display', 'none');
-    storeLog();
+    hideExtension();
     writeText(">> Point counter disabled.");
   }
 
@@ -1813,8 +1837,8 @@ function settingsString() {
 
 function replaceRealLog() {
   $('#log').show();
-  while (document.getElementById('visible_log')) {
-    $('#visible_log').remove();
+  while (document.getElementById('full_log')) {
+    $('#full_log').remove();
   }
 }
 
@@ -1845,6 +1869,7 @@ function handleGameEnd(doc) {
       $(doc).children('a:contains(return)').each(function() {
         $(this).click(removePlayerData);
       });
+      localStorage.removeItem("log");
       // Collect information about the game.
       var href = childNode.href;
       var game_id_str = href.substring(href.lastIndexOf("/") + 1);
@@ -1917,18 +1942,6 @@ function maybeStartOfGame(node) {
     return;
   }
 
-  if (!maybeSolitaireStart && nodeText.indexOf("Turn order is") != 0) return;
-
-  visible_log = $('#visible_log');
-  if (visible_log.length == 0) {
-    visible_log = $('<pre id="visible_log"/>');
-  } else {
-    visible_log.children().remove();
-  }
-  var hiddenLog = $('#log');
-  hiddenLog.after(visible_log);
-  hiddenLog.hide();
-
   // The first line of actual text is either "Turn order" or something in
   // the middle of the game.
   if (nodeText.indexOf("Turn order") == 0) {
@@ -1937,6 +1950,7 @@ function maybeStartOfGame(node) {
     console.log("--- starting game ---");
     localStorage.removeItem("log");
     localStorage.removeItem("disabled");
+    createFullLog();
   } else {
     try {
       restoring_history = true;
@@ -1972,45 +1986,18 @@ function restoreHistory(node) {
     return false;
   }
 
-  // First build a DOM tree of the old log messages in a copy of the log
-  // parent node.
-  var storedLog = node.parentNode.cloneNode(false);
-  storedLog.innerHTML = logHistory;
+  createFullLog();
+  restoring_log = true;
 
-  // Now that we've pulled the log out of the history, remove it so that it
-  // starts out empty, just like it does in the original game.
-  localStorage.removeItem('log');
-
-  // Write all the entries from the history into the log up to (but not
-  // including) the one that matches the newly added entry that triggered
-  // the need to restore the history.
-  rewriteTree(function () {
-    var logRegion = node.parentElement;
-    // First, clear out anything that's currently there before the newly
-    // added entry.
-    while (logRegion.hasChildNodes() && logRegion.firstChild != node) {
-      logRegion.removeChild(logRegion.firstChild);
-    }
-    var newLogEntryInner = node.innerHTML;
-    while (storedLog.hasChildNodes()) {
-      var line = storedLog.removeChild(storedLog.firstChild);
-      // The way we avoid logs going away is to put them back in when they
-      // go away. So a stored log can capture both log nodes -- the
-      // replacement and the fading original. So we have to make sure that
-      // the log entry hasn't already been handled.
-      if (document.getElementById(line.id) != undefined) {
-        continue;
-      }
-
-      if (line.innerHTML == newLogEntryInner) {
-        break;
-      } else {
-        // move the node to the actual log region
-        logRegion.insertBefore(line, node);
-        handleLogEntry(line);
-      }
-    }
-  });
+  // First build a DOM tree of the old log messages in a copy of the log.
+  var log_entries = $('<pre id="temp"></pre>').html(logHistory).children();
+  for (var log in log_entries) {
+    var entry = $(log_entries[log]);
+    if (entry.html() == node.innerHTML) break;
+    $('#full_log').append(entry.clone());
+    handleLogEntry(entry[0]);
+  }
+  restoring_log = false;
   return true;
 }
 
@@ -2098,10 +2085,6 @@ function addOptionControls(game) {
   addOptionHandler('show_active_data', activeDataUpdateVisibility);
 }
 
-function storeLog() {
-  localStorage.setItem("log", visible_log.html());
-}
-
 function handle(doc) {
   // Ignore DOM events when we are rewriting the tree; see rewriteTree().
   if (rewritingTree > 0) return;
@@ -2125,9 +2108,9 @@ function handle(doc) {
     });
   }
 
-  // We process log entries to the hidden log, copying them to the visible log.
+  // We process log entries to the hidden log, copying them to the full log.
   // We don't then process those copies.
-  if (doc.parentNode.id == 'visible_log') return;
+  if (doc.parentNode.id == 'full_log') return;
 
   try {
     // Detect the "Say" button so we can find some children
@@ -2196,8 +2179,8 @@ function handle(doc) {
       updateScores();
       updateDeck();
     }
-
   } catch (err) {
+    console.log(err);
     console.log(doc);
     var error = '';
     if (doc.innerText != undefined) {
@@ -2261,7 +2244,25 @@ function enterLobby() {
 
 setTimeout("enterLobby()", 600);
 
+function maybeUpdateTempSay(ev) {
+  // Show the temp say dialogues if needed.
+  if (ev.relatedNode && ev.relatedNode.id == 'temp_say') {
+    var node = $(ev.relatedNode).clone();
+    node.attr('id', 'copied_temp_say');
+    $('#copied_temp_say').remove();
+    $('#full_log').append(node);
+    return;
+  }
+
+  // Copy the new html text. If it gets blanked out we don't get an event.
+  var temp_say = $('#temp_say');
+  if (temp_say.length > 0) {
+    $('#copied_temp_say').html(temp_say.html());
+  }
+}
+
 document.body.addEventListener('DOMNodeInserted', function(ev) {
+  maybeUpdateTempSay(ev);
   handle(ev.target);
 });
 

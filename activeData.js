@@ -274,7 +274,7 @@ function activeDataMaybeRunTests() {
   // time has passed and a 'waiting' message or choice prompt have *not*
   // appeared, it's probably OK to test.
   if (last_player && last_player.name == 'You') {
-    activeValueTiemout = window.setTimeout(activeDataLiveTests, 100);
+    activeValueTiemout = window.setTimeout(activeDataLiveTests, 200);
   }
 }
 

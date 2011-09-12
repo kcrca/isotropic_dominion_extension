@@ -13,24 +13,23 @@ function handleLogRequest(request) {
 
 function handleFetchRequest(request, sendResponse) {
   $.get(request.url, function(response) {
-      console.log("response");
+    console.log("response");
     sendResponse({ data: response });
   })
 }
 
-chrome.extension.onRequest.addListener(
-function(request, sender, sendResponse) {
-  var type = request.type;
-  delete request.type;
+chrome.extension.onRequest.addListener(function(request, sender, sendResponse) {
+      var type = request.type;
+      delete request.type;
 
-  if (type == "log") {
-    handleLogRequest(request);
-  } else if (type == "version") {
-    sendResponse(getVersion());
-  } else if (type == "fetch") {
-    handleFetchRequest(request, sendResponse);
-  } else {
-    console.log("Unknown request type '" + type + "' in: " +
-                JSON.stringify(request));
-  }
-});
+      if (type == "log") {
+        handleLogRequest(request);
+      } else if (type == "version") {
+        sendResponse(getVersion());
+      } else if (type == "fetch") {
+        handleFetchRequest(request, sendResponse);
+      } else {
+        console.log("Unknown request type '" + type + "' in: " +
+            JSON.stringify(request));
+      }
+    });

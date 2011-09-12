@@ -46,10 +46,10 @@
 
 <script>
     var node = $('#foo').children().first();
-    for (var i = 0; i < 10;i++) {
+    for (var i = 0; i < 10; i++) {
         var n = node.next();
         if (!n || n.length == 0)
-        break;
+            break;
         node = n;
     }
     console.log('');

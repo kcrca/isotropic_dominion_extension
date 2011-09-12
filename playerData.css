@@ -222,14 +222,20 @@ td.kingdom-column, td.basic-column {
     display: table-cell;
 }
 
-.playing #visible_log {
+.playing #full_log {
     height: auto !important;
     overflow-y: auto;
     margin-left: 2em;
 }
 
-.playing #visible_log > .logline > div[style] {
+.playing #full_log > .logline > div[style] {
     height: 0 !important;
+}
+
+#copied_temp_say {
+    color: #36f;
+    font-style: italic;
+    margin-left: 50px;
 }
 
 /*

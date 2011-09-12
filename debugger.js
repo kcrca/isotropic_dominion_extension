@@ -3,20 +3,28 @@ $('#detailed_results').css('display', 'none');
 
 debug_mode = true;
 
+var last_turn_number = 0;
+var turn_jump = '';
+
 var game = $('#log')[0];
 var detailed_results = [];
 var debug_gain_messages = [];
 for (var i = 0; i < game.childNodes.length; ++i) {
   var node = game.childNodes[i];
-  var turn_change = node.innerText&& node.innerText.match(/—.*—/);
+  var turn_change = node.innerText && node.innerText.match(/—.*—/);
   handle(game.childNodes[i]);
   if (turn_change) {
     detailed_results.push(debug_gain_messages);
     debug_gain_messages = '';
     detailed_results.push(stateStrings());
 
+    var jump = turn_number - last_turn_number;
+    if (jump != 0 && jump != 1) turn_jump = turn_number;
+    last_turn_number = turn_number;
+
     // Show this turn's information.
-    detailed_results.push('<br><i>' + game.childNodes[i].innerText + '</i><br>');
+    detailed_results.push('<br><i>' + game.childNodes[i].innerText +
+        '</i><br>');
   } else {
     var gains = $('div.gain_debug');
     for (var j = 0; j < gains.length; ++j) {
@@ -32,6 +40,13 @@ $('#detailed_results').append(detailed_results.join('') + '<br><br>');
 $('#results').append(stateStrings());
 console.log(players);
 
+if (turn_jump != "") {
+  $('#header').append("<div id='turn_jump'>Turns Jumped at turn " + turn_jump +
+      "!</div>");
+  $('#turn_jump').css("color", "#900000");
+  $('#turn_jump').css("font-weight", "bold");
+}
+
 $('body').append('<button id="show_details">Show Details</button>');
 $('#show_details').click(function () {
   $('#detailed_results').css('display', '');
@@ -44,8 +59,9 @@ $('#show_raw_log').click(function () {
 var url = $('#game_link').attr('href')
 chrome.extension.sendRequest({ type: "fetch", url: url }, function(response) {
   var data = response.data;
-  var arr = data.match(/----------------------([\s\S]*[\S])[\s]*----------------------/);
-  $('#results').append("<pre id='actual_score'>" + arr[1] +'</pre>');
+  var arr = data
+      .match(/----------------------([\s\S]*[\S])[\s]*----------------------/);
+  $('#results').append("<pre id='actual_score'>" + arr[1] + '</pre>');
   var results = $('#actual_score').text();
 
   // Ugg. Results have rewritten player names so we don't actually see it.
@@ -67,10 +83,12 @@ chrome.extension.sendRequest({ type: "fetch", url: url }, function(response) {
     if (player_name == "You") {
       player_name = rewriteName(reporter_name);
     }
-    var re = new RegExp("#[0-9]+ " + RegExp.quote(player_name) + ": ([0-9]+) points", "m");
+    var re = new RegExp("#[0-9]+ " + RegExp.quote(player_name) +
+        ": ([0-9]+) points", "m");
     var arr = results.match(re);
     if (!arr || arr.length != 2 || arr[1] != score) {
-      var error = "Wrong score for " + player_name + " (calculated " + score + ", actual " + arr[1] + ")";
+      var error = "Wrong score for " + player_name + " (calculated " + score +
+          ", actual " + arr[1] + ")";
       if (!arr || arr.length != 2) {
         error = "Couldn't find score for " + player_name;
       }

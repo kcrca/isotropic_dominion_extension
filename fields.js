@@ -369,7 +369,7 @@ function FieldGroup(params) {
 
   // Putting it here allows it to override findInsert()
   $.extend(this, thisParams);
-  
+
   this.toString = function() {
     var strs = [];
     for (var i = 0; i < this.order.length; i++) {
