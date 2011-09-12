@@ -733,10 +733,12 @@ function getPlayer(name) {
   return players[name];
 }
 
+// Create the full log blob and hide the normal log part.
 function createFullLog() {
-  // Create the full log blob and hide the normal log part.
-  $('#full_log').remove();
-  $('#log').hide().before($('<pre id="full_log">'));
+  rewriteTree(function () {
+    $('#full_log').remove();
+    $('#log').hide().after($('<pre id="full_log"/>'));
+  });
 }
 
 function maybeAddToFullLog(node) {
@@ -828,12 +830,6 @@ function maybeHandleTurnChange(node) {
     if (debug_mode) {
       var details = " (" + getDecks() + " | " + getScores() + ")";
       node.innerHTML.replace(" —<br>", " " + details + " —<br>");
-    }
-
-    if (text_mode) {
-      // For some reason, during reload IDs get reinserted by the client.js, so
-      // we remove the duplicates.
-      stripDuplicateLogs();
     }
 
     return true;
@@ -1075,15 +1071,6 @@ function infoWindowTests(table) {
   }
 }
 
-function stripDuplicateLogs() {
-  $('.logline').each(function() {
-    var $this = $(this);
-    if ($this[0].id == $this.next()[0].id) {
-      $this.remove();
-    }
-  })
-}
-
 function handleScoping(text_arr, text) {
   var depth = 1;
   for (var t in text_arr) {
@@ -1308,18 +1295,19 @@ function handleLogEntry(node) {
 
   if (!started) return;
 
-  // Ignore the purple log entries during Possession.
-  // When someone is possessed, log entries with "possessed-log" are what
-  // describe the "possession". The other (normal) log entries describe the
-  // actual game effect. So we ignore the "possessed" entries because they
-  // are what is being commanded, not what is actually happening to the cards.
-  // (For example, if you possess Alice, then in "possessed-log" entries, it
-  // says "You play a Silver", but the actual game effect is as if Alice played
-  // the Silver (that is, Alice, as a player, gets $2 more to work with, it's
-  // just that you, not Alice, are deciding what to do with that $2).
-  if (possessed_turn && $(node).hasClass("possessed-log")) return;
-
   try {
+    // Ignore the purple log entries during Possession.
+    // When someone is possessed, log entries with "possessed-log" are what
+    // describe the "possession". The other (normal) log entries describe the
+    // actual game effect. So we ignore the "possessed" entries because they
+    // are what is being commanded, not what is actually happening to the cards.
+    // (For example, if you possess Alice, then in "possessed-log" entries, it
+    // says "You play a Silver", but the actual game effect is as if Alice
+    // played the Silver (that is, Alice, as a player, gets $2 more to work
+    // with, it's just that you, not Alice, are deciding what to do with
+    // that $2).
+    if (possessed_turn && $(node).hasClass("possessed-log")) return;
+
     handlePlayLog(node);
   } finally {
     // make sure we are using the node after any rewrites
@@ -1583,7 +1571,7 @@ function setupPlayerArea() {
             '<td id="logContainer" valign="bottom"></td>');
     var kids = row.children();
     kids.first().append(ptab);
-    kids.last().append($('#log').add($('#choices')));
+    kids.last().append($('#log'), $('#full_log'), $('#choices'));
     $('#game > :first-child').before(outerTable);
   } else {
     var player_spot = $('#supply');
@@ -1929,7 +1917,7 @@ function settingsString() {
   return JSON.stringify(settings);
 }
 
-function replaceRealLog() {
+function putBackRealLog() {
   $('#log').show();
   while (document.getElementById('full_log')) {
     $('#full_log').remove();
@@ -1939,7 +1927,7 @@ function replaceRealLog() {
 function removePlayerData() {
   removePlayerArea();
   forgetGUIMode();
-  replaceRealLog();
+  putBackRealLog();
   // Return true because this is used as an event handler.
   return true;
 }
@@ -2025,6 +2013,12 @@ function maybeStartOfGame(node) {
     return;
   }
 
+  if (nodeText.indexOf("play this game ") == 0) {
+    // If you get an offer to play a game, you aren't in the middle of one.
+    localStorage.removeItem("log");
+    return;
+  }
+
   var maybeSolitaireStart = nodeText.indexOf("Your turn 1 —") != -1;
   if (localStorage.getItem("log") == undefined && maybeSolitaireStart) {
     // We don't have a log but it's your turn 1. This must be a solitaire game.
@@ -2036,6 +2030,8 @@ function maybeStartOfGame(node) {
     return;
   }
 
+  createFullLog();
+
   // The first line of actual text is either "Turn order" or something in
   // the middle of the game.
   if (nodeText.indexOf("Turn order") == 0) {
@@ -2044,7 +2040,6 @@ function maybeStartOfGame(node) {
     console.log("--- starting game ---");
     localStorage.removeItem("log");
     localStorage.removeItem("disabled");
-    createFullLog();
   } else {
     try {
       restoring_history = true;
@@ -2080,17 +2075,16 @@ function restoreHistory(node) {
     return false;
   }
 
-  createFullLog();
   restoring_log = true;
 
   // First build a DOM tree of the old log messages in a copy of the log.
   var log_entries = $('<pre id="temp"></pre>').html(logHistory).children();
-  for (var log in log_entries) {
-    var entry = $(log_entries[log]);
-    if (entry.html() == node.innerHTML) break;
-    $('#full_log').append(entry.clone());
+  log_entries.each(function() {
+    var entry = $(this);
+    if (entry.html() == node.innerHTML) return false;
     handleLogEntry(entry[0]);
-  }
+    return true;
+  });
   restoring_log = false;
   return true;
 }
