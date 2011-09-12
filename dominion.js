@@ -322,7 +322,7 @@ function Player(name, num) {
 
     if (this.card_counts[name] <= 0) {
       if (this.card_counts[name] < 0) {
-        handleError("Card count for " + name + " is negative (" +
+        maybeAnnounceFailure("Card count for " + name + " is negative (" +
             this.card_counts[name] + ")");
       }
       delete this.card_counts[name];
