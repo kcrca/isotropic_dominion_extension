@@ -736,7 +736,7 @@ function getPlayer(name) {
 function createFullLog() {
   rewriteTree(function () {
     $('#full_log').remove();
-    $('#log').hide().after($('<pre id="full_log"/>'));
+    $('#log').hide().before($('<pre id="full_log"/>'));
   });
 }
 
@@ -1932,10 +1932,11 @@ function settingsString() {
 }
 
 function putBackRealLog() {
-  $('#log').show();
-  while (document.getElementById('full_log')) {
-    $('#full_log').remove();
-  }
+  var log = $('#log');
+  $('#header > :first-child').before(log);
+  log.show();
+  $('#full_log').remove();
+  $('#playerDataArranger').remove();
 }
 
 function removePlayerData() {
