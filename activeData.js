@@ -8,8 +8,8 @@ var tracking_active_data = true;
 // id for testing active values
 var activeValueTiemout;
 
-// Used for debugging how long we should set activeValueTimeout
-var lastTime;
+// The most recent set of Black Market prices offered
+var blackMarketPrices;
 
 activeDataSetupCards();
 
@@ -204,24 +204,47 @@ function activeDataSetupCards() {
       return (this.Cost.indexOf("P") >= 0 ? 1 : 0);
     };
     card.getCurrentCoinCost = function() {
-      // The current cost can be affected by cards in play, such as Quarry, so we
-      // have to look up the price in the interface.
-      var costStr;
-      var setCost = function() {
-        costStr = $(this).text();
-      };
+      // The current cost can be affected by cards in play, such as Quarry, so
+      // we have to look up the price on the web page.
+
       var card = this;
-      if (text_mode) {
-        $('td.txcardname > a[cardname="' + this.Singular + '"]').parent().prev()
-            .each(setCost);
-      } else {
-        $('div.supplycard[cardname="' + this.Singular + '"] .imprice')
-            .each(setCost);
+      var cardName = this.Singular;
+
+      // Cards in the supply pile have prices shown in the supply area
+      if (supplied_cards[cardName]) {
+        var priceBox;
+        if (text_mode) {
+          var cardBox = $('td.txcardname > a[cardname="' + cardName + '"]');
+          priceBox = cardBox.parent().prev('.price');
+        } else {
+          priceBox = $('div.supplycard[cardname="' + cardName + '"] .imprice');
+        }
+        return parseInt(priceBox.text().substr(1));
       }
-      if (costStr) {
-        // The string has a leading '$' we need to skip.
-        return parseInt(costStr.substr(1));
+
+      // If it's not a supply card, it must be from a Black Market or Prize
+      // deck. Black market card prices are shown at the purchase point, and
+      // we have code to store them aside. If it's Prize, all values are $0, and
+      // so are unaffected by any cost-reduction cards.
+      if (blackMarketPrices) {
+        var pricePattern = new RegExp("buy " + cardName + " \\(\\$(\\d+)\\)");
+        var price;
+        blackMarketPrices.each(function() {
+          var text = $(this).text();
+          var match = text.match(pricePattern);
+          if (match) {
+            price = parseInt(match[1]);
+            return false; // stop looking
+          }
+          return true;
+        });
+        if (price) {
+          return price;
+        }
       }
+
+      // The only way to get here I know of is that this is a prize deck card,
+      // but in any case, this is our fallback.
       return this.getCoinCost();
     };
     card.getCurrentPotionCost = function() {
@@ -251,21 +274,16 @@ function activeDataSetupCards() {
   patchCardBug('Trusty Steed', 'Actions', '0');
   patchCardBug('Trusty Steed', 'Treasure', '0');
   patchCardBug('Trusty Steed', 'Cards', '0');
+  patchCardBug('Trusty Steed', 'Plural', 'Trusty Steeds');
 }
 
 function activeDataStartHandle(doc) {
-  if (debug['activeTime']) {
-    var where = $(doc).closest('#log, #temp_say, #choices');
-    if (where.length > 0) {
-      var elapsed = 0;
-      var now = new Date().getTime();
-      if (lastTime) {
-        elapsed = now - lastTime;
-      }
-      console.log("...... %5s %6d %s\n", where.attr('id'), elapsed,
-          doc.innerText);
-      lastTime = now;
-    }
+  doc = $(doc);
+  if (doc.parent().attr('id') == 'choices' &&
+      doc.text().match(/^\s*play or buy cards/)) {
+    blackMarketPrices = doc.find('.choice').filter(function() {
+      return $(this).text().indexOf('($') > 0;
+    });
   }
 }
 
