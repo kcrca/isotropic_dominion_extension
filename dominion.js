@@ -76,7 +76,7 @@ var infoIsForTests = false;
 var test_only_my_score = false;
 
 // This is to let us play around with prefix characters for generated text.
-var chat_prefix_symbols = "⟣⟡∷⊹";
+var chat_prefix_symbols = debug['chatPrefix'] ? "⟣⟡∷⊹" : "⟣";
 var chat_prefix_num = 0;
 var chat_prefix = chat_prefix_symbols[chat_prefix_num];
 
@@ -1948,9 +1948,9 @@ function settingsString() {
 }
 
 function putBackRealLog() {
-  var log = $('#log');
-  $('#header').after(log);
-  log.show();
+  // All children -- other things are there to be correctly located with log.
+  $('#header').after($('#logContainer').children());
+  $('#log').show();
   $('#full_log').remove();
   $('#playerDataArranger').remove();
 }
