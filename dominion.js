@@ -1389,7 +1389,7 @@ function handlePlayLog(node) {
 
   if (text[0] == "trashing") {
     var trasher = last_player;
-    if (findScope() == "Watchtower") {
+    if (topScope() == "Watchtower") {
       trasher = last_gain_player;
     }
     handleGainOrTrash(trasher, elems, node.innerText, -1);
@@ -1686,7 +1686,7 @@ function updateDeck(player) {
   });
 }
 
-function findScope(skipping) {
+function topScope(skipping) {
   skipping = skipping || 0;
   for (var i = scopes.length - 1; i >= 0; i--) {
     var scope = scopes[i];
@@ -1695,6 +1695,15 @@ function findScope(skipping) {
     }
   }
   return undefined;
+}
+
+function findScope(name) {
+  for (var i = 0; i < scopes.length; i++) {
+    if (scopes[i] == name) {
+      return i;
+    }
+  }
+  return -1;
 }
 
 function initialize(doc) {

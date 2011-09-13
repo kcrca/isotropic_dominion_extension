@@ -70,6 +70,7 @@ function ActiveData() {
       fields.set(f, this.defaultValues[f]);
     }
     this.lastPlayed = undefined;
+    this.valid = true;
   };
 
   this.top = function() {
@@ -125,14 +126,14 @@ function ActiveData() {
 
         var card = card_map[cardName];
         if (card == null) {
-          alert("Unknown card in cardHasBeenPlayed(): " + cardName);
+          activeDataAlert("Unknown card in cardHasBeenPlayed(): " + cardName);
           return;
         }
 
         this.lastPlayed = card;
 
         // Change 'played' field first because the values of some cards rely on it.
-        var scope = findScope(1);
+        var scope = topScope(1);
         if ((scope == "King's Court" || scope == "Throne Room") && isAgain) {
           // In this case it's the same card played again, not a new card played.
         } else {
@@ -238,9 +239,16 @@ function activeDataSetupCards() {
           }
           return true;
         });
-        if (price) {
+        if (price != undefined) {
           return price;
         }
+      }
+      // If we're in the scope of a BLack Market, but we don't have prices,
+      // then we can't determine the correct price, so we should stop tests
+      // based on the price (such as the value of 'coins'). This happens when
+      // a game is reloaded (e.g., from history) instead of being played live.
+      if (findScope('Black Market') >= 0) {
+        activeData.valid = false;
       }
 
       // The only way to get here I know of is that this is a prize deck card,
@@ -288,7 +296,10 @@ function activeDataStartHandle(doc) {
 }
 
 function activeDataMaybeRunTests() {
+  if (!activeData.valid) return;
+
   activeDataTestSanity();
+
   // Many tests will fail if the user is waiting for another player to act, or
   // if the user is being prompted for a choice. When the log entry is added, we
   // can't know whether this is *about* to happen, so we have a timeout: If some
@@ -306,7 +317,7 @@ function activeDataSetupTests() {
 
 function runActiveDataTests() {
   return last_player != null && started && tracking_active_data &&
-      !rewritingTree;
+      !rewritingTree && activeData.valid;
 }
 
 function activeDataLiveTests() {
@@ -326,7 +337,7 @@ function activeDataTestSanity() {
     }
   }
   if (negatives.length > 0) {
-    alert("Negative values in active data: " + negatives.join(", "));
+    activeDataAlert("Negative values in active data: " + negatives.join(", "));
   } else {
     logDebug('actiData', "sanity checks passed for " + last_player.name);
   }
@@ -398,7 +409,16 @@ function activeDataTestValuesVsYou() {
     for (var i = 0; i < msgs.length; i++) {
       logDebug('actiData', '  ' + msgs[i]);
     }
-    if (debug['actiData']) alert('Invalid active state: check console');
+    activeDataAlert('Invalid active state: check console');
+  }
+}
+
+function activeDataAlert(msg) {
+  if (debug['actiData']) {
+    logDebug('actiData', "ALERT: " + msg);
+    if (!restoring_history) {
+      alert(msg);
+    }
   }
 }
 
@@ -427,6 +447,7 @@ function activeDataStartTurn() {
   activeData.reset();
   last_player.clearCardGroup('durations');
   last_card = undefined;
+  blackMarketPrices = undefined;
 }
 
 function activeDataEndTurn() {
@@ -528,7 +549,7 @@ function maybeHandleVp(text) {
 }
 
 function isNormalBuy() {
-  return findScope() != "Black Market";
+  return findScope("Black Market") < 0;
 }
 
 function activeDataCardBought(count, card) {
