@@ -732,19 +732,33 @@ function getPlayer(name) {
   return players[name];
 }
 
+function tempSayChange(ev) {
+  console.log(ev);
+  var clones = $('#temp_say').contents().clone();
+  var copy = $('#copied_temp_say');
+
+  rewriteTree(function () {
+    copy.empty();
+    copy.append(clones);
+  });
+}
+
 // Create the full log blob and hide the normal log part.
 function createFullLog() {
   rewriteTree(function () {
     $('#full_log').remove();
-    $('#log').hide().before($('<pre id="full_log"/>'));
+    var full_log = $('<pre id="full_log"/>');
+    $('#log').hide().before(full_log);
+    var temp_say = $('#temp_say');
+    var copied_temp_say = temp_say.clone();
+    copied_temp_say.attr('id', 'copied_temp_say');
+    full_log.append(copied_temp_say);
+    temp_say.bind('DOMSubtreeModified', tempSayChange);
   });
 }
 
 function maybeAddToFullLog(node) {
-  if (!restoring_history) {
-    $('#copied_temp_say').remove();
-  }
-  $('#full_log').append($(node).clone());
+  $('#copied_temp_say').before($(node).clone());
 }
 
 function findTrailingPlayer(text) {
@@ -1900,7 +1914,9 @@ function handleChatText(speaker, text) {
     hideExtension();
     writeText("☠ Point counter disabled.");
   } else if (text.indexOf(' !') == 0) {
-    writeText("⚠ Unknown command:" + text);
+    if (text != '!help') {
+      writeText("⚠ Unknown command:" + text);
+    }
     writeHelp();
   }
 
@@ -2346,25 +2362,7 @@ function enterLobby() {
 
 setTimeout("enterLobby()", 600);
 
-function maybeUpdateTempSay(ev) {
-  // Show the temp say dialogues if needed.
-  if (ev.relatedNode && ev.relatedNode.id == 'temp_say') {
-    var node = $(ev.relatedNode).clone();
-    node.attr('id', 'copied_temp_say');
-    $('#copied_temp_say').remove();
-    $('#full_log').append(node);
-    return;
-  }
-
-  // Copy the new html text. If it gets blanked out we don't get an event.
-  var temp_say = $('#temp_say');
-  if (temp_say.length > 0) {
-    $('#copied_temp_say').html(temp_say.html());
-  }
-}
-
 document.body.addEventListener('DOMNodeInserted', function(ev) {
-  maybeUpdateTempSay(ev);
   handle(ev.target);
 });
 
