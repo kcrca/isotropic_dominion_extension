@@ -1949,7 +1949,7 @@ function settingsString() {
 
 function putBackRealLog() {
   var log = $('#log');
-  $('#header > :first-child').before(log);
+  $('#header').after(log);
   log.show();
   $('#full_log').remove();
   $('#playerDataArranger').remove();

@@ -212,9 +212,8 @@ function activeDataSetupCards() {
       };
       var card = this;
       if (text_mode) {
-        $('a[cardname="' + this.Singular + '"]').each(function() {
-          $(this).prev().each(setCost);
-        });
+        $('td.txcardname > a[cardname="' + this.Singular + '"]').parent().prev()
+            .each(setCost);
       } else {
         $('div.supplycard[cardname="' + this.Singular + '"] .imprice')
             .each(setCost);
