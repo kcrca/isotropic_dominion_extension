@@ -171,7 +171,7 @@ function Player(name, num) {
   this.deck_size = 10;
   this.icon = undefined;
 
-  this.isTable = name == "Table";
+  this.isTable = name == "";
 
   // The set of "other" cards -- ones that aren't in the supply piles
   this.otherCards = {};
@@ -333,7 +333,6 @@ function Player(name, num) {
       this.special_counts["Uniques"] -= 1;
     }
     this.updateCardDisplay(name);
-    this.computeAverageHand();
   };
 
   this.recordSpecialCards = function(card, count) {
@@ -554,49 +553,6 @@ function Player(name, num) {
     }
   };
 
-  this.computeAverageHand = function() {
-    var totalCoins = 0;
-    var totalCount = 0;
-    var bankCount;
-    for (var cardName in this.card_counts) {
-      var card = card_map[cardName];
-      if (card.isTreasure()) {
-        var coins;
-        switch (cardName) {
-        case "Philosopher's Stone":
-          // Impossible to get exactly right, just assume that the deck+discard
-          // is the deck size minus the initial hand plus one. This overstates
-          // the value if there are "+N card" cards in play, but it's the whole
-          // average is an imperfect estimate anyway.
-          coins = Math.floor(Math.max(0, (this.deck_size - 5) / 5));
-          break;
-
-        case "Bank":
-          bankCount = count;
-          coins = 0;
-          break;
-
-        default:
-          coins = card.getCoinCount();
-          break;
-        }
-        var count = this.card_counts[cardName];
-        totalCount += count;
-        totalCoins += coins * count;
-      }
-    }
-    if (bankCount) {
-      // Avg number of treasure cards in a hand with a banks occupying one slot;
-      // therefore $1 for the bank itself, plus the avg. number of treasure
-      // cards in the other four cards.
-      var treasureAvg = 1 + 4 * ((totalCount - 1) / this.deck_size);
-      totalCoins += treasureAvg * bankCount;
-    }
-    var avgCoinsPerCard = totalCoins / this.deck_size;
-    var avgCoinsPerHand = 5 * avgCoinsPerCard;
-    this.set('avgHand', avgCoinsPerHand.toFixed(1));
-  };
-
   this.countString = function() {
     this.deckCards = {};
     var scratchElem = $('<span/>');
@@ -690,11 +646,9 @@ function Player(name, num) {
     } else {
       fields.add('score', {initial: self.getScore(), valueClass: 'scoreValue'});
       fields.add('deck', {initial: self.getDeckString()});
-      fields.add('avgHand', {label: 'Avg $/Hand', prefix: '$' });
       fields.add('pirateShipTokens', {label: 'Pirate ship', prefix: '$',
         initial: 0, isVisible: fieldInvisibleIfZero});
     }
-    self.computeAverageHand();
     fields.add('otherCards',
         {label: self.isTable ? 'Other Trash' : 'Other Cards',
           initial: self.cardGroupHtml('otherCard'),
@@ -1780,7 +1734,7 @@ function initialize(doc) {
   player_re = '(' + other_player_names.join('|') + ')';
 
   // Create a new "player" representing the playing table, mostly the trash.
-  tablePlayer = new Player('Table', i);
+  tablePlayer = new Player('', i);
 
   if (!disabled) {
     updateScores();
