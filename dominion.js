@@ -831,7 +831,6 @@ function maybeRunInfoWindowTests(table) {
     infoWindowTests(table);
   } finally {
     infoIsForTests = false;
-    $('#body').removeClass('testInfo');
     $("body > div.black").remove();
   }
 }
@@ -1267,7 +1266,6 @@ function unpossessed(action) {
 function startInfoWIndowTests() {
   // Should not run these tests while restoring from log.
   if (!restoring_history) {
-    $('#body').addClass('.testInfo');
     infoIsForTests = true;
     $('button:contains(info)').click();
   }

@@ -155,6 +155,9 @@ html {
     font: bold italic;
 }
 
+.tall {
+    height: 100%;
+}
 /*
  * Styles that apply only to image mode -- where needed they require a parent
  * node with the id "imageMode". Classes and ID's that exist only in image mode
