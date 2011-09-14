@@ -1,9 +1,3 @@
-.spacer {
-    height: 5em;
-    display: block;
-    width: 10ex;
-}
-
 /*
  * Styles that apply to both text and image mode -- where needed (to avoid
  * any problems in the lobby usually) they require a parent node with the id
@@ -11,8 +5,6 @@
  */
 
 /* !! The behavior of the log area is right, but it isn't full height at the start. */
-
-/* !! The card count column widths are different for basic and kingdom cards. */
 
 #optionPanel, .testInfo div.black,
 .you, .you *, #header > :not(.lobby) {
@@ -63,7 +55,6 @@
     visibility: hidden;
 }
 
-body.textMode [grown]:not(:empty),
 .table, .table * {
     background: #f2f2f2;
 }
@@ -300,9 +291,14 @@ td.kingdom-column, td.basic-column {
 }
 
 /*
- * Used to improve the look of things
+ * These are just css tweaks to the original UI to make it easier to use; they
+ * have nothing to do with the point counter, just simple UI improvements.
  */
 
+/* 
+ * The 'card-...' styles override the colored backgrounds for card names to make
+ * them less intense, so it's easier to read the text.
+ */
 .card-treasure {
     background: #fce992 !important;
 }
@@ -323,6 +319,13 @@ td.kingdom-column, td.basic-column {
     background: #ffcc99 !important;
 }
 
+/*
+ * These use css, not images, to make a gradation from one color to the other.
+ * Also they do it horizontally, not vertically, so there is more room to see
+ * what's going on. (Each is done two ways because there is not yet browser
+ * compatibility about this; overriding background-image is what is shown in
+ * all the examples, although some validators choke on it.)
+ */
 .card-victory-action {
     background-image: -webkit-gradient(linear, left top, right top, color-stop(0.3, #f0f0f0), color-stop(0.7, #c0e4b1)) !important;
     background-image: -moz-linear-gradient(left center, #f0f0f0 30%, #c0e4b1 70%) !important;
@@ -331,4 +334,14 @@ td.kingdom-column, td.basic-column {
 .card-victory-treasure {
     background-image: -webkit-gradient(linear, left top, right top, color-stop(0.3, #fce992), color-stop(0.7, #c0e4b1)) !important;
     background-image: -moz-linear-gradient(left center, #fce992 30%, #c0e4b1 70%) !important;
+}
+
+/* When a card is removed from play in text mode, make that easier to see. */
+.gone {
+    background: #ccc;
+}
+
+/* Mark text mode column headers for supply cards so they're easier to spot .*/
+body.textMode [grown]:not(:empty) {
+    background: #f2f2f2;
 }
