@@ -976,7 +976,7 @@ function infoWindowTests(table) {
           checkValue(count, player.asideCount(), row.text());
           player.testSeenIslandMat = true;
         } else if (match[1] == 'Pirate Ship') {
-          //!! We should count and show pirate ship mat tokens
+          // We should count and show pirate ship mat tokens
         } else {
           addToCardCount(count);
         }
@@ -1606,11 +1606,9 @@ function maybeSetupCardCounts() {
 function setupPerPlayerInfoArea() {
   if (disabled) return;
 
-  //!! Show Native Village mat contents
   //!! Show how far through the deck each player is
   //!! Include sub-score areas for each 'extra' type (Duke, Fairgrounds, ...)
   //!! Show how much each 'extra' type would be worth (Duke, Fairgrounds, ...)
-  //!! Put counting options in a pop-up window or something
   rewriteTree(function () {
     setupPlayerArea();
     markCurrentPlayer();
