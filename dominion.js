@@ -641,9 +641,9 @@ function Player(name, num) {
     self.fields = fields;
 
     if (self.isTable) {
-      fields.add('deck', {label: "Trash", initial: self.getDeckString()});
       fields.add('tradeRoute', {label: "Trade Route", prefix: '$',
         initial: 0, visible: false });
+      fields.add('deck', {label: "Trash", initial: self.getDeckString()});
     } else {
       fields.add('score', {initial: self.getScore(), valueClass: 'scoreValue'});
       fields.add('deck', {initial: self.getDeckString()});
