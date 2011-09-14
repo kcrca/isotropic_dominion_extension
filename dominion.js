@@ -375,6 +375,7 @@ function Player(name, num) {
   // Add a card to a group of cards. Adding in the 'cardname' attribute means
   // that hovering over the card will pop up the tooltip window about the card.
   this.addToCardGroup = function(which, cardElem, count, updateField) {
+    count = count != undefined ? count : 1;
     updateField = updateField != undefined ? updateField : true;
     var group = this[which];
     if (!group) group = this[which] = {};
@@ -646,7 +647,7 @@ function Player(name, num) {
     } else {
       fields.add('score', {initial: self.getScore(), valueClass: 'scoreValue'});
       fields.add('deck', {initial: self.getDeckString()});
-      fields.add('pirateShipTokens', {label: 'Pirate ship', prefix: '$',
+      fields.add('pirateShipTokens', {label: 'Pirate Ship', prefix: '$',
         initial: 0, isVisible: fieldInvisibleIfZero});
     }
     fields.add('otherCards',
@@ -654,6 +655,9 @@ function Player(name, num) {
           initial: self.cardGroupHtml('otherCard'),
           isVisible: fieldInvisibleIfEmpty});
     if (!self.isTable) {
+      fields.add('nativeVillage', {
+        label: "Native Village", initial: self.cardGroupHtml('nativeVillage'),
+        isVisible: fieldInvisibleIfEmpty});
       fields.add('durations', {
         initial: self.cardGroupHtml('durations'),
         isVisible: fieldInvisibleIfEmpty});
@@ -1142,6 +1146,23 @@ function maybeHandlePirateShip(elems, text_arr, text) {
   return false;
 }
 
+//noinspection JSUnusedLocalSymbols
+function maybeHandleToNativeVillage(elems, text_arr, text) {
+  if (elems.length == 2 && text.match(/ to the Native Village mat\./)) {
+    last_player.addToCardGroup('nativeVillage', $(elems[0]));
+    return true;
+  }
+  return false;
+}
+
+function maybeHandleFromNativeVillage(text) {
+  if (text.match(/ puts? the mat contents into (.+) hand\./)) {
+    last_player.clearCardGroup('nativeVillage');
+    return true;
+  }
+  return false;
+}
+
 function maybeHandleSeaHag(elems, text_arr, text) {
   if (text.indexOf("a Curse on top of") != -1) {
     if (elems < 1 || elems[elems.length - 1].innerHTML != "Curse") {
@@ -1305,20 +1326,22 @@ function handlePlayLog(node) {
   // Make sure this isn't a duplicate possession entry.
   if (node.className.indexOf("possessed-log") > 0) return;
 
-  var text = node.innerText.split(" ");
+  var nodeText = node.innerText;
+  var text = nodeText.split(" ");
 
   // Keep track of what sort of scope we're in for things like watchtower.
-  handleScoping(text, node.innerText);
+  handleScoping(text, nodeText);
 
   // Gaining VP could happen in combination with other stuff.
-  maybeHandleVp(node.innerText);
+  maybeHandleVp(nodeText);
 
   var elems = node.getElementsByTagName("span");
 
-  if (activeDataHandleCounts(elems, node.innerText)) return;
+  if (activeDataHandleCounts(elems, nodeText)) return;
 
   if (elems.length == 0) {
-    maybeReturnToSupply(node.innerText);
+    maybeReturnToSupply(nodeText);
+    maybeHandleFromNativeVillage(nodeText);
     return;
   }
 
@@ -1330,35 +1353,36 @@ function handlePlayLog(node) {
   if (i == text.length) return;
   text = text.slice(i);
 
-  if (maybeHandleMint(elems, node.innerText)) return;
-  if (maybeHandleTradingPost(elems, node.innerText)) return;
-  if (maybeHandleExplorer(elems, node.innerText)) return;
-  if (maybeHandleSwindler(elems, node.innerText)) return;
-  if (maybeHandlePirateShip(elems, text, node.innerText)) return;
-  if (maybeHandleSeaHag(elems, text, node.innerText)) return;
-  if (maybeHandleOffensiveTrash(elems, text, node.innerText)) return;
-  if (maybeHandleTournament(elems, text, node.innerText)) return;
-  if (maybeHandleIsland(elems, text, node.innerText)) return;
-  if (maybeHandleCoppersmith(elems, text, node.innerText)) return;
+  if (maybeHandleMint(elems, nodeText)) return;
+  if (maybeHandleTradingPost(elems, nodeText)) return;
+  if (maybeHandleExplorer(elems, nodeText)) return;
+  if (maybeHandleSwindler(elems, nodeText)) return;
+  if (maybeHandlePirateShip(elems, text, nodeText)) return;
+  if (maybeHandleSeaHag(elems, text, nodeText)) return;
+  if (maybeHandleOffensiveTrash(elems, text, nodeText)) return;
+  if (maybeHandleTournament(elems, text, nodeText)) return;
+  if (maybeHandleIsland(elems, text, nodeText)) return;
+  if (maybeHandleCoppersmith(elems, text, nodeText)) return;
+  if (maybeHandleToNativeVillage(elems, text, nodeText)) return;
 
   if (text[0] == "trashing") {
     var trasher = last_player;
     if (topScope() == "Watchtower") {
       trasher = last_gain_player;
     }
-    handleGainOrTrash(trasher, elems, node.innerText, -1);
+    handleGainOrTrash(trasher, elems, nodeText, -1);
     return;
   }
   if (text[1].indexOf("trash") == 0) {
-    handleGainOrTrash(getPlayer(text[0]), elems, node.innerText, -1);
+    handleGainOrTrash(getPlayer(text[0]), elems, nodeText, -1);
     return;
   }
   if (text[0] == "gaining") {
-    handleGainOrTrash(last_player, elems, node.innerText, 1);
+    handleGainOrTrash(last_player, elems, nodeText, 1);
     return;
   }
   if (text[1].indexOf("gain") == 0) {
-    handleGainOrTrash(getPlayer(text[0]), elems, node.innerText, 1);
+    handleGainOrTrash(getPlayer(text[0]), elems, nodeText, 1);
     return;
   }
 
@@ -1378,7 +1402,7 @@ function handlePlayLog(node) {
   var player = getPlayer(text[0]);
   var action = text[1];
   if (action.indexOf("buy") == 0) {
-    var count = getCardCount(card_name, node.innerText);
+    var count = getCardCount(card_name, nodeText);
     // In possessed turns, it isn't who buys something, it's who "gains" it
     // (and who gains it is stated in a separate log entry).
     if (!possessed_turn) {
