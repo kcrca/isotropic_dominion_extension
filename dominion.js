@@ -834,13 +834,16 @@ function maybeRunInfoWindowTests(table) {
 }
 
 function infoWindowTests(table) {
+  // Our checks will definitely fail in an erroneous state.
+  if (announced_error) return;
+
   if ($('#choices span.stash-pos-marker').length > 0) {
     // This check exists because it is possible to have the info window pop up
     // when the user is being asked where to locate the Stash card in the deck.
     // When that happens, the info window is incorrect (it doesn't show the
     // cards already drawn before the shuffle). This means that we cannot tell
     // how big the deck is, even if we count the number of cards shown in the
-    // span choice. This is rare, so we skip the tests in this case.
+    // span choice. This is rare, so we just skip the tests in this case.
     logDebug('infoData',
         "--- Skipping info window tests during stash placement\n");
     return;
@@ -927,6 +930,7 @@ function infoWindowTests(table) {
     },
     { pat: /Current score:([0-9]+)/,
       act: function(row, match) {
+        // The score isn't reliable if we've had an error.
         if (test_only_my_score && player.name != "You") return;
         var scoreStr = player.get('score');
         var equals = scoreStr.indexOf('=');
