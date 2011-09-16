@@ -69,7 +69,7 @@ var restoring_history = false;
 // Tree is being rewritten, so should not process any tree change events.
 var rewritingTree = 0;
 
-var debug = {'actiData': true, 'infoData': true, 'logShown': true };
+var debug = {'actvData': true, 'infoData': true, 'logShown': true };
 
 var infoIsForTests = false;
 
@@ -943,7 +943,7 @@ function infoWindowTests(table) {
     // The rest of the tests rely on active data, so they only run if it's on.
     { pat: /^(Hand|Play area|Previous duration): *([^\d].*)/,
       act: function(row, match) {
-        if (!debug['actiData']) return;
+        if (!debug['actvData']) return;
         addToCardCount(countCards(match[2]));
         if (match[1] == 'Previous duration') {
           // Each Haven in the duration implies one *or more* cards set aside.
@@ -960,7 +960,7 @@ function infoWindowTests(table) {
     },
     { pat: /^(.*) (?:mat|aside): *(.*)/,
       act: function(row, match) {
-        if (!debug['actiData']) return;
+        if (!debug['actvData']) return;
         // Test set for the mat/aside area (includes chapel for thinning):
         // haven, horse traders, library, possession, island, native village, pirate ship, trade route, chapel
         // Island mat (also uses the term "aside" in the text)
@@ -985,15 +985,15 @@ function infoWindowTests(table) {
     },
     { pat: /^(?:Hand|Draw pile):(nothing|\d+)/,
       act: function(row, match) {
-        if (!debug['actiData']) return;
+        if (!debug['actvData']) return;
         addToCardCount(parseInfoNumber(match[1]));
       }
     },
     { pat: /^(Draw|Discard) pile:/,
       act: function(row, match) {
-        if (!debug['actiData']) return;
+        if (!debug['actvData']) return;
         if (player == null) {
-          logDebug('actiData', "WARNING: Player is null!!\n");
+          logDebug('actvData', "WARNING: Player is null!!\n");
           return;
         }
         var isDiscard = (match[1] == "Discard");

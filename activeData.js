@@ -96,7 +96,7 @@ function ActiveData() {
     var before = fields.get(field);
     var after = before + delta;
     if (after != before) {
-      logDebug('actiData',
+      logDebug('actvData',
           "Active: change " + field + ": " + before + " → " + after);
       fields.set(field, after);
     }
@@ -328,7 +328,7 @@ function activeDataLiveTests() {
 
 function activeDataTestSanity() {
   if (!runActiveDataTests()) return;
-  logDebug('actiData', last_player.name + ": " + activeData.fields);
+  logDebug('actvData', last_player.name + ": " + activeData.fields);
   var values = activeData.getValues();
   var negatives = [];
   for (var name in values) {
@@ -339,7 +339,7 @@ function activeDataTestSanity() {
   if (negatives.length > 0) {
     activeDataAlert("Negative values in active data: " + negatives.join(", "));
   } else {
-    logDebug('actiData', "sanity checks passed for " + last_player.name);
+    logDebug('actvData', "sanity checks passed for " + last_player.name);
   }
 }
 
@@ -402,20 +402,20 @@ function activeDataTestValuesVsYou() {
   });
   var stateMsg = (msgs.length == 0 ? 'valid' : 'INVALID') + ' @ ' + new Date() +
       ': ' + shownState + ' [shown] vs. ' + activeState + ' [active]';
-  logDebug('actiData', stateMsg);
+  logDebug('actvData', stateMsg);
 
   var foundProblems = msgs.length != 0;
-  if (debug['actiData'] && foundProblems) {
+  if (debug['actvData'] && foundProblems) {
     for (var i = 0; i < msgs.length; i++) {
-      logDebug('actiData', '  ' + msgs[i]);
+      logDebug('actvData', '  ' + msgs[i]);
     }
     activeDataAlert('Invalid active state: check console');
   }
 }
 
 function activeDataAlert(msg) {
-  if (debug['actiData']) {
-    logDebug('actiData', "ALERT: " + msg);
+  if (debug['actvData']) {
+    logDebug('actvData', "ALERT: " + msg);
     if (!restoring_history) {
       alert(msg);
     }
