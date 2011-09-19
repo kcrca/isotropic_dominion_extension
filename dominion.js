@@ -1078,9 +1078,19 @@ function maybeReturnToSupply(text) {
   });
 }
 
-function maybeHandleExplorer(elems, text) {
-  if (text.match(/gain(ing)? a (Silver|Gold) in (your )?hand/)) {
-    last_player.gainCard(elems[elems.length - 1], 1);
+function maybeHandleGainInHand(elems, text) {
+  // Normally, "Alice gains a Gold in hand" means that Alice gets a new Gold.
+  // But if Alice is currently possessing Bob, and uses a card like Mine to
+  // trash a Silver to replace it with a Gold in the hand, we will see a message
+  // like "Bob gains a Silver in hand". This doesn't mean that Bob gets a new
+  // Silver, it actually means "A silver is put into Bob's hand". A following
+  // message will say who literally gets the new Silver: "... Alice gains the
+  // silver". So during Possession, "gains [...] in hand" doesn't mean "gain"
+  // in the same way as everywhere else.
+  if (text.match(/gain(ing)? a (.*) in (your )?hand/)) {
+    if (!possessed_turn) {
+      last_player.gainCard(elems[elems.length - 1], 1);
+    }
     return true;
   }
   return false;
@@ -1355,7 +1365,7 @@ function handlePlayLog(node) {
 
   if (maybeHandleMint(elems, nodeText)) return;
   if (maybeHandleTradingPost(elems, nodeText)) return;
-  if (maybeHandleExplorer(elems, nodeText)) return;
+  if (maybeHandleGainInHand(elems, nodeText)) return;
   if (maybeHandleSwindler(elems, nodeText)) return;
   if (maybeHandlePirateShip(elems, text, nodeText)) return;
   if (maybeHandleSeaHag(elems, text, nodeText)) return;
