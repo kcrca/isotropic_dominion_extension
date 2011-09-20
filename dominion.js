@@ -476,8 +476,8 @@ function Player(name, num) {
     if (this.resigned) return;
 
     // In addition to other classes, this is now in the "resigned" class.
+    $("." + this.classFor).addClass("resigned");
     this.classFor += " resigned";
-    $("." + this.idFor("data")).addClass("resigned");
     this.resigned = true;
   };
 
@@ -728,7 +728,7 @@ function findTrailingPlayer(text) {
 
 // Check to see if the node shows that a player resigned.
 function maybeHandleResignation(node) {
-  if (node.innerText.match(/ resigns from the game/)) {
+  if (node.innerText.match(/ resigns? from the game/)) {
     last_player.setResigned();
     return true;
   }
