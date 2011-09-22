@@ -1079,13 +1079,13 @@ function maybeReturnToSupply(text) {
 }
 
 function maybeHandleGainInHand(elems, text) {
-  // Normally, "Alice gains a Gold in hand" means that Alice gets a new Gold.
+  // Normally, "Bob gains a Gold in hand" means that Bob gets a new Gold.
   // But if Alice is currently possessing Bob, and uses a card like Mine to
   // trash a Silver to replace it with a Gold in the hand, we will see a message
-  // like "Bob gains a Silver in hand". This doesn't mean that Bob gets a new
-  // Silver, it actually means "A silver is put into Bob's hand". A following
-  // message will say who literally gets the new Silver: "... Alice gains the
-  // silver". So during Possession, "gains [...] in hand" doesn't mean "gain"
+  // like "Bob gains a Gold in hand". This doesn't mean that Bob gets a new
+  // Gold, it actually means "A Gold is put into Bob's hand". A following
+  // message will say who literally gets the new Gold: "... Alice gains the
+  // Gold". So during Possession, "gains [...] in hand" doesn't mean "gain"
   // in the same way as everywhere else.
   if (text.match(/gain(ing)? a (.*) in (your )?hand/)) {
     if (!possessed_turn) {
@@ -2270,6 +2270,7 @@ function handle(doc) {
       // This is sometimes left around
       if (document.getElementById("playerDataTable") && inLobby()) {
         removePlayerData();
+        $("#copied_temp_say").remove();
       }
       return;
     }
