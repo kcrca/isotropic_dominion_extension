@@ -571,5 +571,6 @@ function activeDataCommands() {
 }
 
 function activeDataString() {
+  if (!last_player) return "[none]";
   return "Active: " + last_player.name + ", " + activeData.toString();
 }
