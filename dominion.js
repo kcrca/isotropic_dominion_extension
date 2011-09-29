@@ -1684,9 +1684,10 @@ function topScope(skipping) {
 }
 
 function findScope(name) {
-  for (var i = 0; i < scopes.length; i++) {
+  var top = scopes.length - 1;
+  for (var i = top; i >= 0; i--) {
     if (scopes[i] == name) {
-      return i;
+      return top - i;
     }
   }
   return -1;
@@ -1715,6 +1716,8 @@ function initialize(doc) {
 
   discoverGUIMode();
   setupPerPlayerInfoArea();
+  
+  
 
   if (localStorage['disabled']) {
     disabled = true;
@@ -2351,7 +2354,9 @@ function enterLobby() {
 
     getSayButton().addEventListener('click', function() {
       $('#fake_entry').val("");
-    })
+    });
+    
+    $('#fake_entry').focus();
   }
 
   my_icon = $('#log img').first()[0];

@@ -549,7 +549,7 @@ function maybeHandleVp(text) {
 }
 
 function isNormalBuy() {
-  return findScope("Black Market") < 0;
+  return findScope("Black Market") < 1;
 }
 
 function activeDataCardBought(count, card) {
