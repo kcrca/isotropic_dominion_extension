@@ -1321,6 +1321,23 @@ function handleLogEntry(node) {
   } finally {
     // make sure we are using the node after any rewrites
     maybeAddToFullLog(node);
+    showCurrentInfo();
+  }
+}
+
+var last_summary = '';
+
+function showCurrentInfo() {
+  if (!debug['infoData']) return;
+  var summary = '';
+  allPlayers(function(player) {
+    if (summary.length > 0) summary += '; ';
+    var name = player.name.length > 0 ? player.name : '-table-';
+    summary += name + ': ▼' + player.score + '/' + player.deck_size;
+  });
+  if (summary != last_summary) {
+    logDebug('infoData', summary);
+    last_summary = summary;
   }
 }
 
@@ -1716,8 +1733,6 @@ function initialize(doc) {
 
   discoverGUIMode();
   setupPerPlayerInfoArea();
-  
-  
 
   if (localStorage['disabled']) {
     disabled = true;
@@ -2355,7 +2370,7 @@ function enterLobby() {
     getSayButton().addEventListener('click', function() {
       $('#fake_entry').val("");
     });
-    
+
     $('#fake_entry').focus();
   }
 
