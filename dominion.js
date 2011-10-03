@@ -1330,10 +1330,8 @@ var last_summary = '';
 function showCurrentInfo() {
   if (!debug['infoData']) return;
   var summary = '';
-  allPlayers(function(player) {
-    if (summary.length > 0) summary += '; ';
-    var name = player.name.length > 0 ? player.name : '-table-';
-    summary += name + ': ▼' + player.score + '/' + player.deck_size;
+  showStatus('all', function(msg) {
+    summary += msg + "\n";
   });
   if (summary != last_summary) {
     logDebug('infoData', summary);
@@ -1853,38 +1851,42 @@ function maybeShowStatus(request, request_time) {
 
   if (last_status_print < request_time) {
     last_status_print = new Date().getTime();
+    showStatus(request, writeText);
+  }
+}
 
-    var my_name = localStorage["name"];
-    if (my_name == undefined || my_name == null) my_name = "Me";
-    function writeStatus(msg) {
-      writeText(chat_prefix + " " +
-          msg.replace(/\bYou([:=])/g, my_name + "$1"));
-    }
+function showStatus(request, show) {
+  var my_name = localStorage["name"];
+  if (my_name == undefined || my_name == null) my_name = "Me";
 
-    switch (request) {
-    case "status":
-      writeStatus(getDecks() + " | " + getScores());
-      break;
-    case "counts":
-      allPlayers(function(player) {
-        writeStatus(player.countString());
-      });
-      break;
-    case "info":
-      allPlayers(function(player) {
-        writeStatus(player.infoString());
-      });
-      break;
-    case "active":
-      writeStatus(activeDataString());
-      break;
-    case 'all':
-      writeStatus(activeDataString());
-      allPlayers(function(player) {
-        writeStatus(player.countString());
-        writeStatus(player.infoString());
-      });
-    }
+  show = show || writeText;
+  function writeStatus(msg) {
+    show(chat_prefix + " " + msg.replace(/\bYou([:=])/g, my_name + "$1"));
+  }
+
+  switch (request) {
+  case "status":
+    writeStatus(getDecks() + " | " + getScores());
+    break;
+  case "counts":
+    allPlayers(function(player) {
+      writeStatus(player.countString());
+    });
+    break;
+  case "info":
+    allPlayers(function(player) {
+      writeStatus(player.infoString());
+    });
+    break;
+  case "active":
+    writeStatus(activeDataString());
+    break;
+  case 'all':
+    writeStatus(activeDataString());
+    allPlayers(function(player) {
+      writeStatus(player.countString());
+      writeStatus(player.infoString());
+    });
   }
 }
 
@@ -2305,13 +2307,13 @@ function handle(doc) {
           doc.childNodes[2].nodeValue);
     }
 
-    maybeRunInfoWindowTests(doc);
-
     // Something was added, this is a good time to update the display.
     if (!disabled) {
       updateScores();
       updateDeck();
     }
+
+    maybeRunInfoWindowTests(doc);
   } catch (err) {
     console.log(err);
     console.log(doc);
@@ -2409,5 +2411,8 @@ chrome.extension.sendRequest({ type: "version" }, function(response) {
 });
 
 function logDebug(area, msg) {
-  if (debug[area]) console.log(area + ': ' + msg);
+  if (debug[area]) {
+    msg = msg.replace(/^/mg, area + ':');
+    console.log(msg);
+  }
 }
