@@ -993,7 +993,7 @@ function infoWindowTests(table) {
       act: function(row, match) {
         if (!debug['actvData']) return;
         if (player == null) {
-          logDebug('actvData', "WARNING: Player is null!!\n");
+          logDebug('actvData', "Warning: Player is null!!\n");
           return;
         }
         var isDiscard = (match[1] == "Discard");

@@ -1,0 +1,31 @@
+#log-table {
+    border: 1px;
+    border-collapse: collapse;
+}
+
+#log-table td, #log-table th {
+    border-bottom: 1px;
+    border-style: solid;
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+    vertical-align: baseline;
+    text-align: left;
+}
+
+#log-table tr.log-level-Severe > td {
+    background: #ff9999;
+}
+
+#log-table tr.log-level-Severe > td.log-message {
+    background: inherit;
+}
+
+#log-table tr.log-level-Warning > td,
+#log-table tr.log-level-Config > td {
+    background: #ffcc99;
+}
+
+#log-table tr.log-level-Warning > td.log-message,
+#log-table tr.log-level-Config > td.log-message {
+    background: inherit;
+}

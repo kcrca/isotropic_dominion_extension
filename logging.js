@@ -19,14 +19,16 @@ jQuery.popupready = jQuery.fn.popupready;
 log = function() {
   var n = 0;
   var levels = {
-    FINE: n++,
-    DEBUG: n++,
-    INFO: n++,
-    CONFIG:n++,
-    WARNING:n++,
-    SEVERE: n++,
-    OFF: n++
+    Fine: n++,
+    Debug: n++,
+    Info: n++,
+    Config:n++,
+    Warning:n++,
+    Severe: n++,
+    Off: n++
   };
+  var levelNameToNum = {};
+  var levelNumToName = {};
 
   var handlers = {
     window: {
@@ -45,6 +47,7 @@ log = function() {
             this.pending = [];
             var self = this;
             $.popupready(function(popup) {
+              $.pm({target: popup, type: "logOptions", data: self});
               self.consumePending(popup);
             }, "logWindow.html", "Log");
           }
@@ -90,14 +93,18 @@ log = function() {
   }
 
   for (var levelName in levels) {
-    if (isNaN(parseInt(levelName))) {
-      var levelNum = levels[levelName];
-      levels[levelNum] = levelName;
-    }
+    var levelNum = levels[levelName];
+
+    levelNumToName[levelNum] = levelName;
+
+    var ch = levelName.charAt(0);
+    levelNameToNum[levelName] = levelNum;
+    levelNameToNum[ch.toUpperCase()] = levelNum;
+    levelNameToNum[ch.toLowerCase()] = levelNum;
   }
 
   var info = {};
-  var infoDefaults = {level: levels.INFO, handlers: [handlers.window]};
+  var infoDefaults = {level: levels.Info, handlers: [handlers.window]};
 
   function toLevelNum(level) {
     if (typeof(level) == 'string') {
@@ -105,7 +112,7 @@ log = function() {
       if (!isNaN(num)) {
         return num;
       }
-      return levels[level];
+      return levelNameToNum[level.charAt(0)];
     }
     return level;
   }
@@ -120,8 +127,8 @@ log = function() {
 
     var handlers = areaInfo.handlers;
 
-    var levelName = levels[levelNum];
-    levelName = levelName || "UNKNOWN";
+    var levelName = levelNumToName[levelNum];
+    levelName = levelName || "Unknown";
     var when = new Date();
     for (var i = 0; i < handlers.length; i++) {
       handlers[i].publish(area, levelNum, levelName, when, message);
@@ -139,11 +146,8 @@ log = function() {
 
   // Add functions for levels, (log.error(), log.info(), ...).
   for (levelName in levels) {
-    // Check to see if this is a name key or a number key
-    if (isNaN(parseInt(levelName))) {
-      logObject[levelName.toLowerCase()] = function(area, message) {
-        return log(area, levels[levelName], message);
-      }
+    logObject[levelName.toLowerCase()] = function(area, message) {
+      return log(area, levels[levelName], message);
     }
   }
 
