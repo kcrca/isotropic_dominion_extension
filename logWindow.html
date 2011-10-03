@@ -4,7 +4,41 @@
 <head>
     <title></title>
 </head>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="postmessage/postmessage.js"></script>
+
+<script type="text/javascript">
+    var tableBody;
+
+    $(document).ready(function() {
+        tableBody = $('#log-table > tbody');
+        $.pm.bind('logRecord', handleLogRecord);
+    });
+
+    function handleLogRecord(data) {
+        var levelClass = 'log-level-' + data.level;
+        var areaClass = 'log-area-' + data.area;
+        var row = $('<tr/>').addClass(levelClass).addClass(areaClass);
+        row.append($('<td class="log-area"/>').text(data.area));
+        row.append($('<td class="log-level"/>').text(data.level));
+        row.append($('<td class="log-when"/>').text(data.when));
+        row.append($('<td class="log-message"/>').text(data.message));
+        tableBody.append(row);
+    }
+</script>
 <body>
+<h3>Logging</h3>
+
+<div class="log-region" id="log-region">
+    <table class="log-table" id="log-table">
+        <tr class="log-header" id="log-header">
+            <th>Area</th>
+            <th>Level</th>
+            <th>When</th>
+            <th>Message</th>
+        </tr>
+    </table>
+</div>
 
 </body>
 </html>

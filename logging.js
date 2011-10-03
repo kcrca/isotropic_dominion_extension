@@ -30,51 +30,41 @@ log = function() {
 
   var handlers = {
     window: {
-      publish: function(area, level, levelName, when, message) {
-        if (!this.logTable) {
+      publish: function(area, levelNum, level, when, message) {
+        var logRecord = {
+          area: area,
+          level: level,
+          when: when,
+          message: message
+        };
+
+        if (this.windowReady) {
+          this.sendLog(logRecord);
+        } else {
           if (!this.pending) {
             this.pending = [];
             var self = this;
             $.popupready(function(popup) {
-              self.buildLogTable(popup);
-              self.consumePending();
+              self.consumePending(popup);
             }, "logWindow.html", "Log");
           }
-          this.pending.push([area, level, levelName, when, message]);
-          return;
+          this.pending.push(logRecord);
         }
-
-        var row = $('<tr/>').addClass('log.' + levelName);
-
-        row.append($('<td/>', {text: area}));
-        row.append($('<td/>', {text: levelName}));
-        row.append($('<td/>', {text: when}));
-        row.append($('<td/>', {text: message}));
-
-        this.logTable.append(row);
       },
-      buildLogTable: function(popup) {
-        var logWindow = $(popup);
-
-        var logRegion = $('<div/>', {
-          'class': 'log.region',
-          append: $('<table/>', {
-            'class': 'log.table',
-            append: $('<tr/>', {
-              append: $('<th>Area</th><th>Level</th></th><th>When</th></th><th>Message</th>')
-            })
-          })
-        });
-        logWindow.append(logRegion);
-
-        this.logTable = $(logWindow).find('#log.table');
-
-      },
-      consumePending: function() {
+      consumePending: function(popup) {
+        this.popup = popup;
+        this.windowReady = true;
         while (this.pending.length > 0) {
-          var params = this.pending.shift();
-          this.publish(params[0], params[1], params[2], params[3], params[4])
+          var logRecord = this.pending.shift();
+          this.sendLog(logRecord);
         }
+      },
+      sendLog: function(logRecord) {
+        $.pm({
+          target: this.popup,
+          type: "logRecord",
+          data: logRecord
+        });
       }
     }
   };
@@ -120,20 +110,21 @@ log = function() {
     return level;
   }
 
-  function log(area, level, message) {
-    level = toLevelNum(level);
+  function log(area, levelSpec, message) {
+    var levelNum = toLevelNum(levelSpec);
     var areaInfo = $.extend({}, infoDefaults, info[area]);
     if (areaInfo.levelNum == undefined) {
       areaInfo.levelNum = toLevelNum(areaInfo.level);
     }
-    if (level < areaInfo.levelNum) return false;
+    if (levelNum < areaInfo.levelNum) return false;
 
     var handlers = areaInfo.handlers;
 
-    var levelName = levels[level];
+    var levelName = levels[levelNum];
+    levelName = levelName || "UNKNOWN";
     var when = new Date();
     for (var i = 0; i < handlers.length; i++) {
-      handlers[i].publish(area, level, levelName, when, message);
+      handlers[i].publish(area, levelNum, levelName, when, message);
     }
     return true;
   }
