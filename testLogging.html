@@ -1,0 +1,43 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <script type="text/javascript" src="jquery.js"></script>
+    <script type="text/javascript" src="logging.js"></script>
+
+    <title>Logging Test</title>
+</head>
+<body>
+
+<form name="writeLog" action="#" onsubmit="noSubmit()">
+    <input type="button" id="logButton" value="Log"/>
+    <label for="areaText">Area:</label>
+    <input type="text" id="areaText"/>
+    <label for="levelText">Level:</label>
+    <input type="text" id="levelText"/>
+    <label for="messageText">Message:</label>
+    <input type="text" id="messageText"/>
+</form>
+
+<script type="text/javascript">
+    function noSubmit() {
+        return false;
+    }
+
+    $(document).ready(function() {
+        $('input').each(function() {
+            var $this = $(this);
+            $this.attr('name', $this.attr('id'));
+        });
+
+        function doLog() {
+            var form = document.writeLog;
+            log.log(form.areaText.value, form.levelText.value,
+                    form.messageText.value);
+        }
+
+        $('#logButton').click(doLog);
+    });
+</script>
+</body>
+</html>

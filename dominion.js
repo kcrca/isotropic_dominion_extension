@@ -1403,7 +1403,12 @@ function handlePlayLog(node) {
     return;
   }
   if (text[0] == "gaining") {
-    handleGainOrTrash(last_player, elems, nodeText, 1);
+    // When possessed, gaining a card (from, say, a University) is like
+    // buying one -- it's the possessor, not the possessee, who gains it, which
+    // is stated by a later log message.
+    if (!possessed_turn) {
+      handleGainOrTrash(last_player, elems, nodeText, 1);
+    }
     return;
   }
   if (text[1].indexOf("gain") == 0) {
