@@ -50,6 +50,7 @@ log = function() {
       settings: {
         idPrefix: 'log',
         classPrefix: 'log',
+        divId: 'log-div',
         insertDiv: function(div) {
           $(document.body).append(div);
         }
@@ -85,16 +86,23 @@ log = function() {
           return node;
         }
 
-        var div = setup($('<div/>'), 'div');
         var table = setup($('<table/>'), 'table');
         var header = setup($('<tr/>'), 'header');
         header.append($('<th/>').text('Area'));
         header.append($('<th/>').text('Level'));
         header.append($('<th/>').text('When'));
         header.append($('<th/>').text('Message'));
+
+        var div;
+        if (this.settings.divId) {
+          div = $('#' + this.settings.divId);
+        }
+        if (!div || div.length == 0) {
+          div = setup($('<div/>'), 'div');
+          this.settings.insertDiv(div);
+        }
         div.append(table);
         table.append(header);
-        this.settings.insertDiv(div);
         this.tableBody = div.find('table > tbody');
       }
     },
