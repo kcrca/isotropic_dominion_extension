@@ -145,28 +145,33 @@ log = function() {
     }
   };
 
-  function areaDefaults(properties) {
-    if (properties) {
-      infoDefaults = properties;
-    }
-    return infoDefaults;
+  // purposefully making copy so we aren't sharing an object with the user
+  function mergeOrReplace(orig, properties, replace) {
+    var base = (replace ? {} : orig);
+    return $.extend(base, properties);
   }
 
-  function area(areaName, properties) {
+  function areaDefaults(properties, replace) {
+    if (properties) {
+      mergeOrReplace(infoDefaults, properties, replace);
+    }
+    // return a copy
+    return $.extend({}, infoDefaults);
+  }
+
+  function area(areaName, properties, replace) {
     if (!areaName) {
-      return areaDefaults(properties);
+      return areaDefaults(properties, replace);
     }
 
-    var origProperties = info[areaName];
     if (properties) {
-      info[areaName] = properties;
-    } else if (!origProperties) {
-      info[areaName] = $.extend({}, infoDefaults);
+      mergeOrReplace(info[areaName], properties, replace);
     }
-    return info[areaName];
+    // return a copy
+    return $.extend({}, info[areaName]);
   }
 
-  function timeFormat(when) {
+  function defaultTimeFormat(when) {
     return when.toLocaleTimeString();
   }
 
@@ -185,7 +190,7 @@ log = function() {
   var infoDefaults = {
     level: 'Info',
     handlers: [handlers.window],
-    toTimeString: timeFormat
+    toTimeString: defaultTimeFormat
   };
 
   function toLevelNum(level) {
@@ -214,6 +219,10 @@ log = function() {
       handlers[i].publish(area, levelNum, levelName, when, message);
     }
     return true;
+  }
+  
+  for (var handlerName in handlers) {
+    handlers[handlerName].name = handlerName;
   }
 
   var logObject = {

@@ -2,11 +2,13 @@
         "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <head>
+    <title>Logging Test</title>
+
     <script type="text/javascript" src="jquery.js"></script>
     <script type="text/javascript" src="postmessage/postmessage.js"></script>
     <script type="text/javascript" src="logging.js"></script>
 
-    <title>Logging Test</title>
+    <link rel="stylesheet" type="text/css" href="logWindow.css"/>
 </head>
 <body>
 
@@ -14,11 +16,12 @@
     <input type="button" id="levelButton" value="Level"/>
     <label for="areaText">Area:</label>
     <input type="text" id="areaText" value="Ohio"/>
-    <label for="logLevelSelect">Level:</label>
-    <select id="logLevelSelect"> </select>
+    <label for="levelSelct">Level:</label>
+    <select id="levelSelct"> </select>
     <label for="messageText">Message:</label>
     <input type="text" id="messageText" value="Read Me!"/>
     <input type="button" id="logButton" value="Log"/>
+    <span id='handlers'></span>
 </form>
 
 <script type="text/javascript">
@@ -26,34 +29,66 @@
         return false;
     }
 
-    $(document).ready(function() {
-        $('input select').each(function() {
-            var $this = $(this);
-            $this.attr('name', $this.attr('id'));
-        });
+    function createHandlerOptions() {
+        var inUse = log.areaDefaults().handlers;
+        for (var handlerName in log.handlers) {
+            var handler = log.handlers[handlerName];
+            var checkbox = $('<input type="checkbox"/>');
+            var id = handlerName + 'Opt';
+            checkbox.attr('id', id);
+            checkbox.attr('name', handlerName);
+            checkbox.attr('checked', inUse.indexOf(handler) >= 0);
+            checkbox.change(handlerCheckboxChanged);
+            var label = $('<label/>').attr('for', id).text(handlerName);
+            $('#handlers').append(checkbox).append(label);
+        }
+    }
 
-        var logLevelSelect = $('#logLevelSelect');
+    function handlerCheckboxChanged(evt) {
+        var checkbox = $(evt.target);
+        var name = checkbox.attr('name');
+        var handler = log.handlers[name];
+        var inUse = log.areaDefaults().handlers;
+        var pos = inUse.indexOf(handler);
+        if (checkbox.attr('checked')) {
+            if (pos < 0) {
+                inUse.push(handler);
+            }
+        } else {
+            if (pos >= 0) {
+                inUse.splice(pos, 1);
+            }
+        }
+        log.areaDefaults({handlers: inUse});
+    }
+
+    function createLevelSelect() {
+        var levelSelct = $('#levelSelct');
         var defaults = log.areaDefaults();
         for (var levelName in log.levels) {
             var opt = $('<option>' + levelName + '</option>');
             if (levelName == defaults.level) {
                 opt.attr('selected', 'selected');
             }
-            logLevelSelect.append(opt);
+            levelSelct.append(opt);
         }
+    }
 
-        function logLevel() {
-            return $('#logLevelSelect :selected').val();
-        }
+    function logLevel() {
+        return $('#levelSelct :selected').val();
+    }
 
-        function doLog() {
-            log.log($('#areaText').val(), logLevel(), $('#messageText').val());
-        }
+    function doLog() {
+        log.log($('#areaText').val(), logLevel(), $('#messageText').val());
+    }
 
-        function doLevel() {
-            log.area($('#areaText').val(), {level: logLevel()});
-        }
+    function doLevel() {
+        log.area($('#areaText').val(), {level: logLevel()});
+    }
 
+    $(document).ready(function() {
+        createHandlerOptions();
+        createLevelSelect();
         $('#logButton').click(doLog);
         $('#levelButton').click(doLevel);
     });
