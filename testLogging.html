@@ -11,13 +11,14 @@
 <body>
 
 <form name="writeLog" action="#" onsubmit="noSubmit()">
-    <input type="button" id="logButton" value="Log"/>
+    <input type="button" id="levelButton" value="Level"/>
     <label for="areaText">Area:</label>
     <input type="text" id="areaText" value="Ohio"/>
-    <label for="levelText">Level:</label>
-    <input type="text" id="levelText" value="INFO"/>
+    <label for="logLevelSelect">Level:</label>
+    <select id="logLevelSelect"> </select>
     <label for="messageText">Message:</label>
     <input type="text" id="messageText" value="Read Me!"/>
+    <input type="button" id="logButton" value="Log"/>
 </form>
 
 <script type="text/javascript">
@@ -26,18 +27,35 @@
     }
 
     $(document).ready(function() {
-        $('input').each(function() {
+        $('input select').each(function() {
             var $this = $(this);
             $this.attr('name', $this.attr('id'));
         });
 
+        var logLevelSelect = $('#logLevelSelect');
+        var defaults = log.areaDefaults();
+        for (var levelName in log.levels) {
+            var opt = $('<option>' + levelName + '</option>');
+            if (levelName == defaults.level) {
+                opt.attr('selected', 'selected');
+            }
+            logLevelSelect.append(opt);
+        }
+
+        function logLevel() {
+            return $('#logLevelSelect :selected').val();
+        }
+
         function doLog() {
-            var form = document.writeLog;
-            log.log(form.areaText.value, form.levelText.value,
-                    form.messageText.value);
+            log.log($('#areaText').val(), logLevel(), $('#messageText').val());
+        }
+
+        function doLevel() {
+            log.area($('#areaText').val(), {level: logLevel()});
         }
 
         $('#logButton').click(doLog);
+        $('#levelButton').click(doLevel);
     });
 </script>
 </body>

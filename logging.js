@@ -73,11 +73,10 @@ log = function() {
   };
 
   function areaDefaults(properties) {
-    var origDefaults = infoDefaults;
     if (properties) {
       infoDefaults = properties;
     }
-    return origDefaults;
+    return infoDefaults;
   }
 
   function area(areaName, properties) {
@@ -88,8 +87,10 @@ log = function() {
     var origProperties = info[areaName];
     if (properties) {
       info[areaName] = properties;
+    } else if (!origProperties) {
+      info[areaName] = $.extend({}, infoDefaults);
     }
-    return origProperties;
+    return info[areaName];
   }
 
   for (var levelName in levels) {
@@ -104,7 +105,7 @@ log = function() {
   }
 
   var info = {};
-  var infoDefaults = {level: levels.Info, handlers: [handlers.window]};
+  var infoDefaults = {level: 'Info', handlers: [handlers.window]};
 
   function toLevelNum(level) {
     if (typeof(level) == 'string') {
@@ -120,10 +121,8 @@ log = function() {
   function log(area, levelSpec, message) {
     var levelNum = toLevelNum(levelSpec);
     var areaInfo = $.extend({}, infoDefaults, info[area]);
-    if (areaInfo.levelNum == undefined) {
-      areaInfo.levelNum = toLevelNum(areaInfo.level);
-    }
-    if (levelNum < areaInfo.levelNum) return false;
+    var areaLevelNum = toLevelNum(areaInfo.level);
+    if (levelNum < areaLevelNum) return false;
 
     var handlers = areaInfo.handlers;
 
@@ -138,6 +137,7 @@ log = function() {
 
   var logObject = {
     log: log,
+    level: area,
     levels: levels,
     areaDefaults: areaDefaults,
     area: area,
