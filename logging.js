@@ -62,17 +62,15 @@ log = function() {
       },
       publish: function(area, levelNum, level, when, message) {
         this.ensureDiv();
-        var classPrefix = this.classPrefix();
+        var clsPrefix = this.classPrefix();
 
-        var levelClass = classPrefix + '-level-' + level;
-        var areaClass = classPrefix + '-area-' + area;
+        var levelClass = clsPrefix + '-level-' + level;
+        var areaClass = clsPrefix + '-area-' + area;
         var row = $('<tr/>').addClass(levelClass).addClass(areaClass);
-        row.append($('<td class="' + classPrefix + '-area"/>').text(area));
-        row.append($('<td class="' + classPrefix + '-level"/>').text(level));
-        row.append($('<td class="' + classPrefix + '-when"/>').text(when
-            .toLocaleString()));
-        row.append($('<td class="' + classPrefix + '-message"/>')
-            .text(message));
+        row.append($('<td class="' + clsPrefix + '-area"/>').text(area));
+        row.append($('<td class="' + clsPrefix + '-level"/>').text(level));
+        row.append($('<td class="' + clsPrefix + '-when"/>').text(when));
+        row.append($('<td class="' + clsPrefix + '-message"/>').html(message));
         this.tableBody.append(row);
       },
       ensureDiv: function() {
@@ -150,13 +148,19 @@ log = function() {
       settings: {
         prefix: ''
       },
+      textMessage:function (message) {
+        // If it's HTML, extract the text part
+        return $('<span>' + message + '</span>').text();
+      },
       publish: function(area, levelNum, level, when, message) {
         var prefix = this.prefix;
         if (!prefix) prefix = '';
         if (prefix.length > 0) prefix += ':';
+        message = this.textMessage(message);
         console.log(prefix + area + ':' + level + ':' + when + ':' + message);
       },
       alert: function(area, levelNum, level, when, message) {
+        message = this.textMessage(message);
         alert("Area: " + area + "\n" + "Level: " + level + "\n" + "When: " +
             when + "\n" + "Message: " + message + "\n");
       }
