@@ -5,10 +5,17 @@ $(document).ready(function() {
   $.pm.bind('logRecord', handleLogRecord);
 });
 
+var settings;
+
 function handleLogOptions(data) {
-  if (data.style) {
-    updateDataStyle(data);
+  var merged = $.extend(settings, data.settings);
+  for (var key in merged) {
+    if (settings[key] != data.settings[key]) {
+      updateSetting(data.settings, key);
+    }
   }
+  // store a copy of the settings
+  settings = $.extend({}, data.settings);
 }
 
 function handleLogRecord(data) {
@@ -16,23 +23,20 @@ function handleLogRecord(data) {
       data.message);
 }
 
-function internalLog(level, message) {
-  handleLogRecord({
-    area: 'logInternal',
-    level: level,
-    when: new Date(),
-    message: message});
-}
+function updateSetting(key, newSettings) {
+  switch (key) {
+  case 'title':
+    $('title').text(newSettings.title);
+    $('.log-title').text(newSettings.title);
+    break;
 
-function updateDataStyle(data) {
-  var logStyle = $('#log-css');
-  if (logStyle.length == 0) {
-    internalLog(log.levels.Config, "Cannot find CSS node to replace");
-    return;
-  }
-  if (data.style.index("<") != 0) {
-    logStyle.attr('href', data.style);
-  } else {
-    logStyle.replaceWith($(data.style));
+  case 'css':
+    var logCss = $('#log-css');
+    var css = newSettings.css;
+    if (css.charAt(0) == '<') {
+      logCss.replaceWith($(css));
+    } else {
+      logCss.attr('href', css);
+    }
   }
 }

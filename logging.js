@@ -32,25 +32,31 @@ log = function() {
 
   function handlerConfig(properties, override) {
     override = override != undefined ? override : false;
-    if (!this.properties) {
-      this.properties = {};
+    if (!this.settings) {
+      this.settings = {};
     }
     if (override) {
-      this.properties = $.extend({}, properties);
+      this.settings = $.extend({}, properties);
     } else {
-      $.extend(this.properties, properties);
+      $.extend(this.settings, properties);
     }
   }
 
   var handlers = {
     div: {
       config: handlerConfig,
-      properties: {},
+      settings: {
+        idPrefix: 'log',
+        classPrefix: 'log',
+        insertDiv: function(div) {
+          $(document.body).append(div);
+        }
+      },
       idPrefix: function (props) {
-        return (props ? props : this.properties).idPrefix || 'log';
+        return (props ? props : this.settings).idPrefix;
       },
       classPrefix: function (props) {
-        return (props ? props : this.properties).classPrefix || 'log';
+        return (props ? props : this.settings).classPrefix;
       },
       publish: function(area, levelNum, level, when, message) {
         this.ensureDiv();
@@ -88,16 +94,16 @@ log = function() {
         header.append($('<th/>').text('Message'));
         div.append(table);
         table.append(header);
-        $(document.body).append(div);
+        this.settings.insertDiv(div);
         this.tableBody = div.find('table > tbody');
-        if (this.tableBody.length == 0) {
-          alert("no table?");
-        }
       }
     },
     window: {
       config: handlerConfig,
-      properties: {},
+      settings: {
+        title: 'Log Messages',
+        css: 'logWindow.css'
+      },
       publish: function(area, levelNum, level, when, message) {
         var logRecord = {
           area: area,
@@ -114,7 +120,7 @@ log = function() {
             this.pending = [];
             var self = this;
             $.popupready(function(popup) {
-              $.pm({target: popup, type: "logOptions", data: self});
+              $.pm({target: popup, type: "logOptions", data: self.settings});
               self.consumePending(popup);
             }, "logWindow.html", "Log");
           }
