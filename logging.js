@@ -143,6 +143,13 @@ log = function() {
           data: logRecord
         });
       }
+    },
+    console:  {
+      config: handlerConfig,
+      settings: {},
+      publish: function(area, levelNum, level, when, message) {
+        console.log(area + ':' + level + ':' + when + ':' + message);
+      }
     }
   };
 
