@@ -146,9 +146,14 @@ log = function() {
     },
     console:  {
       config: handlerConfig,
-      settings: {},
+      settings: {
+        prefix: ''
+      },
       publish: function(area, levelNum, level, when, message) {
-        console.log(area + ':' + level + ':' + when + ':' + message);
+        var prefix = this.prefix;
+        if (!prefix) prefix = '';
+        if (prefix.length > 0) prefix += ':';
+        console.log(prefix + area + ':' + level + ':' + when + ':' + message);
       }
     }
   };
