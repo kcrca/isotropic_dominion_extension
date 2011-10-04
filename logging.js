@@ -148,24 +148,25 @@ log = function() {
       settings: {
         prefix: ''
       },
-      textMessage:function (message) {
-        // If it's HTML, extract the text part
-        return $('<span>' + message + '</span>').text();
-      },
       publish: function(area, levelNum, level, when, message) {
         var prefix = this.prefix;
         if (!prefix) prefix = '';
         if (prefix.length > 0) prefix += ':';
-        message = this.textMessage(message);
+        message = textMessage(message);
         console.log(prefix + area + ':' + level + ':' + when + ':' + message);
       },
       alert: function(area, levelNum, level, when, message) {
-        message = this.textMessage(message);
+        message = textMessage(message);
         alert("Area: " + area + "\n" + "Level: " + level + "\n" + "When: " +
             when + "\n" + "Message: " + message + "\n");
       }
     }
   };
+
+  function textMessage(message) {
+    // If it's HTML, extract the text part
+    return $('<span>' + message + '</span>').text();
+  }
 
   // purposefully making copy so we aren't sharing an object with the user
   function mergeOrReplace(orig, properties, replace) {
