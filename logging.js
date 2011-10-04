@@ -30,11 +30,77 @@ log = function() {
   var levelNameToNum = {};
   var levelNumToName = {};
 
+  function handlerConfig(properties, override) {
+    override = override != undefined ? override : false;
+    if (!this.properties) {
+      this.properties = {};
+    }
+    if (override) {
+      this.properties = $.extend({}, properties);
+    } else {
+      $.extend(this.properties, properties);
+    }
+  }
+
   var handlers = {
+    div: {
+      config: handlerConfig,
+      properties: {},
+      idPrefix: function (props) {
+        return (props ? props : this.properties).idPrefix || 'log';
+      },
+      classPrefix: function (props) {
+        return (props ? props : this.properties).classPrefix || 'log';
+      },
+      publish: function(area, levelNum, level, when, message) {
+        this.ensureDiv();
+        var classPrefix = this.classPrefix();
+
+        var levelClass = classPrefix + '-level-' + level;
+        var areaClass = classPrefix + '-area-' + area;
+        var row = $('<tr/>').addClass(levelClass).addClass(areaClass);
+        row.append($('<td class="' + classPrefix + '-area"/>').text(area));
+        row.append($('<td class="' + classPrefix + '-level"/>').text(level));
+        row.append($('<td class="' + classPrefix + '-when"/>').text(when));
+        row.append($('<td class="' + classPrefix + '-message"/>')
+            .text(message));
+        this.tableBody.append(row);
+      },
+      ensureDiv: function() {
+        if (this.tableBody) return this.tableBody;
+
+        var idPrefix = this.idPrefix();
+        var classPrefix = this.classPrefix();
+
+        function setup(node, suffix) {
+          node.addClass(classPrefix + '-' + suffix);
+          node.attr('id', idPrefix + '-' + suffix);
+          return node;
+        }
+
+        var div = setup($('<div/>'), 'div');
+        var table = setup($('<table/>'), 'table');
+        var header = setup($('<tr/>'), 'header');
+        header.append($('<th/>').text('Area'));
+        header.append($('<th/>').text('Level'));
+        header.append($('<th/>').text('When'));
+        header.append($('<th/>').text('Message'));
+        div.append(table);
+        table.append(header);
+        $(document.body).append(div);
+        this.tableBody = div.find('table > tbody');
+        if (this.tableBody.length == 0) {
+          alert("no table?");
+        }
+      }
+    },
     window: {
+      config: handlerConfig,
+      properties: {},
       publish: function(area, levelNum, level, when, message) {
         var logRecord = {
           area: area,
+          levelNum: levelNum,
           level: level,
           when: when,
           message: message

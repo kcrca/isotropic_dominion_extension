@@ -1,7 +1,6 @@
 var tableBody;
 
 $(document).ready(function() {
-  tableBody = $('#log-table > tbody');
   $.pm.bind('logOptions', handleLogOptions);
   $.pm.bind('logRecord', handleLogRecord);
 });
@@ -13,14 +12,8 @@ function handleLogOptions(data) {
 }
 
 function handleLogRecord(data) {
-  var levelClass = 'log-level-' + data.level;
-  var areaClass = 'log-area-' + data.area;
-  var row = $('<tr/>').addClass(levelClass).addClass(areaClass);
-  row.append($('<td class="log-area"/>').text(data.area));
-  row.append($('<td class="log-level"/>').text(data.level));
-  row.append($('<td class="log-when"/>').text(data.when));
-  row.append($('<td class="log-message"/>').text(data.message));
-  tableBody.append(row);
+  log.handlers.div.publish(data.area, data.levelNum, data.level, data.when,
+      data.message);
 }
 
 function internalLog(level, message) {
