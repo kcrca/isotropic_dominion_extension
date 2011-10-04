@@ -157,12 +157,8 @@ log = function() {
         console.log(prefix + area + ':' + level + ':' + when + ':' + message);
       },
       alert: function(area, levelNum, level, when, message) {
-        alert(
-            "Area: " + area + "\n" +
-            "Level: " + level + "\n" +
-            "When: " + when + "\n" +
-            "Message: " + message + "\n"
-        );
+        alert("Area: " + area + "\n" + "Level: " + level + "\n" + "When: " +
+            when + "\n" + "Message: " + message + "\n");
       }
     }
   };
@@ -232,7 +228,7 @@ log = function() {
     var areaInfo = $.extend({}, infoDefaults, info[area]);
     var areaLevelNum = toLevelNum(areaInfo.level);
     if (levelNum < areaLevelNum) return false;
-    
+
     var alertLevelNum = toLevelNum(areaInfo.alertLevel);
 
     var handlers = areaInfo.handlers;
