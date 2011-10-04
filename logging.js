@@ -26,6 +26,7 @@ log = function() {
     Config:n++,
     Warning:n++,
     Severe: n++,
+    Alert: n++,
     Off: n++
   };
   var levelNameToNum = {};
@@ -154,6 +155,14 @@ log = function() {
         if (!prefix) prefix = '';
         if (prefix.length > 0) prefix += ':';
         console.log(prefix + area + ':' + level + ':' + when + ':' + message);
+      },
+      alert: function(area, levelNum, level, when, message) {
+        alert(
+            "Area: " + area + "\n" +
+            "Level: " + level + "\n" +
+            "When: " + when + "\n" +
+            "Message: " + message + "\n"
+        );
       }
     }
   };
@@ -202,6 +211,7 @@ log = function() {
   var info = {};
   var infoDefaults = {
     level: 'Info',
+    alertLevel: 'Alert',
     handlers: [handlers.window],
     toTimeString: defaultTimeFormat
   };
@@ -222,6 +232,8 @@ log = function() {
     var areaInfo = $.extend({}, infoDefaults, info[area]);
     var areaLevelNum = toLevelNum(areaInfo.level);
     if (levelNum < areaLevelNum) return false;
+    
+    var alertLevelNum = toLevelNum(areaInfo.alertLevel);
 
     var handlers = areaInfo.handlers;
 
@@ -229,7 +241,11 @@ log = function() {
     levelName = levelName || "Unknown";
     var when = areaInfo.toTimeString(new Date());
     for (var i = 0; i < handlers.length; i++) {
-      handlers[i].publish(area, levelNum, levelName, when, message);
+      var handler = handlers[i];
+      handler.publish(area, levelNum, levelName, when, message);
+      if (levelNum >= alertLevelNum && handler.alert) {
+        handler.alert(area, levelNum, levelName, when, message);
+      }
     }
     return true;
   }
@@ -241,6 +257,7 @@ log = function() {
   var logObject = {
     log: log,
     level: area,
+    alert: alert,
     levels: levels,
     areaDefaults: areaDefaults,
     area: area,
