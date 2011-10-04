@@ -61,7 +61,8 @@ log = function() {
         var row = $('<tr/>').addClass(levelClass).addClass(areaClass);
         row.append($('<td class="' + classPrefix + '-area"/>').text(area));
         row.append($('<td class="' + classPrefix + '-level"/>').text(level));
-        row.append($('<td class="' + classPrefix + '-when"/>').text(when));
+        row.append($('<td class="' + classPrefix + '-when"/>').text(when
+            .toLocaleString()));
         row.append($('<td class="' + classPrefix + '-message"/>')
             .text(message));
         this.tableBody.append(row);
@@ -159,6 +160,10 @@ log = function() {
     return info[areaName];
   }
 
+  function timeFormat(when) {
+    return when.toLocaleTimeString();
+  }
+
   for (var levelName in levels) {
     var levelNum = levels[levelName];
 
@@ -171,7 +176,11 @@ log = function() {
   }
 
   var info = {};
-  var infoDefaults = {level: 'Info', handlers: [handlers.window]};
+  var infoDefaults = {
+    level: 'Info',
+    handlers: [handlers.window],
+    toTimeString: timeFormat
+  };
 
   function toLevelNum(level) {
     if (typeof(level) == 'string') {
@@ -194,7 +203,7 @@ log = function() {
 
     var levelName = levelNumToName[levelNum];
     levelName = levelName || "Unknown";
-    var when = new Date();
+    var when = areaInfo.toTimeString(new Date());
     for (var i = 0; i < handlers.length; i++) {
       handlers[i].publish(area, levelNum, levelName, when, message);
     }
