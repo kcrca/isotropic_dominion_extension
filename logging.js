@@ -1,4 +1,4 @@
-// plugin popupready from http://plugins.jquery.com/project/popupready
+// plugin from http://plugins.jquery.com/project/popupready
 jQuery.fn.popupready = function(onready, url, name, features, replace) {
   var popup = window.open(url, name, features, replace);
   if (onready) {
@@ -18,6 +18,7 @@ jQuery.popupready = jQuery.fn.popupready;
 
 log = function() {
   var n = 0;
+  //noinspection JSUnusedGlobalSymbols
   var levels = {
     Fine: n++,
     Debug: n++,
@@ -220,7 +221,7 @@ log = function() {
     }
     return true;
   }
-  
+
   for (var handlerName in handlers) {
     handlers[handlerName].name = handlerName;
   }
