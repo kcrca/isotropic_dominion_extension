@@ -1,5 +1,6 @@
+//!! Take this out of the namespace
 // plugin from http://plugins.jquery.com/project/popupready
-jQuery.fn.popupready = function(onready, url, name, features, replace) {
+popupready = function(onready, url, name, features, replace) {
   var popup = window.open(url, name, features, replace);
   if (onready) {
     setTimeout(poll, 10);
@@ -17,7 +18,11 @@ jQuery.fn.popupready = function(onready, url, name, features, replace) {
 jQuery.popupready = jQuery.fn.popupready;
 
 (function($) {
-  $.fn.jog = function(method) {
+  $.jog = $.fn.jog = function(method) {
+    if (!method) {
+      return logObject.jog();
+    }
+
     var thing = logObject[method];
     if (thing) {
       if (typeof(thing) == 'function') {
@@ -29,8 +34,8 @@ jQuery.popupready = jQuery.fn.popupready;
       return logObject.jog.apply(this, arguments);
     }
   };
-  $.jog = $.fn.jog;
 
+  // Make levels actual objects so ==, <=, etc might operate? At least be consistent about if it's a number
   var n = 0;
   //noinspection JSUnusedGlobalSymbols
   var levels = {
@@ -46,25 +51,46 @@ jQuery.popupready = jQuery.fn.popupready;
   var levelNameToNum = {};
   var levelNumToName = {};
 
-  function handlerConfig(properties, override) {
-    override = override != undefined ? override : false;
-    if (!this.settings) {
-      this.settings = {};
+  var handlerNum = 0;
+
+  function Handler(name) {
+    this.name = name;
+
+    var timePart = new Date().getTime();
+    var randomPart = Math.random().toString(25);
+    this._id = name + ':' + timePart + ':' + randomPart + ':' + handlerNum++;
+
+    this.config = function(properties, override) {
+      override = override != undefined ? override : false;
+      if (!this.settings) {
+        this.settings = {};
+      }
+      if (override) {
+        this.settings = $.extend({}, properties);
+      } else {
+        $.extend(this.settings, properties);
+      }
+    };
+
+    this.toString = function() {
+      return this._id;
     }
-    if (override) {
-      this.settings = $.extend({}, properties);
-    } else {
-      $.extend(this.settings, properties);
+  }
+
+  function newHandler(name, properties) {
+    var handler = new Handler(name);
+    if (properties) {
+      $.extend(handler, properties);
     }
+    return handler;
   }
 
   function defaultInsertDiv(div) {
     $(document.body).append(div);
   }
 
-  var handlers = {
-    div: {
-      config: handlerConfig,
+  var definedHandlers = {
+    div: newHandler("div", {
       settings: {
         idPrefix: 'jog',
         classPrefix: 'jog',
@@ -128,9 +154,8 @@ jQuery.popupready = jQuery.fn.popupready;
         table.append(header);
         this.tableBody = div.find('table > tbody');
       }
-    },
-    window: {
-      config: handlerConfig,
+    }),
+    window: newHandler("window", {
       settings: {
         title: 'Log Messages',
         css: 'jog.css'
@@ -173,9 +198,8 @@ jQuery.popupready = jQuery.fn.popupready;
           data: logRecord
         });
       }
-    },
-    console:  {
-      config: handlerConfig,
+    }),
+    console:  newHandler("console", {
       settings: {
         prefix: ''
       },
@@ -183,53 +207,20 @@ jQuery.popupready = jQuery.fn.popupready;
         var prefix = this.prefix;
         if (!prefix) prefix = '';
         if (prefix.length > 0) prefix += ':';
-        message = textMessage(message);
+        message = messageText(message);
         console.log(prefix + area + ':' + level + ':' + when + ':' + message);
       },
       alert: function(area, levelNum, level, when, message) {
-        message = textMessage(message);
+        message = messageText(message);
         alert("Area: " + area + "\n" + "Level: " + level + "\n" + "When: " +
             when + "\n" + "Message: " + message + "\n");
       }
-    }
+    })
   };
 
-  function textMessage(message) {
+  function messageText(message) {
     // If it's HTML, extract the text part
     return $('<span>' + message + '</span>').text();
-  }
-
-  // purposefully making copy so we aren't sharing an object with the user
-  function mergeOrReplace(orig, properties, replace) {
-    var base;
-    if (replace) {
-      base = {};
-    } else if (orig) {
-      base = orig;
-    } else {
-      base = {};
-    }
-    return $.extend(base, properties);
-  }
-
-  function areaDefaults(properties, replace) {
-    if (properties) {
-      infoDefaults = mergeOrReplace(infoDefaults, properties, replace);
-    }
-    // return a copy
-    return $.extend({}, infoDefaults);
-  }
-
-  function area(areaName, properties, replace) {
-    if (!areaName) {
-      return areaDefaults(properties, replace);
-    }
-
-    if (properties) {
-      info[areaName] = mergeOrReplace(info[areaName], properties, replace);
-    }
-    // return a copy
-    return $.extend({}, info[areaName]);
   }
 
   function defaultTimeFormat(when) {
@@ -248,12 +239,11 @@ jQuery.popupready = jQuery.fn.popupready;
   }
 
   var info = {};
-  var infoDefaults = {
-    level: 'Info',
-    alertLevel: 'Alert',
-    handlers: [handlers.div],
-    toTimeString: defaultTimeFormat
-  };
+  var infoDefaults = new Area('');
+  infoDefaults.level(levels.Info);
+  infoDefaults.alertLevel(levels.Alert);
+  infoDefaults.addHandlers(definedHandlers.div);
+  infoDefaults.toTimeString = defaultTimeFormat;
 
   function toLevelNum(level) {
     if (typeof(level) == 'string') {
@@ -266,47 +256,102 @@ jQuery.popupready = jQuery.fn.popupready;
     return level;
   }
 
-  function jog(area, levelSpec, message) {
-    var levelNum = toLevelNum(levelSpec);
-    var areaInfo = $.extend({}, infoDefaults, info[area]);
-    var areaLevelNum = toLevelNum(areaInfo.level);
-    if (levelNum < areaLevelNum) return false;
+  function jog(area) {
+    if (!area)
+      return infoDefaults;
 
-    var alertLevelNum = toLevelNum(areaInfo.alertLevel);
-
-    var handlers = areaInfo.handlers;
-
-    var levelName = levelNumToName[levelNum];
-    levelName = levelName || "Unknown";
-    var when = areaInfo.toTimeString(new Date());
-    for (var i = 0; i < handlers.length; i++) {
-      var handler = handlers[i];
-      handler.publish(area, levelNum, levelName, when, message);
-      if (levelNum >= alertLevelNum && handler.alert) {
-        handler.alert(area, levelNum, levelName, when, message);
-      }
+    var areaInfo = info[area];
+    if (!areaInfo) {
+      areaInfo = new Area(area);
+      info[area] = areaInfo;
     }
-    return true;
+    return areaInfo;
   }
 
-  for (var handlerName in handlers) {
-    handlers[handlerName].name = handlerName;
+  //!! Handle unknown level names and numbers robustly
+
+  function Area(name) {
+    this.name = name;
+    this._handlers = {};
+
+    this.log = function(levelSpec, message) {
+      var levelNum = toLevelNum(levelSpec);
+      var areaInfo = $.extend(true, {}, infoDefaults, this);
+      if (levelNum < areaInfo._level) return false;
+
+      var alertLevelNum = areaInfo._alertLevel;
+
+      var handlers = areaInfo._handlers;
+
+      var levelName = levelNumToName[levelNum];
+      var when = areaInfo.toTimeString(new Date());
+      for (var id in handlers) {
+        var handler = handlers[id];
+        handler.publish(this.name, levelNum, levelName, when, message);
+        if (levelNum >= alertLevelNum && handler.alert) {
+          handler.alert(this.name, levelNum, levelName, when, message);
+        }
+      }
+      return true;
+    };
+
+    this.level = function(level) {
+      if (level) this._level = toLevelNum(level);
+      return levelNumToName[this._level];
+    };
+
+    this.alertLevel = function(level) {
+      if (level) this._alertLevel = toLevelNum(level);
+      return levelNumToName[this._alertLevel];
+    };
+
+    this.addHandlers = function() {
+      for (var j = 0; j < arguments.length; j++) {
+        var value = arguments[j];
+        if ($.isArray(value)) {
+          this.addHandlers.apply(this, value);
+        } else {
+          this._handlers[value] = value;
+        }
+      }
+    };
+
+    this.removeHandlers = function() {
+      for (var j = 0; j < arguments.length; j++) {
+        var value = arguments[j];
+        if ($.isArray(value)) {
+          this.addHandlers.apply(this, value);
+        } else {
+          delete this._handlers[value];
+        }
+      }
+    };
+
+    this.handlers = function() {
+      if (arguments.length != 0) {
+        this._handlers = {};
+        this.addHandlers.apply(this, arguments);
+      }
+      var known = [];
+      for (var key in this._handlers) {
+        known.push(this._handlers[key]);
+      }
+      return known;
+    };
+
+    // Add functions for levels, (area.error(), area.info(), ...).
+    for (levelName in levels) {
+      var levelNum = levelNameToNum[levelName];
+      this[levelName.toLowerCase()] = function(message) {
+        return this.log(levelNum, this.name, message);
+      }
+    }
   }
 
   var logObject = {
     jog: jog,
-    level: area,
-    alert: alert,
     levels: levels,
-    areaDefaults: areaDefaults,
-    area: area,
-    handlers: handlers
-  };
-
-  // Add functions for levels, (jog.error(), jog.info(), ...).
-  for (levelName in levels) {
-    logObject[levelName.toLowerCase()] = function(area, message) {
-      return jog(area, levels[levelName], message);
-    }
+    handlerTypes: definedHandlers,
+    newHandler: newHandler
   }
 })(jQuery);
