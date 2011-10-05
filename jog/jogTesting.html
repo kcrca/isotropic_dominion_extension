@@ -21,7 +21,11 @@
     <label for="messageText">Message:</label>
     <input type="text" id="messageText" value="Read <i>Me!</i>"/>
     <input type="button" id="logButton" value="Log"/>
-    <span id='handlers'></span>
+    <input type="checkbox" id="byNameButton"/>
+    <label for="byNameButton">Use level-named methods
+    </label>
+
+    <p> Handlers: <span id='handlers'></span>
 </form>
 
 <script type="text/javascript">
@@ -85,7 +89,12 @@
         var area = $('#areaText').val();
         var level = logLevel();
         var message = $('#messageText').val();
-        $.jog(area).log(level, message);
+        if ($('#byNameButton').is(':checked')) {
+            var functionName = level.toLowerCase();
+            $.jog(area)[functionName](message);
+        } else {
+            $.jog(area).log(level, message);
+        }
     }
 
     function doLevel() {

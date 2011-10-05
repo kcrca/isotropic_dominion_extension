@@ -234,6 +234,8 @@ jQuery.popupready = jQuery.fn.popupready;
 
     var ch = levelName.charAt(0);
     levelNameToNum[levelName] = levelNum;
+    levelNameToNum[levelName.toUpperCase()] = levelNum;
+    levelNameToNum[levelName.toLowerCase()] = levelNum;
     levelNameToNum[ch.toUpperCase()] = levelNum;
     levelNameToNum[ch.toLowerCase()] = levelNum;
   }
@@ -338,16 +340,21 @@ jQuery.popupready = jQuery.fn.popupready;
       }
       return known;
     };
+    
+    function levelNameFunction(levelNum) {
+      return function(message) {
+        return this.log(levelNum, message);
+      }
+    }
 
     // Add functions for levels, (area.error(), area.info(), ...).
     for (levelName in levels) {
+      var functionName = levelName.toLowerCase();
       var levelNum = levelNameToNum[levelName];
-      this[levelName.toLowerCase()] = function(message) {
-        return this.log(levelNum, this.name, message);
-      }
+      this[functionName] = levelNameFunction(levelNum);
     }
   }
-
+  
   var logObject = {
     jog: jog,
     levels: levels,
