@@ -58,6 +58,10 @@ jQuery.popupready = jQuery.fn.popupready;
     }
   }
 
+  function defaultInsertDiv(div) {
+    $(document.body).append(div);
+  }
+
   var handlers = {
     div: {
       config: handlerConfig,
@@ -65,9 +69,7 @@ jQuery.popupready = jQuery.fn.popupready;
         idPrefix: 'jog',
         classPrefix: 'jog',
         divId: 'jog-div',
-        insertDiv: function(div) {
-          $(document.body).append(div);
-        }
+        insertDiv: defaultInsertDiv
       },
       idPrefix: function (props) {
         return (props ? props : this.settings).idPrefix;
@@ -91,6 +93,21 @@ jQuery.popupready = jQuery.fn.popupready;
       ensureDiv: function() {
         if (this.tableBody) return this.tableBody;
 
+        var div;
+        if (this.settings.divId) {
+          div = $('#' + this.settings.divId);
+        }
+        if (!div || div.length == 0) {
+          div = setup($('<div/>'), 'div');
+          if (this.settings.divId)
+            div.attr('id', this.settings.divId);
+          this.settings.insertDiv(div);
+        }
+        // Check to make sure we have someplace to put this thing
+        if ($('#' + this.settings.divId).length == 0) {
+          return;
+        }
+
         var idPrefix = this.idPrefix();
         var classPrefix = this.classPrefix();
 
@@ -107,14 +124,6 @@ jQuery.popupready = jQuery.fn.popupready;
         header.append($('<th/>').text('When'));
         header.append($('<th/>').text('Message'));
 
-        var div;
-        if (this.settings.divId) {
-          div = $('#' + this.settings.divId);
-        }
-        if (!div || div.length == 0) {
-          div = setup($('<div/>'), 'div');
-          this.settings.insertDiv(div);
-        }
         div.append(table);
         table.append(header);
         this.tableBody = div.find('table > tbody');
@@ -192,13 +201,20 @@ jQuery.popupready = jQuery.fn.popupready;
 
   // purposefully making copy so we aren't sharing an object with the user
   function mergeOrReplace(orig, properties, replace) {
-    var base = (replace ? {} : orig);
+    var base;
+    if (replace) {
+      base = {};
+    } else if (orig) {
+      base = orig;
+    } else {
+      base = {};
+    }
     return $.extend(base, properties);
   }
 
   function areaDefaults(properties, replace) {
     if (properties) {
-      mergeOrReplace(infoDefaults, properties, replace);
+      infoDefaults = mergeOrReplace(infoDefaults, properties, replace);
     }
     // return a copy
     return $.extend({}, infoDefaults);
@@ -210,7 +226,7 @@ jQuery.popupready = jQuery.fn.popupready;
     }
 
     if (properties) {
-      mergeOrReplace(info[areaName], properties, replace);
+      info[areaName] = mergeOrReplace(info[areaName], properties, replace);
     }
     // return a copy
     return $.extend({}, info[areaName]);
@@ -235,7 +251,7 @@ jQuery.popupready = jQuery.fn.popupready;
   var infoDefaults = {
     level: 'Info',
     alertLevel: 'Alert',
-    handlers: [handlers.window],
+    handlers: [handlers.div],
     toTimeString: defaultTimeFormat
   };
 
