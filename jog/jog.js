@@ -302,4 +302,11 @@ jQuery.popupready = jQuery.fn.popupready;
     area: area,
     handlers: handlers
   };
+
+  // Add functions for levels, (jog.error(), jog.info(), ...).
+  for (levelName in levels) {
+    logObject[levelName.toLowerCase()] = function(area, message) {
+      return jog(area, levels[levelName], message);
+    }
+  }
 })(jQuery);
