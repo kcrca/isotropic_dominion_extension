@@ -19,7 +19,7 @@ function handleLogOptions(data) {
 }
 
 function handleLogRecord(data) {
-  log.handlers.div.publish(data.area, data.levelNum, data.level, data.when,
+  $.jog('handlers').div.publish(data.area, data.levelNum, data.level, data.when,
       data.message);
 }
 
@@ -27,11 +27,11 @@ function updateSetting(key, newSettings) {
   switch (key) {
   case 'title':
     $('title').text(newSettings.title);
-    $('.log-title').text(newSettings.title);
+    $('.jog-title').text(newSettings.title);
     break;
 
   case 'css':
-    var logCss = $('#log-css');
+    var logCss = $('#jog-css');
     var css = newSettings.css;
     if (css.charAt(0) == '<') {
       logCss.replaceWith($(css));

@@ -16,7 +16,21 @@ jQuery.fn.popupready = function(onready, url, name, features, replace) {
 };
 jQuery.popupready = jQuery.fn.popupready;
 
-log = function() {
+(function($) {
+  $.fn.jog = function(method) {
+    var thing = logObject[method];
+    if (thing) {
+      if (typeof(thing) == 'function') {
+        return thing.apply(this, Array.prototype.slice.call(arguments, 1));
+      } else {
+        return thing;
+      }
+    } else {
+      return logObject.jog.apply(this, arguments);
+    }
+  };
+  $.jog = $.fn.jog;
+
   var n = 0;
   //noinspection JSUnusedGlobalSymbols
   var levels = {
@@ -48,9 +62,9 @@ log = function() {
     div: {
       config: handlerConfig,
       settings: {
-        idPrefix: 'log',
-        classPrefix: 'log',
-        divId: 'log-div',
+        idPrefix: 'jog',
+        classPrefix: 'jog',
+        divId: 'jog-div',
         insertDiv: function(div) {
           $(document.body).append(div);
         }
@@ -110,7 +124,7 @@ log = function() {
       config: handlerConfig,
       settings: {
         title: 'Log Messages',
-        css: 'logWindow.css'
+        css: 'jog.css'
       },
       publish: function(area, levelNum, level, when, message) {
         var logRecord = {
@@ -130,7 +144,7 @@ log = function() {
             $.popupready(function(popup) {
               $.pm({target: popup, type: "logOptions", data: self.settings});
               self.consumePending(popup);
-            }, "logWindow.html", "Log");
+            }, "jogPopup.html", "Log");
           }
           this.pending.push(logRecord);
         }
@@ -236,7 +250,7 @@ log = function() {
     return level;
   }
 
-  function log(area, levelSpec, message) {
+  function jog(area, levelSpec, message) {
     var levelNum = toLevelNum(levelSpec);
     var areaInfo = $.extend({}, infoDefaults, info[area]);
     var areaLevelNum = toLevelNum(areaInfo.level);
@@ -264,7 +278,7 @@ log = function() {
   }
 
   var logObject = {
-    log: log,
+    jog: jog,
     level: area,
     alert: alert,
     levels: levels,
@@ -272,13 +286,4 @@ log = function() {
     area: area,
     handlers: handlers
   };
-
-  // Add functions for levels, (log.error(), log.info(), ...).
-  for (levelName in levels) {
-    logObject[levelName.toLowerCase()] = function(area, message) {
-      return log(area, levels[levelName], message);
-    }
-  }
-
-  return logObject;
-}();
+})(jQuery);

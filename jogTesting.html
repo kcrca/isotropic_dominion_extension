@@ -6,9 +6,9 @@
 
     <script type="text/javascript" src="jquery.js"></script>
     <script type="text/javascript" src="postmessage/postmessage.js"></script>
-    <script type="text/javascript" src="logging.js"></script>
+    <script type="text/javascript" src="jog.js"></script>
 
-    <link rel="stylesheet" type="text/css" href="logWindow.css"/>
+    <link rel="stylesheet" type="text/css" href="jog.css"/>
 </head>
 <body>
 
@@ -30,9 +30,10 @@
     }
 
     function createHandlerOptions() {
-        var inUse = log.areaDefaults().handlers;
-        for (var handlerName in log.handlers) {
-            var handler = log.handlers[handlerName];
+        var inUse = $.jog('areaDefaults').handlers;
+        var handlers = $.jog('handlers');
+        for (var handlerName in handlers) {
+            var handler = handlers[handlerName];
             var checkbox = $('<input type="checkbox"/>');
             var id = handlerName + 'Opt';
             checkbox.attr('id', id);
@@ -47,8 +48,8 @@
     function handlerCheckboxChanged(evt) {
         var checkbox = $(evt.target);
         var name = checkbox.attr('name');
-        var handler = log.handlers[name];
-        var inUse = log.areaDefaults().handlers;
+        var handler = $.jog('handlers')[name];
+        var inUse = $.jog('areaDefaults').handlers;
         var pos = inUse.indexOf(handler);
         if (checkbox.attr('checked')) {
             if (pos < 0) {
@@ -59,13 +60,14 @@
                 inUse.splice(pos, 1);
             }
         }
-        log.areaDefaults({handlers: inUse});
+        $.jog('areaDefaults', {handlers: inUse});
     }
 
     function createLevelSelect() {
         var levelSelct = $('#levelSelct');
-        var defaults = log.areaDefaults();
-        for (var levelName in log.levels) {
+        var defaults = $.jog('areaDefaults');
+        var levels = $.jog('levels');
+        for (var levelName in levels) {
             var opt = $('<option>' + levelName + '</option>');
             if (levelName == defaults.level) {
                 opt.attr('selected', 'selected');
@@ -79,11 +81,11 @@
     }
 
     function doLog() {
-        log.log($('#areaText').val(), logLevel(), $('#messageText').val());
+        $.jog($('#areaText').val(), logLevel(), $('#messageText').val());
     }
 
     function doLevel() {
-        log.area($('#areaText').val(), {level: logLevel()});
+        $.jog('area', $('#areaText').val(), {level: logLevel()});
     }
 
     $(document).ready(function() {
@@ -94,7 +96,7 @@
     });
 </script>
 
-<div id='log-div' style='border: 10px solid lightBlue;'>
+<div id='jog-div' style='border: 10px solid lightBlue;'>
 </div>
 
 </body>
