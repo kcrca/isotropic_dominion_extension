@@ -358,7 +358,7 @@ jQuery.popupready = jQuery.fn.popupready;
   var logObject = {
     jog: jog,
     levels: levels,
-    handlerTypes: definedHandlers,
+    baseHandlers: definedHandlers,
     newHandler: newHandler
   }
 })(jQuery);
