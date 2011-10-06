@@ -244,7 +244,7 @@ jQuery.popupready = jQuery.fn.popupready;
   var areaDefaults = new Area('');
   areaDefaults.level(levels.Info);
   areaDefaults.alertLevel(levels.Alert);
-  areaDefaults.addHandlers(definedHandlers.html);
+  areaDefaults.addHandlers(definedHandlers.console);
   areaDefaults.toTimeString = defaultTimeFormat;
 
   function toLevelNum(level) {
