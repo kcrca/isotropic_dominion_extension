@@ -19,7 +19,7 @@ function handleLogOptions(data) {
 }
 
 function handleLogRecord(data) {
-  $.jog('baseHandlers').div.publish(data.area, data.levelNum, data.level,
+  $.jog('baseHandlers').html.publish(data.area, data.levelNum, data.level,
       data.when, data.message);
 }
 

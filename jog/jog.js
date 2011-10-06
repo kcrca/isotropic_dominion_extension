@@ -85,17 +85,17 @@ jQuery.popupready = jQuery.fn.popupready;
     return handler;
   }
 
-  function defaultInsertDiv(div) {
-    $(document.body).append(div);
+  function defaultInsertHtml(top) {
+    $(document.body).append(top);
   }
 
   var definedHandlers = {
-    div: newHandler("div", {
+    html: newHandler("html", {
       settings: {
         idPrefix: 'jog',
         classPrefix: 'jog',
-        divId: 'jog-div',
-        insertDiv: defaultInsertDiv
+        htmlId: 'jog-html',
+        insertHtml: defaultInsertHtml
       },
       idPrefix: function (props) {
         return (props ? props : this.settings).idPrefix;
@@ -104,7 +104,7 @@ jQuery.popupready = jQuery.fn.popupready;
         return (props ? props : this.settings).classPrefix;
       },
       publish: function(area, levelNum, level, when, message) {
-        this.ensureDiv();
+        this.ensureHtml();
         var clsPrefix = this.classPrefix();
 
         var levelClass = clsPrefix + '-level-' + level;
@@ -116,21 +116,21 @@ jQuery.popupready = jQuery.fn.popupready;
         row.append($('<td class="' + clsPrefix + '-message"/>').html(message));
         this.tableBody.append(row);
       },
-      ensureDiv: function() {
+      ensureHtml: function() {
         if (this.tableBody) return this.tableBody;
 
-        var div;
-        if (this.settings.divId) {
-          div = $('#' + this.settings.divId);
+        var top;
+        if (this.settings.htmlId) {
+          top = $('#' + this.settings.htmlId);
         }
-        if (!div || div.length == 0) {
-          div = setup($('<div/>'), 'div');
-          if (this.settings.divId)
-            div.attr('id', this.settings.divId);
-          this.settings.insertDiv(div);
+        if (!top || top.length == 0) {
+          top = setup($('<div/>'), 'html');
+          if (this.settings.htmlId)
+            top.attr('id', this.settings.htmlId);
+          this.settings.insertHtml(top);
         }
         // Check to make sure we have someplace to put this thing
-        if ($('#' + this.settings.divId).length == 0) {
+        if ($('#' + this.settings.htmlId).length == 0) {
           return;
         }
 
@@ -150,9 +150,9 @@ jQuery.popupready = jQuery.fn.popupready;
         header.append($('<th/>').text('When'));
         header.append($('<th/>').text('Message'));
 
-        div.append(table);
+        top.append(table);
         table.append(header);
-        this.tableBody = div.find('table > tbody');
+        this.tableBody = top.find('table > tbody');
       }
     }),
     window: newHandler("window", {
@@ -244,7 +244,7 @@ jQuery.popupready = jQuery.fn.popupready;
   var infoDefaults = new Area('');
   infoDefaults.level(levels.Info);
   infoDefaults.alertLevel(levels.Alert);
-  infoDefaults.addHandlers(definedHandlers.div);
+  infoDefaults.addHandlers(definedHandlers.html);
   infoDefaults.toTimeString = defaultTimeFormat;
 
   function toLevelNum(level) {
