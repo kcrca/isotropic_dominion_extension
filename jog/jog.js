@@ -18,9 +18,6 @@ jQuery.fn.popupready = function(onready, url, name, features, replace) {
 jQuery.popupready = jQuery.fn.popupready;
 
 (function($) {
-  var enabled = false;
-  var shouldShowDisabledWarning = true;
-
   $.jog = $.fn.jog = function(method) {
     if (!method) {
       return logObject.jog();
@@ -249,15 +246,6 @@ jQuery.popupready = jQuery.fn.popupready;
   areaDefaults.alertLevel(levels.Alert);
   areaDefaults.addHandlers(definedHandlers.console);
   areaDefaults.toTimeString = defaultTimeFormat;
-  areaDefaults.jogEnabled = function(value) {
-    if (value != undefined) {
-      // If an explicit call to this has been made, then we don't need to warn
-      // that these are off
-      shouldShowDisabledWarning = false;
-      enabled = value;
-    }
-    return enabled;
-  };
 
   function toLevelNum(level) {
     if (typeof(level) == 'string') {
@@ -283,24 +271,43 @@ jQuery.popupready = jQuery.fn.popupready;
   }
 
   function Area(name) {
+    var self = this;
+
     this.name = name;
     this._handlers = {};
 
-    this.log = function(levelSpec, message) {
-      if (!enabled) {
-        if (shouldShowDisabledWarning) {
-          handlers.console.publish('JLOG', levels.Warning,
-              levelNumToName[levels.Warning],
-              areaDefaults.toTimeString(new Date()),
-              "Logging has not been enabled");
-          shouldShowDisabledWarning = false;
+    this._ancestors = [];
+    (function() {
+      var parts = name.split(/\./);
+      for (var i = 0; i < parts.length - 1; i++) {
+        if (i == 0) {
+          self._ancestors.push(parts[i]);
+        } else {
+          self._ancestors.push(self._ancestors[i - 1] + '.' + parts[i]);
         }
-        return false;
       }
+    })();
 
+    function buildAreaInfo() {
+      var info = $.extend(true, {}, areaDefaults);
+      for (var i = 0; i < self._ancestors.length; i++) {
+        var ancestorName = self._ancestors[i];
+        var ancestorInfo = areas[ancestorName];
+        if (ancestorInfo) {
+          $.extend(true, info, ancestorInfo)
+        }
+      }
+      $.extend(true, info, self);
+      return info;
+    }
+
+    this.log = function(levelSpec, message) {
       var levelNum = toLevelNum(levelSpec);
-      var areaInfo = $.extend(true, {}, areaDefaults, this);
+      var areaInfo = buildAreaInfo();
       if (levelNum < areaInfo._level) return false;
+
+      // This is how the user can check if a certain level would be logged
+      if (!message) return true;
 
       var alertLevelNum = areaInfo._alertLevel;
 
@@ -319,12 +326,14 @@ jQuery.popupready = jQuery.fn.popupready;
     };
 
     this.level = function(level) {
-      if (level) this._level = toLevelNum(level);
+      // we check with "arguments.length" because "undefined" is a valid value
+      if (arguments.length == 1) this._level = toLevelNum(level);
       return levelNumToName[this._level];
     };
 
     this.alertLevel = function(level) {
-      if (level) this._alertLevel = toLevelNum(level);
+      // we check with "arguments.length" because "undefined" is a valid value
+      if (arguments.length == 1) this._alertLevel = toLevelNum(level);
       return levelNumToName[this._alertLevel];
     };
 
