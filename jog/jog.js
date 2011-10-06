@@ -240,12 +240,12 @@ jQuery.popupready = jQuery.fn.popupready;
     levelNameToNum[ch.toLowerCase()] = levelNum;
   }
 
-  var info = {};
-  var infoDefaults = new Area('');
-  infoDefaults.level(levels.Info);
-  infoDefaults.alertLevel(levels.Alert);
-  infoDefaults.addHandlers(definedHandlers.html);
-  infoDefaults.toTimeString = defaultTimeFormat;
+  var areas = {};
+  var areaDefaults = new Area('');
+  areaDefaults.level(levels.Info);
+  areaDefaults.alertLevel(levels.Alert);
+  areaDefaults.addHandlers(definedHandlers.html);
+  areaDefaults.toTimeString = defaultTimeFormat;
 
   function toLevelNum(level) {
     if (typeof(level) == 'string') {
@@ -260,17 +260,15 @@ jQuery.popupready = jQuery.fn.popupready;
 
   function jog(area) {
     if (!area)
-      return infoDefaults;
+      return areaDefaults;
 
-    var areaInfo = info[area];
+    var areaInfo = areas[area];
     if (!areaInfo) {
       areaInfo = new Area(area);
-      info[area] = areaInfo;
+      areas[area] = areaInfo;
     }
     return areaInfo;
   }
-
-  //!! Handle unknown level names and numbers robustly
 
   function Area(name) {
     this.name = name;
@@ -278,7 +276,7 @@ jQuery.popupready = jQuery.fn.popupready;
 
     this.log = function(levelSpec, message) {
       var levelNum = toLevelNum(levelSpec);
-      var areaInfo = $.extend(true, {}, infoDefaults, this);
+      var areaInfo = $.extend(true, {}, areaDefaults, this);
       if (levelNum < areaInfo._level) return false;
 
       var alertLevelNum = areaInfo._alertLevel;
