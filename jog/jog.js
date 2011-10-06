@@ -1,6 +1,6 @@
 //!! Take this out of the namespace
 // plugin from http://plugins.jquery.com/project/popupready
-popupready = function(onready, url, name, features, replace) {
+jQuery.fn.popupready = function(onready, url, name, features, replace) {
   var popup = window.open(url, name, features, replace);
   if (onready) {
     setTimeout(poll, 10);

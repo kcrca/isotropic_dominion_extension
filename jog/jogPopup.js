@@ -19,8 +19,8 @@ function handleLogOptions(data) {
 }
 
 function handleLogRecord(data) {
-  $.jog('handlers').div.publish(data.area, data.levelNum, data.level, data.when,
-      data.message);
+  $.jog('baseHandlers').div.publish(data.area, data.levelNum, data.level,
+      data.when, data.message);
 }
 
 function updateSetting(key, newSettings) {
