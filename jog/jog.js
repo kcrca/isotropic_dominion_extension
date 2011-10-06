@@ -338,7 +338,7 @@ jQuery.popupready = jQuery.fn.popupready;
       }
       return known;
     };
-    
+
     function levelNameFunction(levelNum) {
       return function(message) {
         return this.log(levelNum, message);
@@ -352,7 +352,8 @@ jQuery.popupready = jQuery.fn.popupready;
       this[functionName] = levelNameFunction(levelNum);
     }
   }
-  
+
+  //noinspection JSUnusedGlobalSymbols
   var logObject = {
     jog: jog,
     levels: levels,
