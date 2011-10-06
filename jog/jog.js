@@ -18,6 +18,9 @@ jQuery.fn.popupready = function(onready, url, name, features, replace) {
 jQuery.popupready = jQuery.fn.popupready;
 
 (function($) {
+  var enabled = false;
+  var shouldShowDisabledWarning = true;
+
   $.jog = $.fn.jog = function(method) {
     if (!method) {
       return logObject.jog();
@@ -246,6 +249,15 @@ jQuery.popupready = jQuery.fn.popupready;
   areaDefaults.alertLevel(levels.Alert);
   areaDefaults.addHandlers(definedHandlers.console);
   areaDefaults.toTimeString = defaultTimeFormat;
+  areaDefaults.jogEnabled = function(value) {
+    if (value != undefined) {
+      // If an explicit call to this has been made, then we don't need to warn
+      // that these are off
+      shouldShowDisabledWarning = false;
+      enabled = value;
+    }
+    return enabled;
+  };
 
   function toLevelNum(level) {
     if (typeof(level) == 'string') {
@@ -275,6 +287,17 @@ jQuery.popupready = jQuery.fn.popupready;
     this._handlers = {};
 
     this.log = function(levelSpec, message) {
+      if (!enabled) {
+        if (shouldShowDisabledWarning) {
+          handlers.console.publish('JLOG', levels.Warning,
+              levelNumToName[levels.Warning],
+              areaDefaults.toTimeString(new Date()),
+              "Logging has not been enabled");
+          shouldShowDisabledWarning = false;
+        }
+        return false;
+      }
+
       var levelNum = toLevelNum(levelSpec);
       var areaInfo = $.extend(true, {}, areaDefaults, this);
       if (levelNum < areaInfo._level) return false;
