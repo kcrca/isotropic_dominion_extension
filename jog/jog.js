@@ -120,17 +120,19 @@ jQuery.popupready = jQuery.fn.popupready;
         if (this.tableBody) return this.tableBody;
 
         var top;
-        if (this.settings.htmlId) {
-          top = $('#' + this.settings.htmlId);
+        var htmlId = this.settings.htmlId;
+        if (!htmlId || (htmlId == 'jog-html' && idPrefix != 'jog')) {
+          htmlId = idPrefix + '-html';
+          this.settings.htmlId = htmlId;
         }
+        top = $('#' + htmlId);
         if (!top || top.length == 0) {
           top = setup($('<div/>'), 'html');
-          if (this.settings.htmlId)
-            top.attr('id', this.settings.htmlId);
+          top.attr('id', htmlId);
           this.settings.insertHtml(top);
         }
         // Check to make sure we have someplace to put this thing
-        if ($('#' + this.settings.htmlId).length == 0) {
+        if ($('#' + htmlId).length == 0) {
           return;
         }
 
@@ -199,16 +201,18 @@ jQuery.popupready = jQuery.fn.popupready;
         });
       }
     }),
-    console:  newHandler("console", {
+    console: newHandler("console", {
       settings: {
-        prefix: ''
+        prefix: '',
+        separator: ' - '
       },
       publish: function(area, levelNum, level, when, message) {
         var prefix = this.prefix;
         if (!prefix) prefix = '';
         if (prefix.length > 0) prefix += ':';
         message = messageText(message);
-        console.log(prefix + area + ':' + level + ':' + when + ':' + message);
+        var sep = this.separator;
+        console.log(prefix + area + sep + level + sep + when + sep + message);
       },
       alert: function(area, levelNum, level, when, message) {
         message = messageText(message);
@@ -276,6 +280,12 @@ jQuery.popupready = jQuery.fn.popupready;
 
     this.name = name;
     this._handlers = {};
+    this._useParentHandlers = true;
+
+    this.useParentHandlers = function(value) {
+      if (value != undefined) this._useParentHandlers = value;
+      return this._useParentHandlers;
+    }
 
     this._ancestors = [];
     (function() {
@@ -287,6 +297,7 @@ jQuery.popupready = jQuery.fn.popupready;
           self._ancestors.push(self._ancestors[i - 1] + '.' + parts[i]);
         }
       }
+      self._ancestors.reverse();
     })();
 
     function buildAreaInfo() {
@@ -295,7 +306,11 @@ jQuery.popupready = jQuery.fn.popupready;
         var ancestorName = self._ancestors[i];
         var ancestorInfo = areas[ancestorName];
         if (ancestorInfo) {
-          $.extend(true, info, ancestorInfo)
+          $.extend(true, info, ancestorInfo);
+          // If this ancestor cuts off its parents, use only the its handlers
+          if (!ancestorInfo._useParentHandlers) {
+            info._handlers = $.extend({}, ancestorInfo._handlers);
+          }
         }
       }
       $.extend(true, info, self);
