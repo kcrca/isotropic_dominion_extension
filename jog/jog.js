@@ -78,6 +78,7 @@ jQuery.popupready = jQuery.fn.popupready;
   }
 
   function newHandler(name, properties) {
+    if (!name) return undefined;
     var handler = new Handler(name);
     if (properties) {
       $.extend(handler, properties);
@@ -157,7 +158,7 @@ jQuery.popupready = jQuery.fn.popupready;
         this.tableBody = top.find('table > tbody');
       }
     }),
-    window: newHandler("window", {
+    popup: newHandler("popup", {
       settings: {
         title: 'Log Messages',
         css: 'jog.css'
@@ -319,6 +320,7 @@ jQuery.popupready = jQuery.fn.popupready;
 
     this.log = function(levelSpec, message) {
       var levelNum = toLevelNum(levelSpec);
+      if (levelNum == levels.Off) return false;
       var areaInfo = buildAreaInfo();
       if (levelNum < areaInfo._level) return false;
 
@@ -407,5 +409,7 @@ jQuery.popupready = jQuery.fn.popupready;
     levels: levels,
     baseHandlers: definedHandlers,
     newHandler: newHandler
-  }
+  };
+  // Make the level names part of the exported names
+  $.extend(logObject, levels);
 })(jQuery);
