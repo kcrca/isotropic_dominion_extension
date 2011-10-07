@@ -248,6 +248,7 @@ jQuery.popupready = jQuery.fn.popupready;
   areaDefaults.toTimeString = defaultTimeFormat;
 
   function toLevelNum(level) {
+    if (level == undefined) return undefined;
     if (typeof(level) == 'string') {
       var num = parseInt(level);
       if (!isNaN(num)) {
