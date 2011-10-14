@@ -340,6 +340,11 @@ td.kingdom-column, td.basic-column {
     background-image: -moz-linear-gradient(left center, #fce992 30%, #c0e4b1 70%) !important;
 }
 
+.card-treasure-reaction {
+    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.3, #fce992), color-stop(0.7, #c1e1f4)) !important;
+    background-image: -moz-linear-gradient(left center, #fce992 30%, #c1e1f4 70%) !important;
+}
+
 /* When a card is removed from play in text mode, make that easier to see. */
 .gone {
     background: #ccc;
