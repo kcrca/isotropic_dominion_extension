@@ -11,8 +11,6 @@ var activeValueTiemout;
 // The most recent set of Black Market prices offered
 var blackMarketPrices;
 
-activeDataSetupCards();
-
 function activeDataColumn(player) {
   return '<td id="' + player.idFor('active') +
       '" class="activePlayerData rowStretch"></td>';
@@ -164,46 +162,10 @@ function activeDataSetupPlayer(player) {
 
 }
 
-function activeDataSetupCards() {
-  var cardList = "\n";
+// Add some things to the card objects that we only need for active data
+(function() {
   for (var i = 0; i < card_list.length; i++) {
     var card = card_list[i];
-    if (i % 10 != 0) cardList += ', ';
-    cardList += (card.Singular);
-    if (i % 10 == 9 || i == card_list.length - 1) {
-      console.log(cardList + "\n");
-      cardList = "\n";
-    }
-    card.isAction = function() {
-      return this.Action != "0";
-    };
-    card.isTreasure = function() {
-      return this.Treasure != "0";
-    };
-    card.isDuration = function() {
-      return this.Duration != "0";
-    };
-    card.getBuys = function() {
-      return parseInt(this.Buys);
-    };
-    card.getActions = function() {
-      return parseInt(this.Actions);
-    };
-    card.getCoinCount = function() {
-      return (
-          this.Coins == "?" || this.Coins == "P" ? 0 : parseInt(this.Coins));
-    };
-    card.getPotionCount = function() {
-      return (this.Coins == "P" ? 1 : 0);
-    };
-    card.getCoinCost = function() {
-      var cost = this.Cost;
-      cost = (cost.charAt(0) == 'P' ? cost.substr(1) : cost);
-      return parseInt(cost);
-    };
-    card.getPotionCost = function() {
-      return (this.Cost.indexOf("P") >= 0 ? 1 : 0);
-    };
     card.getCurrentCoinCost = function() {
       // The current cost can be affected by cards in play, such as Quarry, so
       // we have to look up the price on the web page.
@@ -265,25 +227,7 @@ function activeDataSetupCards() {
   card_map['Diadem'].getCoinCount = function() {
     return 2 + activeData.get('actions');
   };
-
-  function patchCardBug(cardName, prop, correctValue) {
-    var tableValue = card_map[cardName][prop];
-    if (tableValue != correctValue) {
-      console.log('Note: patching card_list: changing ' + cardName + '.' +
-          prop + ' from ' + tableValue + ' to ' + correctValue);
-      card_map[cardName][prop] = correctValue;
-    }
-  }
-
-  patchCardBug('Horse Traders', 'Action', '1');
-  patchCardBug('Hunting Party', 'Action', '1');
-  patchCardBug('Fortune Teller', 'Action', '1');
-  // With Trusty Steed, it lists all *possible* outcomes as *actual*
-  patchCardBug('Trusty Steed', 'Actions', '0');
-  patchCardBug('Trusty Steed', 'Treasure', '0');
-  patchCardBug('Trusty Steed', 'Cards', '0');
-  patchCardBug('Trusty Steed', 'Plural', 'Trusty Steeds');
-}
+})();
 
 function activeDataStartHandle(doc) {
   doc = $(doc);

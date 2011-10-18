@@ -36,6 +36,7 @@ var had_error = false;
 var show_action_count = false;
 var show_unique_count = false;
 var show_duchy_count = false;
+var show_victory_count = false;
 var possessed_turn = false;
 var announced_error = false;
 var seen_first_turn = false;
@@ -87,11 +88,86 @@ RegExp.quote = function(str) {
 
 // Keep a map from all card names (singular or plural) to the card object.
 var card_map = {};
-for (var i = 0; i < card_list.length; i++) {
-  var card = card_list[i];
-  card_map[card.Singular] = card;
-  card_map[card.Plural] = card;
-}
+
+(function() {
+  // The card list is just to log the cards 10 at a time so I have a list of all
+  // cards in groups I can request to use for testing.
+  var cardList = "\n";
+  for (var i = 0; i < card_list.length; i++) {
+    var card = card_list[i];
+    card_map[card.Singular] = card;
+    card_map[card.Plural] = card;
+    if (i % 10 != 0) cardList += ', ';
+    cardList += (card.Singular);
+    if (i % 10 == 9 || i == card_list.length - 1) {
+      console.log(cardList + "\n");
+      cardList = "\n";
+    }
+    card.isAction = function() {
+      return this.Action != "0";
+    };
+    card.isTreasure = function() {
+      return this.Treasure != "0";
+    };
+    card.isDuration = function() {
+      return this.Duration != "0";
+    };
+    card.getBuys = function() {
+      return parseInt(this.Buys);
+    };
+    card.getActions = function() {
+      return parseInt(this.Actions);
+    };
+    card.getVP = function() {
+      var num = parseInt(this.VP);
+      return isNaN(num) ? 0 : num;
+    };
+    card.getCoinCount = function() {
+      return (
+          this.Coins == "?" || this.Coins == "P" ? 0 : parseInt(this.Coins));
+    };
+    card.getPotionCount = function() {
+      return (this.Coins == "P" ? 1 : 0);
+    };
+    card.getCoinCost = function() {
+      var cost = this.Cost;
+      cost = (cost.charAt(0) == 'P' ? cost.substr(1) : cost);
+      return parseInt(cost);
+    };
+    card.getPotionCost = function() {
+      return (this.Cost.indexOf("P") >= 0 ? 1 : 0);
+    };
+  }
+
+  // This patches known bugs in the card list and reports the patch in the log
+  // so we don't forget to get it actually fixed. If it finds the bug is not
+  // still in the list, it reports it so the fix can be dropped from our code.
+  function patchCardBug(cardName, prop, correctValue, report) {
+    report = report || false;
+    var tableValue = card_map[cardName][prop];
+    if (tableValue != correctValue && report) {
+      console.log('Note: patching card_list: changing ' + cardName + '.' +
+          prop + ' from ' + tableValue + ' to ' + correctValue);
+      card_map[cardName][prop] = correctValue;
+    }
+  }
+
+  patchCardBug('Horse Traders', 'Action', '1');
+  patchCardBug('Hunting Party', 'Action', '1');
+  patchCardBug('Fortune Teller', 'Action', '1');
+  patchCardBug('Fairgrounds', 'VP', '?');
+  // With Trusty Steed, it lists all *possible* outcomes as *actual*
+  patchCardBug('Trusty Steed', 'Actions', '0');
+  patchCardBug('Trusty Steed', 'Treasure', '0');
+  patchCardBug('Trusty Steed', 'Cards', '0');
+  patchCardBug('Trusty Steed', 'Plural', 'Trusty Steeds');
+
+  // Not actually a bug -- Mandarin *does* get you $3, but the game reports it
+  // the same way it does for variable-value cards (like Bank), so the normal
+  // code adds it in there automatically. Rather than put in a special case in
+  // that code, we'll just pretend it gives you no coins.
+  patchCardBug('Mandarin', 'Coins', '0', false);
+})();
 
 function debugString(thing) {
   return JSON.stringify(thing);
@@ -147,19 +223,9 @@ function pointsForCard(card_name) {
     handleError("Undefined card for points...");
     return 0;
   }
-  if (card_name.indexOf("Colony") == 0) return 10;
-  if (card_name.indexOf("Province") == 0) return 6;
-  if (card_name.indexOf("Duchy") == 0) return 3;
-  if (card_name.indexOf("Duchies") == 0) return 3;
-  if (card_name.indexOf("Estate") == 0) return 1;
-  if (card_name.indexOf("Curse") == 0) return -1;
 
-  if (card_name.indexOf("Island") == 0) return 2;
-  if (card_name.indexOf("Nobles") == 0) return 2;
-  if (card_name.indexOf("Harem") == 0) return 2;
-  if (card_name.indexOf("Great Hall") == 0) return 1;
-
-  return 0;
+  var card = card_map[card_name];
+  return card.getVP();
 }
 
 function Player(name, num) {
@@ -268,6 +334,16 @@ function Player(name, num) {
       total_score = total_score + fairgrounds * fairgrounds_points;
     }
 
+    if (this.special_counts["Silk Road"] != undefined) {
+      var silkroads = this.special_counts["Silk Road"];
+      var silkroads_points = 0;
+      if (this.special_counts["Victory"] != undefined) {
+        silkroads_points = Math.floor(this.special_counts["Victory"] / 4);
+      }
+      score_str = score_str + "+" + silkroads + "s@" + silkroads_points;
+      total_score = total_score + silkroads * silkroads_points;
+    }
+
     if (score_str.indexOf("@") > 0) {
       score_str = score_str + "=" + total_score;
     }
@@ -281,7 +357,10 @@ function Player(name, num) {
     var need_unique_string = (show_unique_count &&
         this.special_counts["Uniques"]);
     var need_duchy_string = (show_duchy_count && this.special_counts["Duchy"]);
-    if (need_action_string || need_unique_string || need_duchy_string) {
+    var need_victory_string = (show_victory_count &&
+        this.special_counts["Victory"]);
+    if (need_action_string || need_unique_string || need_duchy_string ||
+        need_victory_string) {
       var special_types = [];
       if (need_unique_string) {
         special_types.push(this.special_counts["Uniques"] + "u");
@@ -291,6 +370,9 @@ function Player(name, num) {
       }
       if (need_duchy_string) {
         special_types.push(this.special_counts["Duchy"] + "d");
+      }
+      if (need_victory_string) {
+        special_types.push(this.special_counts["Victory"] + "v");
       }
       str += '(' + special_types.join(",") + ')';
     }
@@ -351,6 +433,9 @@ function Player(name, num) {
     }
     if (name.indexOf("Fairgrounds") == 0) {
       this.changeSpecialCount("Fairgrounds", count);
+    }
+    if (name.indexOf("Silk Road") == 0) {
+      this.changeSpecialCount("Silk Road", count);
     }
 
     var types = card.className.split("-").slice(1);
@@ -2279,11 +2364,13 @@ function handle(doc) {
       show_action_count = false;
       show_unique_count = false;
       show_duchy_count = false;
+      show_victory_count = false;
       var elems = doc.getElementsByTagName("span");
       for (var elem in elems) {
         if (elems[elem].innerText == "Vineyard") show_action_count = true;
         if (elems[elem].innerText == "Fairgrounds") show_unique_count = true;
         if (elems[elem].innerText == "Duke") show_duchy_count = true;
+        if (elems[elem].innerText == "Silk Road") show_victory_count = true;
       }
       if (tablePlayer) {
         maybeWatchTradeRoute();

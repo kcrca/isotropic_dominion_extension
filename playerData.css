@@ -331,18 +331,23 @@ td.kingdom-column, td.basic-column {
  * all the examples, although some validators choke on it.)
  */
 .card-victory-action {
-    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.3, #f0f0f0), color-stop(0.7, #c0e4b1)) !important;
-    background-image: -moz-linear-gradient(left center, #f0f0f0 30%, #c0e4b1 70%) !important;
+    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.3, #c0e4b1), color-stop(0.7, #f0f0f0)) !important;
+    background-image: -moz-linear-gradient(left center, #c0e4b1 30%, #f0f0f0 70%) !important;
 }
 
 .card-victory-treasure {
-    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.3, #fce992), color-stop(0.7, #c0e4b1)) !important;
-    background-image: -moz-linear-gradient(left center, #fce992 30%, #c0e4b1 70%) !important;
+    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.3, #c0e4b1), color-stop(0.7, #fce992)) !important;
+    background-image: -moz-linear-gradient(left center, #c0e4b1 30%, #fce992 70%) !important;
 }
 
 .card-treasure-reaction {
     background-image: -webkit-gradient(linear, left top, right top, color-stop(0.3, #fce992), color-stop(0.7, #c1e1f4)) !important;
     background-image: -moz-linear-gradient(left center, #fce992 30%, #c1e1f4 70%) !important;
+}
+
+.card-victory-reaction {
+    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.3, #c0e4b1), color-stop(0.7, #c1e1f4)) !important;
+    background-image: -moz-linear-gradient(left center, #c0e4b1 30%, #c1e1f4 70%) !important;
 }
 
 /* When a card is removed from play in text mode, make that easier to see. */
