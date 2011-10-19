@@ -70,7 +70,7 @@ var restoring_history = false;
 // Tree is being rewritten, so should not process any tree change events.
 var rewritingTree = 0;
 
-var debug = {'actvData': true, 'infoData': true, 'logShown': true };
+var debug = {'actvData': false, 'infoData': false, 'logShown': false };
 
 var infoIsForTests = false;
 
@@ -1251,6 +1251,15 @@ function maybeHandleToNativeVillage(elems, text_arr, text) {
   return false;
 }
 
+//noinspection JSUnusedLocalSymbols
+function maybeHandleTunnelReveal(elems, text_arr, text) {
+  if (elems.length == 2 && text.match(/reveal a Tunnel and gain a Gold\./)) {
+    last_player.gainCard(elems[1], 1);
+    return true;
+  }
+  return false;
+}
+
 function maybeHandleFromNativeVillage(text) {
   if (text.match(/ puts? the mat contents into (.+) hand\./)) {
     last_player.clearCardGroup('nativeVillage');
@@ -1474,6 +1483,7 @@ function handlePlayLog(node) {
   if (maybeHandleIsland(elems, text, nodeText)) return;
   if (maybeHandleCoppersmith(elems, text, nodeText)) return;
   if (maybeHandleToNativeVillage(elems, text, nodeText)) return;
+  if (maybeHandleTunnelReveal(elems, text, nodeText)) return;
 
   if (text[0] == "trashing") {
     var trasher = last_player;
