@@ -1253,7 +1253,7 @@ function maybeHandleToNativeVillage(elems, text_arr, text) {
 
 //noinspection JSUnusedLocalSymbols
 function maybeHandleTunnelReveal(elems, text_arr, text) {
-  if (elems.length == 2 && text.match(/reveal a Tunnel and gain a Gold\./)) {
+  if (elems.length == 2 && text.match(/reveal(ing|s) a Tunnel and gain(ing|s)? a Gold\./)) {
     last_player.gainCard(elems[1], 1);
     return true;
   }
