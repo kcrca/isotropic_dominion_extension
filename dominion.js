@@ -1252,8 +1252,9 @@ function maybeHandleToNativeVillage(elems, text_arr, text) {
 }
 
 //noinspection JSUnusedLocalSymbols
-function maybeHandleTunnelReveal(elems, text_arr, text) {
-  if (elems.length == 2 && text.match(/reveal(ing|s) a Tunnel and gain(ing|s)? a Gold\./)) {
+function maybeHandleGainViaReveal(elems, text_arr, text) {
+  if (elems.length == 2 &&
+      text.match(/reveal(ing|s) an? (.*) and gain(ing|s)? an? (.*)\./)) {
     last_player.gainCard(elems[1], 1);
     return true;
   }
@@ -1483,7 +1484,7 @@ function handlePlayLog(node) {
   if (maybeHandleIsland(elems, text, nodeText)) return;
   if (maybeHandleCoppersmith(elems, text, nodeText)) return;
   if (maybeHandleToNativeVillage(elems, text, nodeText)) return;
-  if (maybeHandleTunnelReveal(elems, text, nodeText)) return;
+  if (maybeHandleGainViaReveal(elems, text, nodeText)) return;
 
   if (text[0] == "trashing") {
     var trasher = last_player;
