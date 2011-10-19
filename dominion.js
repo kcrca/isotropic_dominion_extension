@@ -21,6 +21,7 @@ var had_error = false;
 var show_action_count = false;
 var show_unique_count = false;
 var show_duchy_count = false;
+var show_victory_count = false;
 var possessed_turn = false;
 var announced_error = false;
 
@@ -126,6 +127,9 @@ function pointsForCard(card_name) {
   if (card_name.indexOf("Nobles") == 0) return 2;
   if (card_name.indexOf("Harem") == 0) return 2;
   if (card_name.indexOf("Great Hall") == 0) return 1;
+  
+  if (card_name.indexOf("Farmland") == 0) return 2;
+  if (card_name.indexOf("Tunnel") == 0) return 2;
 
   return 0;
 }
@@ -140,7 +144,7 @@ function Player(name) {
     this.card_counts = { "Copper" : 7, "Estate" : 3 };
 
   this.getScore = function() {
-    var score_str = this.score;
+    var score_str = this.score + "";
     var total_score = this.score;
 
     if (this.special_counts["Gardens"] != undefined) {
@@ -180,7 +184,17 @@ function Player(name) {
       total_score = total_score + fairgrounds * fairgrounds_points;
     }
 
-    if (total_score != this.score) {
+    if (this.special_counts["Silk Road"] != undefined) {
+      var silkroads = this.special_counts["Silk Road"];
+      var silkroads_points = 0;
+      if (this.special_counts["Victory"] != undefined) {
+        silkroads_points = Math.floor(this.special_counts["Victory"] / 4);
+      }
+      score_str = score_str + "+" + silkroads + "s@" + silkroads_points;
+      total_score = total_score + silkroads * silkroads_points;
+    }
+
+    if (score_str.indexOf("@") > 0) {
       score_str = score_str + "=" + total_score;
     }
     return score_str;
@@ -191,7 +205,10 @@ function Player(name) {
     var need_action_string = (show_action_count && this.special_counts["Actions"]);
     var need_unique_string = (show_unique_count && this.special_counts["Uniques"]);
     var need_duchy_string = (show_duchy_count && this.special_counts["Duchy"]);
-    if (need_action_string || need_unique_string || need_duchy_string) {
+    var need_victory_string = (show_victory_count &&
+        this.special_counts["Victory"]);
+    if (need_action_string || need_unique_string || need_duchy_string ||
+        need_victory_string) {
       var special_types = [];
       if (need_unique_string) {
         special_types.push(this.special_counts["Uniques"] + "u");
@@ -201,6 +218,9 @@ function Player(name) {
       }
       if (need_duchy_string) {
         special_types.push(this.special_counts["Duchy"] + "d");
+      }
+      if (need_victory_string) {
+        special_types.push(this.special_counts["Victory"] + "v");
       }
       str += '(' + special_types.join(", ") + ')';
     }
@@ -251,6 +271,9 @@ function Player(name) {
     }
     if (name.indexOf("Fairgrounds") == 0) {
       this.changeSpecialCount("Fairgrounds", count);
+    }
+    if (name.indexOf("Silk Road") == 0) {
+      this.changeSpecialCount("Silk Road", count);
     }
 
     var types = card.className.split("-").slice(1);
@@ -480,6 +503,14 @@ function maybeHandlePirateShip(elems, text_arr, text) {
   return false;
 }
 
+function maybeHandleTunnelReveal(elems, text_arr, text) {
+  if (elems.length == 2 && text.match(/reveal a Tunnel and gain a Gold\./)) {
+    last_player.gainCard(elems[1], 1);
+    return true;
+  }
+  return false;
+}
+
 function maybeHandleSeaHag(elems, text_arr, text) {
   if (text.indexOf("a Curse on top of") != -1) {
     if (elems < 1 || elems[elems.length - 1].innerHTML != "Curse") {
@@ -517,6 +548,7 @@ function maybeHandleOffensiveTrash(elems, text_arr, text) {
     }
     return false;
   }
+  return false;
 }
 
 function maybeHandleTournament(elems, text_arr, text) {
@@ -608,6 +640,7 @@ function handleLogEntry(node) {
   if (maybeHandleSeaHag(elems, text, node.innerText)) return;
   if (maybeHandleOffensiveTrash(elems, text, node.innerText)) return;
   if (maybeHandleTournament(elems, text, node.innerText)) return;
+  if (maybeHandleTunnelReveal(elems, text, node.innerText)) return;
 
   if (text[0] == "trashing") {
     var player = last_player;
@@ -1032,11 +1065,13 @@ function handle(doc) {
       show_action_count = false;
       show_unique_count = false;
       show_duchy_count = false;
-      elems = doc.getElementsByTagName("span");
+      show_victory_count = false;
+      var elems = doc.getElementsByTagName("span");
       for (var elem in elems) {
         if (elems[elem].innerText == "Vineyard") show_action_count = true;
         if (elems[elem].innerText == "Fairgrounds") show_unique_count = true;
         if (elems[elem].innerText == "Duke") show_duchy_count = true;
+        if (elems[elem].innerText == "Silk Road") show_victory_count = true;
       }
     }
 
