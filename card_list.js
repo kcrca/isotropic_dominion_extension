@@ -58,7 +58,7 @@ var card_list = [
   {"Reaction": "0", "Coins": "3", "Duration": "0", "Singular": "Gold", "Treasure": "1", "Actions": "0", "VP": "0", "Action": "0", "Attack": "0", "Cost": "6", "Victory": "0", "Buys": "0", "Cards": "0", "Trash": "0", "Plural": "Golds"},
   {"Reaction": "0", "Coins": "0", "Duration": "0", "Singular": "Golem", "Treasure": "0", "Actions": "0", "VP": "0", "Action": "1", "Attack": "0", "Cost": "P4", "Victory": "0", "Buys": "0", "Cards": "0", "Trash": "0", "Plural": "Golems"},
   {"Reaction": "0", "Coins": "2", "Duration": "0", "Singular": "Goons", "Treasure": "0", "Actions": "0", "VP": "0", "Action": "1", "Attack": "1", "Cost": "6", "Victory": "0", "Buys": "1", "Cards": "0", "Trash": "0", "Plural": "Goons"},
-  {"Reaction": "0", "Coins": "0", "Duration": "0", "Singular": "Governor", "Treasure": "0", "Actions": "0", "VP": "0", "Action": "0", "Attack": "0", "Cost": "0", "Victory": "0", "Buys": "0", "Cards": "0", "Trash": "0", "Plural": "Governors"},
+  {"Reaction": "0", "Coins": "0", "Duration": "0", "Singular": "Governor", "Treasure": "0", "Actions": "1", "VP": "0", "Action": "1", "Attack": "0", "Cost": "5", "Victory": "0", "Buys": "0", "Cards": "?", "Trash": "?", "Plural": "Governors"},
   {"Reaction": "0", "Coins": "2", "Duration": "0", "Singular": "Grand Market", "Treasure": "0", "Actions": "1", "VP": "0", "Action": "1", "Attack": "0", "Cost": "6", "Victory": "0", "Buys": "1", "Cards": "1", "Trash": "0", "Plural": "Grand Markets"},
   {"Reaction": "0", "Coins": "0", "Duration": "0", "Singular": "Great Hall", "Treasure": "0", "Actions": "1", "VP": "1", "Action": "1", "Attack": "0", "Cost": "3", "Victory": "1", "Buys": "0", "Cards": "1", "Trash": "0", "Plural": "Great Halls"},
   {"Reaction": "0", "Coins": "2", "Duration": "0", "Singular": "Haggler", "Treasure": "0", "Actions": "0", "VP": "0", "Action": "1", "Attack": "0", "Cost": "5", "Victory": "0", "Buys": "0", "Cards": "0", "Trash": "0", "Plural": "Hagglers"},
@@ -171,4 +171,4 @@ var card_list = [
   {"Reaction": "0", "Coins": "0", "Duration": "0", "Singular": "Worker's Village", "Treasure": "0", "Actions": "2", "VP": "0", "Action": "1", "Attack": "0", "Cost": "4", "Victory": "0", "Buys": "1", "Cards": "1", "Trash": "0", "Plural": "Worker's Villages"},
   {"Reaction": "0", "Coins": "0", "Duration": "0", "Singular": "Workshop", "Treasure": "0", "Actions": "0", "VP": "0", "Action": "1", "Attack": "0", "Cost": "3", "Victory": "0", "Buys": "0", "Cards": "0", "Trash": "0", "Plural": "Workshops"},
   {"Reaction": "0", "Coins": "0", "Duration": "0", "Singular": "Young Witch", "Treasure": "0", "Actions": "0", "VP": "0", "Action": "1", "Attack": "0", "Cost": "4", "Victory": "0", "Buys": "0", "Cards": "2", "Trash": "0", "Plural": "Young Witches"}
-];
+]

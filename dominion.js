@@ -70,7 +70,7 @@ var restoring_history = false;
 // Tree is being rewritten, so should not process any tree change events.
 var rewritingTree = 0;
 
-var debug = {'actvData': false, 'infoData': false, 'logShown': false };
+var debug = {'actvData': true, 'infoData': true, 'logShown': true };
 
 var infoIsForTests = false;
 
