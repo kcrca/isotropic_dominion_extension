@@ -773,8 +773,7 @@ function getPlayer(name) {
   return players[name];
 }
 
-function tempSayChange(ev) {
-  console.log(ev);
+function tempSayChange() {
   var clones = $('#temp_say').contents().clone();
   var copy = $('#copied_temp_say');
 
