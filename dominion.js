@@ -2003,8 +2003,8 @@ function removeLog() {
 function hideExtension() {
   stopCounting();
   removePlayerData();
+  $('#optionPanelHolder').hide();
   $('div[reinserted="true"]').css('display', 'none');
-  storeLog();
 }
 
 function canDisable() {
@@ -2079,11 +2079,14 @@ function removePlayerData() {
 }
 
 function stopCounting() {
+  started = false;
+
   if (deck_spot) deck_spot.innerHTML = "exit";
   if (points_spot) points_spot.innerHTML = "faq";
 
   removeLog();
   activeDataStop();
+  $('#optionPanelHolder').show();
   text_mode = undefined;
   players = undefined;
 }
@@ -2093,7 +2096,6 @@ function handleGameEnd(doc) {
     var childNode = doc.childNodes[node];
     if (childNode.innerText == "game log") {
       // Reset exit / faq at end of game.
-      started = false;
       stopCounting();
       $(doc).children('a:contains(return)').each(function() {
         $(this).click(removePlayerData);
