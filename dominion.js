@@ -35,8 +35,8 @@ var disabled = false;
 var had_error = false;
 var show_action_count = false;
 var show_unique_count = false;
-var show_duchy_count = false;
 var show_victory_count = false;
+var show_duchy_count = false;
 var possessed_turn = false;
 var announced_error = false;
 var seen_first_turn = false;
@@ -85,6 +85,11 @@ var chat_prefix = chat_prefix_symbols[chat_prefix_num];
 RegExp.quote = function(str) {
   return str.replace(/([.?*+^$[\]\\(){}-])/g, "\\$1");
 };
+
+// Returns an html encoded version of a string.
+function htmlEncode(value) {
+  return $('<div/>').text(value).html();
+}
 
 // Keep a map from all card names (singular or plural) to the card object.
 var card_map = {};
@@ -168,10 +173,6 @@ var card_map = {};
   // that code, we'll just pretend it gives you no coins.
   patchCardBug('Mandarin', 'Coins', '0', false);
 })();
-
-function debugString(thing) {
-  return JSON.stringify(thing);
-}
 
 function rewriteName(name) {
   return name.replace(/ /g, "_").replace(/'/g, "’").replace(/\./g, "");
@@ -304,6 +305,16 @@ function Player(name, num) {
       total_score = total_score + gardens * garden_points;
     }
 
+    if (this.special_counts["Silk Roads"] != undefined) {
+      var silk_roads = this.special_counts["Silk Roads"];
+      var silk_road_points = 0;
+      if (this.special_counts["Victory"] != undefined) {
+        silk_road_points = Math.floor(this.special_counts["Victory"] / 4);
+      }
+      score_str = score_str + "+" + silk_roads + "s@" + silk_road_points;
+      total_score = total_score + silk_roads * silk_road_points;
+    }
+
     if (this.special_counts["Duke"] != undefined) {
       var dukes = this.special_counts["Duke"];
       var duke_points = 0;
@@ -334,16 +345,6 @@ function Player(name, num) {
       total_score = total_score + fairgrounds * fairgrounds_points;
     }
 
-    if (this.special_counts["Silk Road"] != undefined) {
-      var silkroads = this.special_counts["Silk Road"];
-      var silkroads_points = 0;
-      if (this.special_counts["Victory"] != undefined) {
-        silkroads_points = Math.floor(this.special_counts["Victory"] / 4);
-      }
-      score_str = score_str + "+" + silkroads + "s@" + silkroads_points;
-      total_score = total_score + silkroads * silkroads_points;
-    }
-
     if (score_str.indexOf("@") > 0) {
       score_str = score_str + "=" + total_score;
     }
@@ -352,15 +353,11 @@ function Player(name, num) {
 
   this.getDeckString = function() {
     var str = this.deck_size;
-    var need_action_string = (show_action_count &&
-        this.special_counts["Actions"]);
-    var need_unique_string = (show_unique_count &&
-        this.special_counts["Uniques"]);
+    var need_action_string = (show_action_count && this.special_counts["Actions"]);
+    var need_unique_string = (show_unique_count && this.special_counts["Uniques"]);
+    var need_victory_string = (show_victory_count && this.special_counts["Victory"]);
     var need_duchy_string = (show_duchy_count && this.special_counts["Duchy"]);
-    var need_victory_string = (show_victory_count &&
-        this.special_counts["Victory"]);
-    if (need_action_string || need_unique_string || need_duchy_string ||
-        need_victory_string) {
+    if (need_action_string || need_unique_string || need_duchy_string || need_victory_string) {
       var special_types = [];
       if (need_unique_string) {
         special_types.push(this.special_counts["Uniques"] + "u");
@@ -374,7 +371,7 @@ function Player(name, num) {
       if (need_victory_string) {
         special_types.push(this.special_counts["Victory"] + "v");
       }
-      str += '(' + special_types.join(",") + ')';
+      str += '(' + special_types.join(", ") + ')';
     }
     return str;
   };
@@ -435,7 +432,7 @@ function Player(name, num) {
       this.changeSpecialCount("Fairgrounds", count);
     }
     if (name.indexOf("Silk Road") == 0) {
-      this.changeSpecialCount("Silk Road", count);
+      this.changeSpecialCount("Silk Roads", count);
     }
 
     var types = card.className.split("-").slice(1);
@@ -531,6 +528,7 @@ function Player(name, num) {
           " gains " + count + " " + elem.innerText + "</div>");
     }
 
+    last_gain_player = this;
     count = parseInt(count);
     this.deck_size = this.deck_size + count;
 
@@ -552,8 +550,6 @@ function Player(name, num) {
       updateDeck(tablePlayer);
     }
     maybeWatchTradeRoute();
-
-    last_gain_player = this;
   };
 
   // This player has resigned; remember it.
@@ -1140,7 +1136,7 @@ function handleScoping(text_arr, text) {
       text.indexOf("You reveal a Watchtower") != -1) {
     scope = 'Watchtower';
   } else {
-    var re = new RegExp("(?:You|" + player_re + ") plays? an? ([^.]*)\\.");
+    var re = new RegExp("(?:You|" + player_re + ") (?:play|buy)s? an? ([^.]*)\\.");
     var arr = text.match(re);
     if (arr && arr.length == 3) {
       scope = arr[2];
@@ -1317,6 +1313,38 @@ function maybeHandleTournament(elems, text_arr, text) {
   return false;
 }
 
+function maybeHandleTrader(elems, text_arr, text) {
+  if (elems.length == 3 && text.match(/a Trader to gain a Silver/)) {
+    getPlayer(text_arr[0]).gainCard(elems[2], -1);
+    return true;
+  }
+  return false;
+}
+
+function maybeHandleTunnel(elems, text_arr, text) {
+  if (elems.length == 2 && text.match(/reveals? a Tunnel and gain/)) {
+    getPlayer(text_arr[0]).gainCard(elems[1], 1);
+    return true;
+  }
+  return false;
+}
+
+function maybeHandleNobleBrigand(elems, text_arr, text) {
+  if (text.match(/draws? and reveals?.+, trashing a/)) {
+    getPlayer(text_arr[0]).gainCard(elems[elems.length - 1], -1);
+    return true;
+  }
+  return false;
+}
+
+function maybeHandleVp(text) {
+  var re = new RegExp("[+]([0-9]+) ▼");
+  var arr = text.match(re);
+  if (arr && arr.length == 2) {
+    last_player.changeScore(arr[1]);
+  }
+}
+
 function getCardCount(card, text) {
   var count = 1;
   var re = new RegExp("([0-9]+) " + card);
@@ -1338,7 +1366,7 @@ function handleGainOrTrash(player, elems, text, multiplier) {
       } else {
         player.gainCard(elems[elem], num);
         // If Thief is used to gain the trashed card, take it back out
-        if (text.match(/ gain(s|ed)? the trashed /)) {
+        if (text.match(/ gain(s|ed)? the trashed /) || topScope() == "Noble Brigand") {
           tablePlayer.gainCard(elems[elem], -num);
         }
       }
@@ -1484,6 +1512,9 @@ function handlePlayLog(node) {
   if (maybeHandleCoppersmith(elems, text, nodeText)) return;
   if (maybeHandleToNativeVillage(elems, text, nodeText)) return;
   if (maybeHandleGainViaReveal(elems, text, nodeText)) return;
+  if (maybeHandleTrader(elems, text, nodeText)) return;
+  if (maybeHandleTunnel(elems, text, nodeText)) return;
+  if (maybeHandleNobleBrigand(elems, text, nodeText)) return;
 
   if (text[0] == "trashing") {
     var trasher = last_player;
@@ -1511,9 +1542,13 @@ function handlePlayLog(node) {
     return;
   }
 
-  // Mark down if a player reveals cards.
-  if (text[1].indexOf("reveal") == 0) {
-    last_reveal_player = getPlayer(text[0]);
+  var player = getPlayer(text[0]);
+  var action = text[1];
+
+  // Handle revealing cards.
+  if (action.indexOf("reveal") == 0) {
+    last_reveal_player = player;
+    last_reveal_card = elems[elems.length - 1];
   }
 
   // Expect one element from here on out.
@@ -1524,8 +1559,6 @@ function handlePlayLog(node) {
   var card_name = elems[0].innerText;
   var card = card_map[card_name];
 
-  var player = getPlayer(text[0]);
-  var action = text[1];
   if (action.indexOf("buy") == 0) {
     var count = getCardCount(card_name, nodeText);
     // In possessed turns, it isn't who buys something, it's who "gains" it
@@ -1555,8 +1588,6 @@ function handlePlayLog(node) {
         other_player.gainCard(card_elem, -1, false);
       }
     });
-  } else if (action.indexOf("reveal") == 0) {
-    last_reveal_card = card_elem;
   }
 }
 
@@ -1868,7 +1899,7 @@ function initialize(doc) {
     }
     var rewritten = rewriteName(arr[i]);
     if (rewritten != arr[i]) {
-      player_rewrites[arr[i]] = rewritten;
+      player_rewrites[htmlEncode(arr[i])] = htmlEncode(rewritten);
       arr[i] = rewritten;
     }
     // Initialize the player.
@@ -2055,6 +2086,7 @@ function addSetting(setting, output) {
 function settingsString() {
   var settings = new Object();
   addSetting("debug", settings);
+  addSetting("always_display", settings);
   addSetting("allow_disable", settings);
   addSetting("name", settings);
   addSetting("status_announce", settings);
@@ -2109,16 +2141,15 @@ function handleGameEnd(doc) {
 
       // Double check the scores so we can log if there was a bug.
       var has_correct_score = true;
-      var win_log = document.getElementsByClassName("em");
-      if (!announced_error && win_log && win_log.length == 1) {
-        var summary = win_log[0].previousSibling.innerText;
-        for (var player in players) {
+      var win_log = $('div.logline.em').prev()[0];
+      if (!announced_error && win_log) {
+        var summary = win_log.innerText;
+        for (player in players) {
           var player_name = players[player].name;
           if (player_name == "You") {
             player_name = rewriteName(name);
           }
-          var re = new RegExp(RegExp.quote(player_name) +
-              " has ([0-9]+) points");
+          var re = new RegExp(RegExp.quote(player_name) + " has (-?[0-9]+) points");
           var arr = summary.match(re);
           if (arr && arr.length == 2) {
             var score = ("" + players[player].getScore()).replace(/^.*=/, "");
@@ -2204,7 +2235,7 @@ function maybeStartOfGame(node) {
 // Returns true if the log node should be handled as part of the game.
 function logEntryForGame(node) {
   if (inLobby()) {
-    localStorage.removeItem('log');
+    removeLog();
     return false;
   }
 
@@ -2222,6 +2253,9 @@ function restoreHistory(node) {
   if (logHistory == undefined || logHistory.length == 0) {
     return false;
   }
+
+  createFullLog();
+  restoring_history = true;
 
   // First build a DOM tree of the old log messages in a copy of the log.
   var log_entries = $('<pre id="temp"></pre>').html(logHistory).children();
@@ -2399,7 +2433,7 @@ function handle(doc) {
       return;
     }
 
-    // If we're adding chioces, it may be the choices at the end of the game
+    // If we're adding choices, it may be the choices at the end of the game
     if (doc.constructor == HTMLDivElement && doc.parentNode.id == "choices") {
       handleGameEnd(doc);
       if (!started) return;
@@ -2425,7 +2459,7 @@ function handle(doc) {
     if (doc.innerText != undefined) {
       error += "On '" + doc.innerText + "': ";
     }
-    handleError("Javascript exception: " + debugString(err));
+    handleError("Javascript exception: " + err.stack);
   }
 }
 
@@ -2476,8 +2510,6 @@ function enterLobby() {
     getSayButton().addEventListener('click', function() {
       $('#fake_entry').val("");
     });
-
-    $('#fake_entry').focus();
   }
 
   my_icon = $('#log img').first()[0];
