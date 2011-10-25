@@ -48,6 +48,20 @@ var extension_version = 'Unknown';
 
 var restoring_log = false;
 
+// Tree is being rewritten, so should not process any tree change events.
+var rewritingTree = 0;
+
+var debug = {'actvData': false, 'infoData': true, 'logShown': true };
+
+var infoIsForTests = false;
+
+var test_only_my_score = false;
+
+// This is to let us play around with prefix characters for generated text.
+var chat_prefix_symbols = debug['chatPrefix'] ? "⟣⟡∷⊹" : "⟣";
+var chat_prefix_num = 0;
+var chat_prefix = chat_prefix_symbols[chat_prefix_num];
+
 // Quotes a string so it matches literally in a regex.
 RegExp.quote = function(str) {
   return str.replace(/([.?*+^$[\]\\(){}-])/g, "\\$1");
