@@ -321,7 +321,218 @@ function Player(name) {
     this.changeScore(pointsForCard(singular_card_name) * count);
     this.recordSpecialCounts(singular_card_name, card, count);
     this.recordCards(singular_card_name, count);
-  }
+
+    trashing = trashing == undefined ? true : trashing;
+    if (!supplied_cards[singular_card_name]) {
+      this.addToCardGroup('otherCards', $(elem), count);
+    }
+
+    // If the count is going down, usually player is trashing a card.
+    if (!this.isTable && count < 0 && trashing) {
+      tablePlayer.gainCard(elem, -count);
+    }
+    if (trashing || this.isTable) {
+      updateDeck(tablePlayer);
+    }
+    maybeWatchTradeRoute();
+  };
+
+  // This player has resigned; remember it.
+  this.setResigned = function() {
+    if (this.resigned) return;
+
+    // In addition to other classes, this is now in the "resigned" class.
+    $("." + this.classFor).addClass("resigned");
+    this.classFor += " resigned";
+    this.resigned = true;
+  };
+
+  this.setAside = function(elems) {
+    for (var i = 0; i < elems.length; i++) {
+      var card = elems[i];
+      var cardName = getSingularCardName(card.innerText);
+      if (!this.cards_aside[cardName]) {
+        this.cards_aside[cardName] = 1;
+      } else {
+        this.cards_aside[cardName]++;
+      }
+      this.deck_size--;
+      this.updateCardDisplay(cardName);
+    }
+  };
+
+  this.asideCount = function() {
+    var count = 0;
+    for (var cardName in this.cards_aside) {
+      var aside = this.cards_aside[cardName];
+      if (aside) {
+        count += aside;
+      }
+    }
+    return count;
+  };
+
+  this.cardCountString = function(cardName) {
+    var count = this.card_counts[cardName];
+    if (count == undefined || count == 0) {
+      return '-';
+    }
+
+    var aside = this.cards_aside[cardName];
+    if (aside == undefined || aside == 0) {
+      return count + "";
+    } else {
+      return count + '(' + aside + '<span class="asideCountNum">i</span>)';
+    }
+  };
+
+  this.get = function(field) {
+    return this.fields.get(field);
+  };
+
+  this.set = function(field, value) {
+    rewriteTree(function () {
+      self.fields.set(field, value);
+    });
+  };
+
+  this.add = function(name, params) {
+    rewriteTree(function() {
+      self.fields.add(name, params);
+    });
+  };
+
+  this.change = function(name, params) {
+    rewriteTree(function() {
+      self.fields.change(name, params);
+    });
+  };
+
+  this.changeField = function(field, delta) {
+    var before = this.get(field);
+    var after = before + delta;
+    if (before != after) {
+      logDebug('infoData',
+          this.name + ": change " + field + ": " + before + " → " + after);
+      this.set(field, after);
+    }
+  };
+
+  this.countString = function() {
+    this.deckCards = {};
+    var scratchElem = $('<span/>');
+    for (var cardName in this.card_counts) {
+      var count = this.card_counts[cardName];
+      scratchElem.text(cardName);
+      this.addToCardGroup('deckCards', scratchElem, count, false);
+    }
+
+    var str = htmlToText(this.cardGroupHtml('deckCards', true));
+    if (str.length == 0) str = "none";
+    var myName = this.isTable ? "Trash" : this.name;
+    return myName + ': ' + str;
+  };
+
+  this.infoString = function() {
+    return this.name + ': ' + this.fields.toString();
+  };
+
+  activeDataSetupPlayer(this);
+
+  rewriteTree(function() {
+    var ptab = $('#playerDataTable')[0];
+    var row1 = addRow(ptab, self.classFor,
+        activeDataColumn(self) + '<td id="' + self.idFor('mark') +
+            '" class="rowStretch markPlace"></td>' + '<td id="' +
+            self.idFor('name') + '" class="playerDataName" rowspan="0">' +
+            originalName(self.name) + '</td>');
+    row1.attr('id', self.idFor('firstRow'));
+
+    var stetchCells = row1.children('.rowStretch');
+    var playerCell = row1.children('#' + self.idFor('name'));
+    if (self.icon != undefined) {
+      playerCell.children().first().before(self.icon.cloneNode(true))
+    }
+    var seenWide = undefined;
+    var firstWide = 'otherCards';
+    var prev;
+    var fieldInsertPos = function(field) {
+      if (field.name == firstWide) {
+        seenWide = $.inArray(field.name, fields.order);
+      }
+
+      var keyCell = $('<td/>').append(field.keyNode);
+      var valCell = $('<td/>').append(field.valueNode);
+      var cells = keyCell.add(valCell);
+
+      if (!self.seenFirst) {
+        self.seenFirst = true;
+        return {toInsert: cells, after: $('#' + self.idFor('name'))};
+      }
+
+      function incrementRowspan(cell) {
+        var curSpan = cell.attr('rowspan');
+        if (!curSpan) {
+          curSpan = '1';
+        }
+        cell.attr('rowspan', parseInt(curSpan) + 1);
+      }
+
+      stetchCells.each(function() {
+        incrementRowspan($(this));
+      });
+
+      var row = $('<tr/>').addClass(self.classFor);
+      if (!seenWide || $.inArray(field.name, fields.order) < seenWide) {
+        incrementRowspan(playerCell);
+        row.append(cells);
+      } else {
+        var cell = $('<td/>').attr('colspan', 3).addClass('playerOtherCards');
+        row.append(cell);
+        cell.append(field.keyNode);
+        field.keyNode.after(field.valueNode);
+      }
+
+      var after = (prev ? prev : $('#' + self.idFor('firstRow')));
+      prev = row;
+      return {toInsert: row, after: after};
+    };
+
+    var fields = new FieldGroup({idSource: self, tag: 'span',
+      findInsert: fieldInsertPos,
+      keyClass: 'playerDataKey', valueClass: 'playerDataValue',
+      ignoreUnknown: self.isTable});
+    self.fields = fields;
+
+    if (self.isTable) {
+      fields.add('tradeRoute', {label: "Trade Route", prefix: '$',
+        initial: 0, visible: false });
+      fields.add('deck', {label: "Trash", initial: self.getDeckString()});
+    } else {
+      fields.add('score', {initial: self.getScore(), valueClass: 'scoreValue'});
+      fields.add('deck', {initial: self.getDeckString()});
+      fields.add('pirateShipTokens', {label: 'Pirate Ship', prefix: '$',
+        initial: 0, isVisible: fieldInvisibleIfZero});
+    }
+    fields.add('otherCards',
+        {label: self.isTable ? 'Other Trash' : 'Other Cards',
+          initial: self.cardGroupHtml('otherCard'),
+          isVisible: fieldInvisibleIfEmpty});
+    if (!self.isTable) {
+      // Native Village for "You" lists cards; for others it's just a count.
+      var initialNV = 0;
+      var visibleNV = fieldInvisibleIfZero;
+      if (self.name == "You") {
+        initialNV = self.cardGroupHtml('nativeVillage');
+        visibleNV = fieldInvisibleIfEmpty;
+      }
+      fields.add('nativeVillage', {
+        label: "Native Village", initial: initialNV, isVisible: visibleNV});
+      fields.add('durations', {
+        initial: self.cardGroupHtml('durations'),
+        isVisible: fieldInvisibleIfEmpty});
+    }
+  });
 }
 
 function stateStrings() {
@@ -419,7 +630,8 @@ function handleScoping(text_arr, text) {
       text.indexOf("You reveal a Watchtower") != -1) {
     scope = 'Watchtower';
   } else {
-    var re = new RegExp("You|" + player_re + "plays? an? ([^.]*).");
+    var re = new RegExp("(?:You|" + player_re +
+        ") (?:play|buy)s? an? ([^.]*)\\.");
     var arr = text.match(re);
     if (arr && arr.length == 2) {
       scope = arr[1];
@@ -429,23 +641,19 @@ function handleScoping(text_arr, text) {
 }
 
 function maybeReturnToSupply(text) {
-  possessed_turn_backup = possessed_turn;
-  possessed_turn = false;
-
-  var ret = false;
-  if (text.indexOf("it to the supply") != -1) {
-    last_player.gainCard(last_reveal_card, -1);
-    ret = true;
-  } else {
-    var arr = text.match("([0-9]*) copies to the supply");
-    if (arr && arr.length == 2) {
-      last_player.gainCard(last_reveal_card, -arr[1]);
-      ret = true;
+  return unpossessed(function () {
+    if (text.indexOf("it to the supply") != -1) {
+      last_player.gainCard(last_reveal_card, -1, false);
+      return true;
+    } else {
+      var arr = text.match("([0-9]*) copies to the supply");
+      if (arr && arr.length == 2) {
+        last_player.gainCard(last_reveal_card, -arr[1], false);
+        return true;
+      }
     }
-  }
-
-  possessed_turn = possessed_turn_backup;
-  return false;
+    return false;
+  });
 }
 
 function maybeHandleExplorer(elems, text) {
@@ -509,6 +717,41 @@ function maybeHandlePirateShip(elems, text_arr, text) {
   // Swallow gaining pirate ship tokens.
   // It looks like gaining a pirate ship otherwise.
   if (text.indexOf("a Pirate Ship token") != -1) return true;
+  return false;
+}
+
+//noinspection JSUnusedLocalSymbols
+function maybeHandleToNativeVillage(elems, text_arr, text) {
+  var m = text.match(/ (to|on) the Native Village mat\./);
+  if (m) {
+    if (elems.length == 2) {
+      last_player.addToCardGroup('nativeVillage', $(elems[0]));
+    } else if (!text.match(/ drawing nothing /)) {
+      last_player.changeField('nativeVillage', 1);
+    }
+    return true;
+  }
+  return false;
+}
+
+//noinspection JSUnusedLocalSymbols
+function maybeHandleGainViaReveal(elems, text_arr, text) {
+  if (elems.length == 2 &&
+      text.match(/reveal(ing|s) an? (.*) and gain(ing|s)? an? (.*)\./)) {
+    last_player.gainCard(elems[1], 1);
+    return true;
+  }
+  return false;
+}
+
+function maybeHandleFromNativeVillage(text) {
+  if (text.match(/ pick(s|ing) up .+ from the Native Village mat/)) {
+    last_player.set('nativeVillage', 0);
+    return true;
+  } else if (text.match(/ puts? the mat contents into (.+) hand\./)) {
+    last_player.clearCardGroup('nativeVillage');
+    return true;
+  }
   return false;
 }
 
@@ -610,7 +853,17 @@ function handleGainOrTrash(player, elems, text, multiplier) {
     if (elems[elem].innerText != undefined) {
       var card = elems[elem].innerText;
       var count = getCardCount(card, text);
-      player.gainCard(elems[elem], multiplier * count);
+      var num = multiplier * count;
+      if (possessed_turn && num < 0) {
+        // Skip trashing any cards during possession.
+      } else {
+        player.gainCard(elems[elem], num);
+        // If Thief is used to gain the trashed card, take it back out
+        if (text.match(/ gain(s|ed)? the trashed /) ||
+            topScope() == "Noble Brigand") {
+          tablePlayer.gainCard(elems[elem], -num);
+        }
+      }
     }
   }
 }
@@ -623,6 +876,37 @@ function maybeHandleGameStart(node) {
   initialize(node);
   maybeAddToFullLog(node);
   return true;
+}
+
+// Perform a function that should behave the same whether or not the current
+// player is posessed.
+function unpossessed(action) {
+  // Remember the current state of possession.
+  var originallyPossessed = possessed_turn;
+  try {
+    possessed_turn = false;
+    return action();
+  } finally {
+    possessed_turn = originallyPossessed;
+  }
+}
+
+function startInfoWIndowTests() {
+  // Should not run these tests while restoring from log.
+  if (!restoring_history) {
+    infoIsForTests = true;
+    $('button:contains(info)').click();
+  }
+}
+
+function maybeOfferToPlay(node) {
+  var innerText = node.innerText;
+  if (innerText && innerText.indexOf("play this game ") == 0) {
+    // If you get an offer to play a game, you aren't in the middle of one.
+    removeLog();
+    return true;
+  }
+  return false;
 }
 
 function handleLogEntry(node) {
@@ -646,9 +930,15 @@ function handleLogEntry(node) {
   // Gaining VP could happen in combination with other stuff.
   maybeHandleVp(node.innerText);
 
-  elems = node.getElementsByTagName("span");
+  var elems = node.getElementsByTagName("span");
+
+  if (activeDataHandleCounts(elems, nodeText)) return;
+
+  // elems.length may be zero for this, so try before the check for zero elems.
+  if (maybeHandleFromNativeVillage(nodeText)) return;
+
   if (elems.length == 0) {
-    if (maybeReturnToSupply(node.innerText)) return;
+    if (maybeReturnToSupply(nodeText)) return;
     return;
   }
 
@@ -992,7 +1282,8 @@ function handleGameEnd(doc) {
           if (player_name == "You") {
             player_name = rewriteName(name);
           }
-          var re = new RegExp(RegExp.quote(player_name) + " has (-?[0-9]+) points");
+          var re = new RegExp(RegExp.quote(player_name) +
+              " has (-?[0-9]+) points");
           var arr = summary.match(re);
           if (arr && arr.length == 2) {
             var score = ("" + players[player].getScore()).replace(/^.*=/, "");
