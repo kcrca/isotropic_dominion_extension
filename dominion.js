@@ -353,11 +353,15 @@ function Player(name, num) {
 
   this.getDeckString = function() {
     var str = this.deck_size;
-    var need_action_string = (show_action_count && this.special_counts["Actions"]);
-    var need_unique_string = (show_unique_count && this.special_counts["Uniques"]);
-    var need_victory_string = (show_victory_count && this.special_counts["Victory"]);
+    var need_action_string = (show_action_count &&
+        this.special_counts["Actions"]);
+    var need_unique_string = (show_unique_count &&
+        this.special_counts["Uniques"]);
+    var need_victory_string = (show_victory_count &&
+        this.special_counts["Victory"]);
     var need_duchy_string = (show_duchy_count && this.special_counts["Duchy"]);
-    if (need_action_string || need_unique_string || need_duchy_string || need_victory_string) {
+    if (need_action_string || need_unique_string || need_duchy_string ||
+        need_victory_string) {
       var special_types = [];
       if (need_unique_string) {
         special_types.push(this.special_counts["Uniques"] + "u");
@@ -734,9 +738,15 @@ function Player(name, num) {
           initial: self.cardGroupHtml('otherCard'),
           isVisible: fieldInvisibleIfEmpty});
     if (!self.isTable) {
+      // Native Village for "You" lists cards; for others it's just a count.
+      var initialNV = 0;
+      var visibleNV = fieldInvisibleIfZero;
+      if (self.name == "You") {
+        initialNV = self.cardGroupHtml('nativeVillage');
+        visibleNV = fieldInvisibleIfEmpty;
+      }
       fields.add('nativeVillage', {
-        label: "Native Village", initial: self.cardGroupHtml('nativeVillage'),
-        isVisible: fieldInvisibleIfEmpty});
+        label: "Native Village", initial: initialNV, isVisible: visibleNV});
       fields.add('durations', {
         initial: self.cardGroupHtml('durations'),
         isVisible: fieldInvisibleIfEmpty});
@@ -1136,7 +1146,8 @@ function handleScoping(text_arr, text) {
       text.indexOf("You reveal a Watchtower") != -1) {
     scope = 'Watchtower';
   } else {
-    var re = new RegExp("(?:You|" + player_re + ") (?:play|buy)s? an? ([^.]*)\\.");
+    var re = new RegExp("(?:You|" + player_re +
+        ") (?:play|buy)s? an? ([^.]*)\\.");
     var arr = text.match(re);
     if (arr && arr.length == 3) {
       scope = arr[2];
@@ -1146,15 +1157,18 @@ function handleScoping(text_arr, text) {
 }
 
 function maybeReturnToSupply(text) {
-  unpossessed(function () {
+  return unpossessed(function () {
     if (text.indexOf("it to the supply") != -1) {
       last_player.gainCard(last_reveal_card, -1, false);
+      return true;
     } else {
       var arr = text.match("([0-9]*) copies to the supply");
       if (arr && arr.length == 2) {
         last_player.gainCard(last_reveal_card, -arr[1], false);
+        return true;
       }
     }
+    return false;
   });
 }
 
@@ -1239,8 +1253,13 @@ function maybeHandlePirateShip(elems, text_arr, text) {
 
 //noinspection JSUnusedLocalSymbols
 function maybeHandleToNativeVillage(elems, text_arr, text) {
-  if (elems.length == 2 && text.match(/ to the Native Village mat\./)) {
-    last_player.addToCardGroup('nativeVillage', $(elems[0]));
+  var m = text.match(/ (to|on) the Native Village mat\./);
+  if (m) {
+    if (elems.length == 2) {
+      last_player.addToCardGroup('nativeVillage', $(elems[0]));
+    } else if (!text.match(/ drawing nothing /)) {
+      last_player.changeField('nativeVillage', 1);
+    }
     return true;
   }
   return false;
@@ -1257,7 +1276,10 @@ function maybeHandleGainViaReveal(elems, text_arr, text) {
 }
 
 function maybeHandleFromNativeVillage(text) {
-  if (text.match(/ puts? the mat contents into (.+) hand\./)) {
+  if (text.match(/ pick(s|ing) up .+ from the Native Village mat/)) {
+    last_player.set('nativeVillage', 0);
+    return true;
+  } else if (text.match(/ puts? the mat contents into (.+) hand\./)) {
     last_player.clearCardGroup('nativeVillage');
     return true;
   }
@@ -1366,7 +1388,8 @@ function handleGainOrTrash(player, elems, text, multiplier) {
       } else {
         player.gainCard(elems[elem], num);
         // If Thief is used to gain the trashed card, take it back out
-        if (text.match(/ gain(s|ed)? the trashed /) || topScope() == "Noble Brigand") {
+        if (text.match(/ gain(s|ed)? the trashed /) ||
+            topScope() == "Noble Brigand") {
           tablePlayer.gainCard(elems[elem], -num);
         }
       }
@@ -1391,7 +1414,7 @@ function unpossessed(action) {
   var originallyPossessed = possessed_turn;
   try {
     possessed_turn = false;
-    action();
+    return action();
   } finally {
     possessed_turn = originallyPossessed;
   }
@@ -1486,9 +1509,11 @@ function handlePlayLog(node) {
 
   if (activeDataHandleCounts(elems, nodeText)) return;
 
+  // elems.length may be zero for this, so try before the check for zero elems.
+  if (maybeHandleFromNativeVillage(nodeText)) return;
+
   if (elems.length == 0) {
-    maybeReturnToSupply(nodeText);
-    maybeHandleFromNativeVillage(nodeText);
+    if (maybeReturnToSupply(nodeText)) return;
     return;
   }
 
@@ -2149,7 +2174,8 @@ function handleGameEnd(doc) {
           if (player_name == "You") {
             player_name = rewriteName(name);
           }
-          var re = new RegExp(RegExp.quote(player_name) + " has (-?[0-9]+) points");
+          var re = new RegExp(RegExp.quote(player_name) +
+              " has (-?[0-9]+) points");
           var arr = summary.match(re);
           if (arr && arr.length == 2) {
             var score = ("" + players[player].getScore()).replace(/^.*=/, "");
