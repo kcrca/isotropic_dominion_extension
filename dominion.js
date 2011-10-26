@@ -137,6 +137,7 @@ function Player(name, num) {
   this.num = num;
   this.score = 3;
   this.deck_size = 10;
+  this.cards_aside = {};
 
   this.isTable = name == "";
 
@@ -345,6 +346,31 @@ function Player(name, num) {
     if (this.resigned) return;
     view.setResigned(this);
     this.resigned = true;
+  };
+
+  this.setAside = function(elems) {
+    for (var i = 0; i < elems.length; i++) {
+      var card = elems[i];
+      var cardName = getSingularCardName(card.innerText);
+      if (!this.cards_aside[cardName]) {
+        this.cards_aside[cardName] = 1;
+      } else {
+        this.cards_aside[cardName]++;
+      }
+      this.deck_size--;
+      this.updateCardDisplay(cardName);
+    }
+  };
+
+  this.asideCount = function() {
+    var count = 0;
+    for (var cardName in this.cards_aside) {
+      var aside = this.cards_aside[cardName];
+      if (aside) {
+        count += aside;
+      }
+    }
+    return count;
   };
 
   view.setupPlayer(this);
@@ -912,8 +938,7 @@ function maybeHandleNobleBrigand(elems, text_arr, text) {
 }
 
 function maybeHandleVp(text) {
-  var re = new RegExp("[+]([0-9]+) ▼");
-  var arr = text.match(re);
+  var arr = text.match(/\+([0-9]+) ▼/);
   if (arr && arr.length == 2) {
     last_player.changeScore(arr[1]);
     activeDataHandleVP(arr[1]);
@@ -1233,6 +1258,7 @@ function initialize(doc) {
   announced_error = false;
   test_only_my_score = false;
   turn_number = 0;
+  supplied_cards = undefined;
 
   last_gain_player = null;
   scopes = [];
@@ -1246,6 +1272,8 @@ function initialize(doc) {
   if (localStorage['disabled']) {
     disabled = true;
   }
+  
+  view = new HtmlView();
 
   // Figure out which turn we are. We'll use that to figure out how long to wait
   // before announcing the extension.

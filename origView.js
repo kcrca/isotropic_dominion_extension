@@ -50,9 +50,6 @@ function OrigView() {
   this.gainCard = function(player, card, count, trashing) {
   };
 
-  this.maybeHandleFirstTurn = function() {
-  };
-
   this.beforeTurn = function() {
   };
 
