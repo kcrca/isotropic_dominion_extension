@@ -1,28 +1,43 @@
 {
-   "content_scripts": [
-     {
-       "js": [ "jquery.js", "card_list.js", "dominion.js" ],
-       "matches": [ "http://dominion.isotropic.org/play" ]
-     },
-     {
-       "js": [ "jquery.js", "card_list.js", "dominion.js", "debugger.js" ],
-       "matches": [ "http://*.dominion-point-counter.appspot.com/debug*" ]
-     },
-     {
-       "js": [ "jquery.js", "options.js" ],
-       "matches": [ "http://dominion.isotropic.org/" ]
-     },
-     {
-       "js": [ "login.js" ],
-       "matches": [ "http://dominion.isotropic.org/*loggedin*" ]
-     }
-   ],
-   "permissions": [
-     "http://dominion.isotropic.org/",
-     "http://dominion-point-counter.appspot.com/"
-   ],
-   "description": "Dominion Point Counter",
-   "name": "Dominion Point Counter",
-   "background_page": "background.html",
-   "version": "4.7.2"
+    "content_scripts": [
+        {
+            "js": [ 
+                "jquery.js",
+                "card_list.js", 
+                "card_map.js", 
+                "fields.js", 
+                "options.js",
+                "activeData.js",
+                "htmlView.js",
+                "origView.js",
+                "dominion.js"
+            ],
+            "css": [ "playerData.css" ],
+            "matches": [ "http://dominion.isotropic.org/play" ]
+        },
+        {
+            "js": [ "jquery.js", "card_list.js", "fields.js", "dominion.js",
+                "options.js", "debugger.js" ],
+            "css": [ "playerData.css" ],
+            "matches": [ "http://*.dominion-point-counter.appspot.com/debug*" ]
+        },
+        {
+            "js": [ "jquery.js", "earlyPage.js", "options.js" ],
+            "css": [ "playerData.css" ],
+            "matches": [ "http://dominion.isotropic.org/" ]
+        },
+        {
+            "js": [ "login.js", "jquery.js", "earlyPage.js", "options.js" ],
+            "css": [ "playerData.css" ],
+            "matches": [ "http://dominion.isotropic.org/*loggedin*" ]
+        }
+    ],
+    "permissions": [
+        "http://dominion.isotropic.org/",
+        "http://dominion-point-counter.appspot.com/"
+    ],
+    "description": "Dominion Point Counter",
+    "name": "Dominion Point Counter",
+    "background_page": "background.html",
+    "version": "5.0"
 }
