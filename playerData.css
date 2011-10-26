@@ -299,6 +299,19 @@ td.kingdom-column, td.basic-column {
  * improvements.
  */
 
+/*
+ * Mark the selectable cards more clearly
+ */
+a.buy, .kingdom-column .buy {
+    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.1, #dbf8db), color-stop(0.4, white)) !important;
+    background-image: -moz-linear-gradient(left center, white 10%, #dbf8db 40%) !important;
+}
+
+.basic-column .buy > .imbasic {
+    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.0, white), color-stop(1.0, #dbf8db)) !important;
+    background-image: -moz-linear-gradient(left center, white 0%, #dbf8db 100%) !important;
+}
+
 /* 
  * The 'card-...' styles override the colored backgrounds for card names to make
  * them less intense, so it's easier to read the text.
