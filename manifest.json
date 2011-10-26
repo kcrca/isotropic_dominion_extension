@@ -1,8 +1,17 @@
 {
     "content_scripts": [
         {
-            "js": [ "jquery.js", "card_list.js", "fields.js", "dominion.js",
-                "activeData.js", "options.js" ],
+            "js": [ 
+                "jquery.js",
+                "card_list.js", 
+                "card_map.js", 
+                "fields.js", 
+                "options.js",
+                "activeData.js",
+                "htmlView.js",
+                "origView.js",
+                "dominion.js"
+            ],
             "css": [ "playerData.css" ],
             "matches": [ "http://dominion.isotropic.org/play" ]
         },

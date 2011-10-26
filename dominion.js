@@ -9,24 +9,12 @@ var player_re = "";
 // Count of the number of players in the game.
 var player_count = 0;
 
-// Are we in text mode (vs. image mode) in the UI?
-var text_mode;
-
 // pseudo-player for Trash card counts
 var tablePlayer;
 
 // Map that contains the cards in the supply piles; other cards need to be shown
 // shown in other ways.
 var supplied_cards;
-
-var maxTradeRoute;
-
-// Places to print number of cards and points.
-var deck_spot;
-var points_spot;
-
-// How many different player classes are supported?
-var PLAYER_CLASS_COUNT = 4;
 
 var started = false;
 var introduced = false;
@@ -39,7 +27,9 @@ var show_victory_count = false;
 var show_duchy_count = false;
 var possessed_turn = false;
 var announced_error = false;
-var seen_first_turn = false;
+
+// Tree is being rewritten, so should not process any tree change events.
+var rewritingTree = 0;
 
 // Enabled by debugger when analyzing game logs.
 var debug_mode = false;
@@ -49,9 +39,6 @@ var last_reveal_player = null;
 var last_reveal_card = null;
 
 var turn_number = 0;
-
-// The player's own icon
-var my_icon = null;
 
 // Last time a status message was printed.
 var last_status_print = 0;
@@ -65,21 +52,17 @@ var scopes = [];
 // The version of the extension currently loaded.
 var extension_version = 'Unknown';
 
-var restoring_history = false;
-
-// Tree is being rewritten, so should not process any tree change events.
-var rewritingTree = 0;
-
-var debug = {'actvData': false, 'infoData': true, 'logShown': true };
+var restoring_log = false;
 
 var infoIsForTests = false;
 
 var test_only_my_score = false;
 
-// This is to let us play around with prefix characters for generated text.
-var chat_prefix_symbols = debug['chatPrefix'] ? "⟣⟡∷⊹" : "⟣";
-var chat_prefix_num = 0;
-var chat_prefix = chat_prefix_symbols[chat_prefix_num];
+var view = new HtmlView();
+
+var chat_prefix = "⟣";
+
+var debug = {'actvData': false, 'infoData': true, 'logShown': true };
 
 // Quotes a string so it matches literally in a regex.
 RegExp.quote = function(str) {
@@ -90,89 +73,6 @@ RegExp.quote = function(str) {
 function htmlEncode(value) {
   return $('<div/>').text(value).html();
 }
-
-// Keep a map from all card names (singular or plural) to the card object.
-var card_map = {};
-
-(function() {
-  // The card list is just to log the cards 10 at a time so I have a list of all
-  // cards in groups I can request to use for testing.
-  var cardList = "\n";
-  for (var i = 0; i < card_list.length; i++) {
-    var card = card_list[i];
-    card_map[card.Singular] = card;
-    card_map[card.Plural] = card;
-    if (i % 10 != 0) cardList += ', ';
-    cardList += (card.Singular);
-    if (i % 10 == 9 || i == card_list.length - 1) {
-      console.log(cardList + "\n");
-      cardList = "\n";
-    }
-    card.isAction = function() {
-      return this.Action != "0";
-    };
-    card.isTreasure = function() {
-      return this.Treasure != "0";
-    };
-    card.isDuration = function() {
-      return this.Duration != "0";
-    };
-    card.getBuys = function() {
-      return parseInt(this.Buys);
-    };
-    card.getActions = function() {
-      return parseInt(this.Actions);
-    };
-    card.getVP = function() {
-      var num = parseInt(this.VP);
-      return isNaN(num) ? 0 : num;
-    };
-    card.getCoinCount = function() {
-      return (
-          this.Coins == "?" || this.Coins == "P" ? 0 : parseInt(this.Coins));
-    };
-    card.getPotionCount = function() {
-      return (this.Coins == "P" ? 1 : 0);
-    };
-    card.getCoinCost = function() {
-      var cost = this.Cost;
-      cost = (cost.charAt(0) == 'P' ? cost.substr(1) : cost);
-      return parseInt(cost);
-    };
-    card.getPotionCost = function() {
-      return (this.Cost.indexOf("P") >= 0 ? 1 : 0);
-    };
-  }
-
-  // This patches known bugs in the card list and reports the patch in the log
-  // so we don't forget to get it actually fixed. If it finds the bug is not
-  // still in the list, it reports it so the fix can be dropped from our code.
-  function patchCardBug(cardName, prop, correctValue, report) {
-    report = report || false;
-    var tableValue = card_map[cardName][prop];
-    if (tableValue != correctValue && report) {
-      console.log('Note: patching card_list: changing ' + cardName + '.' +
-          prop + ' from ' + tableValue + ' to ' + correctValue);
-      card_map[cardName][prop] = correctValue;
-    }
-  }
-
-  patchCardBug('Horse Traders', 'Action', '1');
-  patchCardBug('Hunting Party', 'Action', '1');
-  patchCardBug('Fortune Teller', 'Action', '1');
-  patchCardBug('Fairgrounds', 'VP', '?');
-  // With Trusty Steed, it lists all *possible* outcomes as *actual*
-  patchCardBug('Trusty Steed', 'Actions', '0');
-  patchCardBug('Trusty Steed', 'Treasure', '0');
-  patchCardBug('Trusty Steed', 'Cards', '0');
-  patchCardBug('Trusty Steed', 'Plural', 'Trusty Steeds');
-
-  // Not actually a bug -- Mandarin *does* get you $3, but the game reports it
-  // the same way it does for variable-value cards (like Bank), so the normal
-  // code adds it in there automatically. Rather than put in a special case in
-  // that code, we'll just pretend it gives you no coins.
-  patchCardBug('Mandarin', 'Coins', '0', false);
-})();
 
 function rewriteName(name) {
   return name.replace(/ /g, "_").replace(/'/g, "’").replace(/\./g, "");
@@ -230,45 +130,16 @@ function pointsForCard(card_name) {
 }
 
 function Player(name, num) {
-  // This alias is used in nested functions that execute in other contexts
-  var self = this;
-
   this.name = name;
+  this.num = num;
   this.score = 3;
   this.deck_size = 10;
-  this.icon = undefined;
 
   this.isTable = name == "";
-
-  // The set of "other" cards -- ones that aren't in the supply piles
-  this.otherCards = {};
-
-  if (this.isTable) {
-    this.idPrefix = "table";
-  } else {
-    this.idPrefix = "player" + num;
-  }
-
-  // Return the player-specific name for a general category. This is typically
-  // used for DOM node ID but can also be used as a DOM class name.
-  this.idFor = function(category) {
-    return this.idPrefix + "_" + toIdString(category);
-  };
-
-  // Define the general player class used for CSS styling
-  if (name == "You") {
-    this.classFor = "you";
-  } else if (this.isTable) {
-    this.classFor = "table";
-  } else {
-    // CSS cycles through PLAYER_CLASS_COUNT display classes
-    this.classFor = "player" + ((num - 1) % PLAYER_CLASS_COUNT + 1);
-  }
 
   // Map from special counts (such as number of gardens) to count.
   this.special_counts = { "Treasure" : 7, "Victory" : 3, "Uniques" : 2 };
   this.card_counts = { "Copper" : 7, "Estate" : 3 };
-  this.cards_aside = {};
 
   if (this.isTable) {
     this.special_counts = {};
@@ -277,21 +148,12 @@ function Player(name, num) {
     this.score = 0;
   }
 
-  // Remember the img node for the player's icon
-  this.setIcon = function(imgNode) {
-    if (imgNode == null) return;
-    this.icon = imgNode.cloneNode(true);
-    this.icon.removeAttribute('class');
-    this.icon.setAttribute('align', 'top');
-    $('#' + this.idFor('name')).contents().first().before(this.icon);
-  };
-
   this.updateScore = function() {
-    this.fields.set('score', this.getScore());
+    view.set(this, 'score', this.getScore());
   };
 
   this.updateDeck = function() {
-    this.fields.set('deck', this.getDeckString());
+    view.set(this, 'deck', this.getDeckString());
   };
 
   this.getScore = function() {
@@ -345,7 +207,7 @@ function Player(name, num) {
       total_score = total_score + fairgrounds * fairgrounds_points;
     }
 
-    if (score_str.indexOf("@") > 0) {
+    if (score_str.indexOf('@') >= 0) {
       score_str = score_str + "=" + total_score;
     }
     return score_str;
@@ -391,14 +253,6 @@ function Player(name, num) {
     this.special_counts[name] = this.special_counts[name] + delta;
   };
 
-  this.updateCardDisplay = function(name) {
-    var cardId = this.idFor(name);
-    var cardCountCell = document.getElementById(cardId);
-    if (cardCountCell) {
-      cardCountCell.innerHTML = this.cardCountString(name);
-    }
-  };
-
   this.recordCards = function(name, count) {
     if (this.card_counts[name] == undefined || this.card_counts[name] == 0) {
       this.card_counts[name] = count;
@@ -415,7 +269,7 @@ function Player(name, num) {
       delete this.card_counts[name];
       this.special_counts["Uniques"] -= 1;
     }
-    this.updateCardDisplay(name);
+    view.recordCard(this, name);
   };
 
   this.recordSpecialCards = function(card, count) {
@@ -458,300 +312,39 @@ function Player(name, num) {
     }
   };
 
-  // Add a card to a group of cards. Adding in the 'cardname' attribute means
-  // that hovering over the card will pop up the tooltip window about the card.
-  this.addToCardGroup = function(which, cardElem, count, updateField) {
-    count = count != undefined ? count : 1;
-    updateField = updateField != undefined ? updateField : true;
-    var group = this[which];
-    if (!group) group = this[which] = {};
-    var cardName = getSingularCardName(cardElem.text());
-    var cardInfo = group[cardName];
-    if (!cardInfo) {
-      cardInfo = group[cardName] = new Object();
-      cardInfo.count = 0;
-      cardInfo.card = card_map[cardName];
-      if (!cardElem.attr('cardname')) {
-        // we need a copy so we can add the 'cardname' attribute to it
-        cardElem = cardElem.clone();
-        cardElem.attr('cardname', cardName);
-      }
-      cardInfo.html = cardElem[0].outerHTML;
-    }
-    cardInfo.count += count;
-    if (cardInfo.count <= 0) {
-      delete group[cardName];
-    }
-    if (updateField) {
-      this.fields.set(which, this.cardGroupHtml(which));
-    }
-  };
-
-  // Return HTML string to display the give card group.
-  this.cardGroupHtml = function(which, sort) {
-    sort = sort != undefined ? sort : false;
-    var group = this[which];
-    var html = '';
-    var keys = [];
-    for (var key in group) {
-      keys.push(key);
-    }
-    if (sort) {
-      keys.sort();
-    }
-    for (var i = 0; i < keys.length; i++) {
-      var name = keys[i];
-      if (html.length > 0) {
-        html += ", ";
-      }
-      var cardInfo = group[name];
-      if (cardInfo.count == 1) {
-        html += cardInfo.html;
-      } else {
-        var card = cardInfo.card;
-        var cardElemHtml = cardInfo.html;
-        if (card.Singular != card.Plural) {
-          // we use the '>' because we don't want to change the cardname attr.
-          cardElemHtml =
-              cardElemHtml.replace('>' + card.Singular, '>' + card.Plural);
-        }
-        html += cardInfo.count + '&nbsp;' + cardElemHtml;
-      }
-    }
-    return html;
-  };
-
-  this.clearCardGroup = function(which) {
-    this[which] = {};
-    this.fields.set(which, this.cardGroupHtml(which));
-  };
-
-  this.gainCard = function(elem, count, trashing) {
+  this.gainCard = function(card, count, trashing) {
     if (debug_mode) {
       $('#log').children().eq(-1).before('<div class="gain_debug">*** ' + name +
-          " gains " + count + " " + elem.innerText + "</div>");
+          " gains " + count + " " + card.innerText + "</div>");
     }
 
     last_gain_player = this;
     count = parseInt(count);
     this.deck_size = this.deck_size + count;
 
-    var singular_card_name = getSingularCardName(elem.innerText);
+    var singular_card_name = getSingularCardName(card.innerText);
     this.changeScore(pointsForCard(singular_card_name) * count);
-    this.recordSpecialCards(elem, count);
+    this.recordSpecialCards(card, count);
     this.recordCards(singular_card_name, count);
 
     trashing = trashing == undefined ? true : trashing;
-    if (!supplied_cards[singular_card_name]) {
-      this.addToCardGroup('otherCards', $(elem), count);
-    }
 
     // If the count is going down, usually player is trashing a card.
     if (!this.isTable && count < 0 && trashing) {
-      tablePlayer.gainCard(elem, -count);
+      tablePlayer.gainCard(card, -count);
     }
-    if (trashing || this.isTable) {
-      updateDeck(tablePlayer);
-    }
-    maybeWatchTradeRoute();
+
+    view.gainCard(this, card, count, trashing);
   };
 
   // This player has resigned; remember it.
   this.setResigned = function() {
     if (this.resigned) return;
-
-    // In addition to other classes, this is now in the "resigned" class.
-    $("." + this.classFor).addClass("resigned");
-    this.classFor += " resigned";
+    view.setResigned(this);
     this.resigned = true;
   };
 
-  this.setAside = function(elems) {
-    for (var i = 0; i < elems.length; i++) {
-      var card = elems[i];
-      var cardName = getSingularCardName(card.innerText);
-      if (!this.cards_aside[cardName]) {
-        this.cards_aside[cardName] = 1;
-      } else {
-        this.cards_aside[cardName]++;
-      }
-      this.deck_size--;
-      this.updateCardDisplay(cardName);
-    }
-  };
-
-  this.asideCount = function() {
-    var count = 0;
-    for (var cardName in this.cards_aside) {
-      var aside = this.cards_aside[cardName];
-      if (aside) {
-        count += aside;
-      }
-    }
-    return count;
-  };
-
-  this.cardCountString = function(cardName) {
-    var count = this.card_counts[cardName];
-    if (count == undefined || count == 0) {
-      return '-';
-    }
-
-    var aside = this.cards_aside[cardName];
-    if (aside == undefined || aside == 0) {
-      return count + "";
-    } else {
-      return count + '(' + aside + '<span class="asideCountNum">i</span>)';
-    }
-  };
-
-  this.get = function(field) {
-    return this.fields.get(field);
-  };
-
-  this.set = function(field, value) {
-    rewriteTree(function () {
-      self.fields.set(field, value);
-    });
-  };
-
-  this.add = function(name, params) {
-    rewriteTree(function() {
-      self.fields.add(name, params);
-    });
-  };
-
-  this.change = function(name, params) {
-    rewriteTree(function() {
-      self.fields.change(name, params);
-    });
-  };
-
-  this.changeField = function(field, delta) {
-    var before = this.get(field);
-    var after = before + delta;
-    if (before != after) {
-      logDebug('infoData',
-          this.name + ": change " + field + ": " + before + " → " + after);
-      this.set(field, after);
-    }
-  };
-
-  this.countString = function() {
-    this.deckCards = {};
-    var scratchElem = $('<span/>');
-    for (var cardName in this.card_counts) {
-      var count = this.card_counts[cardName];
-      scratchElem.text(cardName);
-      this.addToCardGroup('deckCards', scratchElem, count, false);
-    }
-
-    var str = htmlToText(this.cardGroupHtml('deckCards', true));
-    if (str.length == 0) str = "none";
-    var myName = this.isTable ? "Trash" : this.name;
-    return myName + ': ' + str;
-  };
-
-  this.infoString = function() {
-    return this.name + ': ' + this.fields.toString();
-  };
-
-  activeDataSetupPlayer(this);
-
-  rewriteTree(function() {
-    var ptab = $('#playerDataTable')[0];
-    var row1 = addRow(ptab, self.classFor,
-        activeDataColumn(self) + '<td id="' + self.idFor('mark') +
-            '" class="rowStretch markPlace"></td>' + '<td id="' +
-            self.idFor('name') + '" class="playerDataName" rowspan="0">' +
-            originalName(self.name) + '</td>');
-    row1.attr('id', self.idFor('firstRow'));
-
-    var stetchCells = row1.children('.rowStretch');
-    var playerCell = row1.children('#' + self.idFor('name'));
-    if (self.icon != undefined) {
-      playerCell.children().first().before(self.icon.cloneNode(true))
-    }
-    var seenWide = undefined;
-    var firstWide = 'otherCards';
-    var prev;
-    var fieldInsertPos = function(field) {
-      if (field.name == firstWide) {
-        seenWide = $.inArray(field.name, fields.order);
-      }
-
-      var keyCell = $('<td/>').append(field.keyNode);
-      var valCell = $('<td/>').append(field.valueNode);
-      var cells = keyCell.add(valCell);
-
-      if (!self.seenFirst) {
-        self.seenFirst = true;
-        return {toInsert: cells, after: $('#' + self.idFor('name'))};
-      }
-
-      function incrementRowspan(cell) {
-        var curSpan = cell.attr('rowspan');
-        if (!curSpan) {
-          curSpan = '1';
-        }
-        cell.attr('rowspan', parseInt(curSpan) + 1);
-      }
-
-      stetchCells.each(function() {
-        incrementRowspan($(this));
-      });
-
-      var row = $('<tr/>').addClass(self.classFor);
-      if (!seenWide || $.inArray(field.name, fields.order) < seenWide) {
-        incrementRowspan(playerCell);
-        row.append(cells);
-      } else {
-        var cell = $('<td/>').attr('colspan', 3).addClass('playerOtherCards');
-        row.append(cell);
-        cell.append(field.keyNode);
-        field.keyNode.after(field.valueNode);
-      }
-
-      var after = (prev ? prev : $('#' + self.idFor('firstRow')));
-      prev = row;
-      return {toInsert: row, after: after};
-    };
-
-    var fields = new FieldGroup({idSource: self, tag: 'span',
-      findInsert: fieldInsertPos,
-      keyClass: 'playerDataKey', valueClass: 'playerDataValue',
-      ignoreUnknown: self.isTable});
-    self.fields = fields;
-
-    if (self.isTable) {
-      fields.add('tradeRoute', {label: "Trade Route", prefix: '$',
-        initial: 0, visible: false });
-      fields.add('deck', {label: "Trash", initial: self.getDeckString()});
-    } else {
-      fields.add('score', {initial: self.getScore(), valueClass: 'scoreValue'});
-      fields.add('deck', {initial: self.getDeckString()});
-      fields.add('pirateShipTokens', {label: 'Pirate Ship', prefix: '$',
-        initial: 0, isVisible: fieldInvisibleIfZero});
-    }
-    fields.add('otherCards',
-        {label: self.isTable ? 'Other Trash' : 'Other Cards',
-          initial: self.cardGroupHtml('otherCard'),
-          isVisible: fieldInvisibleIfEmpty});
-    if (!self.isTable) {
-      // Native Village for "You" lists cards; for others it's just a count.
-      var initialNV = 0;
-      var visibleNV = fieldInvisibleIfZero;
-      if (self.name == "You") {
-        initialNV = self.cardGroupHtml('nativeVillage');
-        visibleNV = fieldInvisibleIfEmpty;
-      }
-      fields.add('nativeVillage', {
-        label: "Native Village", initial: initialNV, isVisible: visibleNV});
-      fields.add('durations', {
-        initial: self.cardGroupHtml('durations'),
-        isVisible: fieldInvisibleIfEmpty});
-    }
-  });
+  view.setupPlayer(this);
 }
 
 function htmlToText(html) {
@@ -762,8 +355,8 @@ function stateStrings() {
   var state = '';
   for (var player in players) {
     player = players[player];
-    state += player.name + ':' + player.getScore() + " points [deck size is " +
-        player.getDeckString() + "] - " +
+    state += '<strong>' + player.name + "</strong>: " + player.getScore() +
+        " points [deck size is " + player.getDeckString() + "] - " +
         JSON.stringify(player.special_counts) + "<br>" +
         JSON.stringify(player.card_counts) + "<br>";
   }
@@ -779,32 +372,24 @@ function getPlayer(name) {
   return players[name];
 }
 
-function tempSayChange() {
-  var clones = $('#temp_say').contents().clone();
-  var copy = $('#copied_temp_say');
-
-  rewriteTree(function () {
-    copy.empty();
-    copy.append(clones);
-  });
-}
-
-// Create the full log blob and hide the normal log part.
 function createFullLog() {
-  rewriteTree(function () {
-    $('#full_log').remove();
-    var full_log = $('<pre id="full_log"/>');
-    $('#log').hide().before(full_log);
-    var temp_say = $('#temp_say');
-    var copied_temp_say = temp_say.clone();
-    copied_temp_say.attr('id', 'copied_temp_say');
-    full_log.append(copied_temp_say);
-    temp_say.bind('DOMSubtreeModified', tempSayChange);
-  });
+  // Create the visible log blob and hide the normal log part.
+  $('#full_log').remove();
+  $('#log').hide().before($('<pre id="full_log">'));
 }
 
 function maybeAddToFullLog(node) {
-  $('#copied_temp_say').before($(node).clone());
+  if (!restoring_log) {
+    $('#copied_temp_say').remove();
+    $('#full_log').append($(node).clone());
+  }
+}
+
+function putBackRealLog() {
+  // All children -- other things are there to be correctly located with log.
+  $('#header').after($('#logContainer').children());
+  $('#log').show();
+  $('#full_log').remove();
 }
 
 function findTrailingPlayer(text) {
@@ -825,34 +410,21 @@ function maybeHandleResignation(node) {
   return false;
 }
 
-function maybeHandleFirstTurn() {
-  if (seen_first_turn) return;
-
-  seen_first_turn = true;
-
-  // It may be hidden during veto.
-  $('#playerDataTable').show();
-
-  // Figure out which cards are in supply piles
-  supplied_cards = {};
-  $("[cardname]").each(function() {
-    supplied_cards[$(this).attr("cardname")] = true;
-  });
-
-  maybeWatchTradeRoute();
-
-  activeDataHandleFirstTurn();
-}
-
 function maybeHandleTurnChange(node) {
   var text = node.innerText;
   if (text.indexOf("—") != -1) {
-    maybeHandleFirstTurn();
+    if (!supplied_cards) {
+      // Figure out which cards are in supply piles
+      supplied_cards = {};
+      $("[cardname]").each(function() {
+        supplied_cards[$(this).attr("cardname")] = true;
+      });
+    }
+
+    view.beforeTurn();
 
     var maybe_number = text.match(/([0-9]+) —/);
     if (maybe_number) turn_number = maybe_number[1];
-
-    activeDataEndTurn();
 
     // This must be a turn start.
     if (text.match(/— Your (?:extra )?turn/)) {
@@ -870,21 +442,9 @@ function maybeHandleTurnChange(node) {
       console.log("Failed to get player from: " + node.innerText);
     }
 
-    markCurrentPlayer();
-
-    activeDataStartTurn();
-
-    // The start of the turn is styled to match the player's data area.
-    $(node).addClass(last_player.classFor);
-
-    // If we don't know the icon, look it up from this turn start.
-    if (last_player.icon == undefined) {
-      var imgs = node.getElementsByTagName("img");
-      if (imgs.length > 0)
-        last_player.setIcon(imgs[0]);
-    }
-
     possessed_turn = text.match(/\(possessed by .+\)/);
+
+    view.startTurn(node);
 
     if (debug_mode) {
       var details = " (" + getDecks() + " | " + getScores() + ")";
@@ -1243,9 +803,8 @@ function maybeHandleSwindler(elems, text) {
 function maybeHandlePirateShip(elems, text_arr, text) {
   // Swallow gaining pirate ship tokens.
   // It looks like gaining a pirate ship otherwise.
-  //noinspection RedundantIfStatementJS
   if (text.indexOf("a Pirate Ship token") != -1) {
-    getPlayer(text_arr[0]).changeField('pirateShipTokens', 1);
+    view.gainPirateShipToken(getPlayer(text_arr[0]));
     return true;
   }
   return false;
@@ -1256,31 +815,19 @@ function maybeHandleToNativeVillage(elems, text_arr, text) {
   var m = text.match(/ (to|on) the Native Village mat\./);
   if (m) {
     if (elems.length == 2) {
-      last_player.addToCardGroup('nativeVillage', $(elems[0]));
+      view.toNativeVillage(last_player, $(elems[0]));
     } else if (!text.match(/ drawing nothing /)) {
-      last_player.changeField('nativeVillage', 1);
+      view.toNativeVillage(last_player, 1);
     }
     return true;
   }
   return false;
 }
 
-//noinspection JSUnusedLocalSymbols
-function maybeHandleGainViaReveal(elems, text_arr, text) {
-  if (elems.length == 2 &&
-      text.match(/reveal(ing|s) an? (.*) and gain(ing|s)? an? (.*)\./)) {
-    last_player.gainCard(elems[1], 1);
-    return true;
-  }
-  return false;
-}
-
 function maybeHandleFromNativeVillage(text) {
-  if (text.match(/ pick(s|ing) up .+ from the Native Village mat/)) {
-    last_player.set('nativeVillage', 0);
-    return true;
-  } else if (text.match(/ puts? the mat contents into (.+) hand\./)) {
-    last_player.clearCardGroup('nativeVillage');
+  if (text.match(/ pick(s|ing) up .+ from the Native Village mat/) ||
+      text.match(/ puts? the mat contents into (.+) hand\./)) {
+    view.clearNativeVillage(last_player);
     return true;
   }
   return false;
@@ -1343,9 +890,11 @@ function maybeHandleTrader(elems, text_arr, text) {
   return false;
 }
 
-function maybeHandleTunnel(elems, text_arr, text) {
-  if (elems.length == 2 && text.match(/reveals? a Tunnel and gain/)) {
-    getPlayer(text_arr[0]).gainCard(elems[1], 1);
+//noinspection JSUnusedLocalSymbols
+function maybeHandleGainViaReveal(elems, text_arr, text) {
+  if (elems.length == 2 &&
+      text.match(/reveal(ing|s) an? (.*) and gain(ing|s)? an? (.*)\./)) {
+    last_player.gainCard(elems[1], 1);
     return true;
   }
   return false;
@@ -1408,7 +957,7 @@ function maybeHandleGameStart(node) {
 }
 
 // Perform a function that should behave the same whether or not the current
-// player is posessed.
+// player is possessed.
 function unpossessed(action) {
   // Remember the current state of possession.
   var originallyPossessed = possessed_turn;
@@ -1422,7 +971,7 @@ function unpossessed(action) {
 
 function startInfoWIndowTests() {
   // Should not run these tests while restoring from log.
-  if (!restoring_history) {
+  if (!restoring_log) {
     infoIsForTests = true;
     $('button:contains(info)').click();
   }
@@ -1432,10 +981,24 @@ function maybeOfferToPlay(node) {
   var innerText = node.innerText;
   if (innerText && innerText.indexOf("play this game ") == 0) {
     // If you get an offer to play a game, you aren't in the middle of one.
-    removeLog();
+    removeStoredLog();
     return true;
   }
   return false;
+}
+
+var last_summary = '';
+
+function showCurrentInfo() {
+  if (!debug['infoData']) return;
+  var summary = '';
+  showStatus('all', function(msg) {
+    summary += msg + "\n";
+  });
+  if (summary != last_summary) {
+    logDebug('infoData', summary);
+    last_summary = summary;
+  }
 }
 
 function handleLogEntry(node) {
@@ -1470,20 +1033,6 @@ function handleLogEntry(node) {
   }
 }
 
-var last_summary = '';
-
-function showCurrentInfo() {
-  if (!debug['infoData']) return;
-  var summary = '';
-  showStatus('all', function(msg) {
-    summary += msg + "\n";
-  });
-  if (summary != last_summary) {
-    logDebug('infoData', summary);
-    last_summary = summary;
-  }
-}
-
 function handlePlayLog(node) {
   maybeRewriteName(node);
 
@@ -1507,7 +1056,7 @@ function handlePlayLog(node) {
 
   var elems = node.getElementsByTagName("span");
 
-  if (activeDataHandleCounts(elems, nodeText)) return;
+  view.handleLog(elems, nodeText);
 
   // elems.length may be zero for this, so try before the check for zero elems.
   if (maybeHandleFromNativeVillage(nodeText)) return;
@@ -1538,7 +1087,6 @@ function handlePlayLog(node) {
   if (maybeHandleToNativeVillage(elems, text, nodeText)) return;
   if (maybeHandleGainViaReveal(elems, text, nodeText)) return;
   if (maybeHandleTrader(elems, text, nodeText)) return;
-  if (maybeHandleTunnel(elems, text, nodeText)) return;
   if (maybeHandleNobleBrigand(elems, text, nodeText)) return;
 
   if (text[0] == "trashing") {
@@ -1580,18 +1128,18 @@ function handlePlayLog(node) {
   if (elems.length > 1) return;
 
   // It's a single card action.
-  var card_elem = elems[0];
-  var card_name = elems[0].innerText;
-  var card = card_map[card_name];
+  var card = elems[0];
+  var card_text = elems[0].innerText;
+  var card_obj = card_map[card_text];
 
   if (action.indexOf("buy") == 0) {
-    var count = getCardCount(card_name, nodeText);
+    var count = getCardCount(card_text, nodeText);
     // In possessed turns, it isn't who buys something, it's who "gains" it
     // (and who gains it is stated in a separate log entry).
     if (!possessed_turn) {
-      player.gainCard(card_elem, count);
+      player.gainCard(card, count);
     }
-    activeDataCardBought(count, card);
+    activeDataCardBought(count, card_obj);
   } else if (action.indexOf("pass") == 0) {
     unpossessed(function() {
       if (player_count > 2) {
@@ -1599,18 +1147,18 @@ function handlePlayLog(node) {
             "players causes inaccurate score counting.");
         test_only_my_score = true;
       }
-      player.gainCard(card_elem, -1, false);
+      player.gainCard(card, -1, false);
       var other_player = findTrailingPlayer(node.innerText);
       if (other_player != null) {
-        other_player.gainCard(card_elem, 1);
+        other_player.gainCard(card, 1);
       }
     });
   } else if (action.indexOf("receive") == 0) {
     unpossessed(function() {
-      player.gainCard(card_elem, 1);
+      player.gainCard(card, 1);
       var other_player = findTrailingPlayer(node.innerText);
       if (other_player != null) {
-        other_player.gainCard(card_elem, -1, false);
+        other_player.gainCard(card, -1, false);
       }
     });
   }
@@ -1624,88 +1172,8 @@ function getScores() {
   return scores;
 }
 
-// Add a row to a table.
-function addRow(tab, rowClass, innerHTML) {
-  var r = $('<tr/>');
-  if (rowClass)
-    r.addClass(rowClass);
-  $(tab).append(r);
-  r.html(innerHTML);
-  return r;
-}
-
-// Set up the card count cell for a given player+card combination in text mode.
-function setupCardCountCellForPlayer(player, cardName) {
-  var cellId = player.idFor(cardName);
-  if (!document.getElementById(cellId)) {
-    return $('<td id="' + cellId + '">' + player.cardCountString(cardName) +
-        '</td>').addClass("playerCardCountCol").addClass(player.classFor);
-  } else {
-    return null;
-  }
-}
-
-// Any row that spans a number of columns should span the added columns.
-// Use the attribute "grown" to avoid adjusting the same thing multiple times.
-function growHeaderColumns() {
-  var toAdd = player_count + 1; // the extra is for the trash player
-
-  $("#supply > table > tbody > tr > td[colspan]:not([grown])").each(function() {
-    var $this = $(this);
-    var origSpanStr = $this.attr('colspan');
-    var origSpan = parseInt(origSpanStr);
-    $this.attr('colspan', (origSpan + toAdd));
-    $this.attr('grown', toAdd);
-  });
-}
-
-function ungrowHeaderColumns() {
-  $('#supply td[grown]').each(function() {
-    var $this = $(this);
-    var grownBy = $this.attr('grown');
-    var colspan = $this.attr('colspan');
-    $this.attr('colspan', (parseInt(colspan) - parseInt(grownBy)));
-    $this.removeAttr('grown');
-  });
-}
-
-// Set up the card count cells for all players (including the trash player) in
-// text mode.
-function setupPerPlayerTextCardCounts() {
-  // For each row in the supply table, add a column count cell for each player.
-  $(".txcardname").each(function() {
-    var $this = $(this);
-    var cardName = $this.children("[cardname]").first().attr('cardname');
-    // Insert new cells after this one.
-    var insertAfter = $this.next();
-    allPlayers(function(player) {
-      var cell = setupCardCountCellForPlayer(player, cardName);
-      if (cell != null) {
-        insertAfter.after(cell);
-        insertAfter = cell;
-      }
-    });
-  });
-  growHeaderColumns();
-}
-
-// Set up the per-player card counts in image mode for a given column.
-function setupPerPlayerImageCardCounts(region) {
-  var selector = '.' + region + '-column';
-
-  // make "hr" rows span all columns
-  var numPlayers = 1 + player_count + 1;
-  $(selector + ' .hr:empty').append('<td colspan="' + numPlayers + '"></td>');
-
-  $(selector + ' .supplycard').each(function() {
-    var $this = $(this);
-    var cardName = $this.attr('cardname');
-    allPlayers(function(player) {
-      var cell = setupCardCountCellForPlayer(player, cardName);
-      if (cell != null)
-        $this.append(cell);
-    });
-  });
+function updateScores() {
+  view.updateScores();
 }
 
 // Execute a function for all players, including the trash player.
@@ -1718,115 +1186,6 @@ function allPlayers(func) {
   }
 }
 
-// Return the string used for DOM ID's for a given (card) name -- we
-// canonicalize it to be always lower case, stripping out non-letters.
-function toIdString(name) {
-  return name.replace(/[^a-zA-Z]/gi, "").toLowerCase();
-}
-
-function updateScores() {
-  if (last_player == null) return;
-  maybeSetupCardCounts();
-  rewriteTree(function() {
-    allPlayers(function(player) {
-      player.updateScore();
-    });
-  });
-}
-
-// Set up the player area in which per-player info will be displayed.
-function setupPlayerArea() {
-  if ($('#playerDataTable').length > 0) {
-    return;
-  }
-
-  var ptab = $('<table/>');
-  if (!text_mode) {
-    ptab.attr('align', 'right');
-  }
-  ptab.attr('id', 'playerDataTable');
-
-  if (text_mode) {
-    var outerTable = $('<table/>');
-    outerTable.attr('id', 'playerDataArranger');
-    var row = addRow(outerTable, null,
-        '<td id="playerDataContainer" valign="bottom"></td>' +
-            '<td id="logContainer" valign="bottom"></td>');
-    var kids = row.children();
-    kids.first().append(ptab);
-    kids.last().append($('#log'), $('#full_log'), $('#choices'));
-    $('#game > :first-child').before(outerTable);
-  } else {
-    var player_spot = $('#supply');
-    rewriteTree(function () {
-      var outerCell = $('<td valign="bottom"/>');
-      $(player_spot).replaceWith(outerCell);
-      outerCell.append(ptab);
-      outerCell.append(player_spot);
-    });
-  }
-  // Start out hidden until the first turn, so if veto mode is going on, we
-  // aren't showing the in-play data area.
-  ptab.hide();
-}
-
-// As needed, set per-card count columns.
-function maybeSetupCardCounts() {
-  rewriteTree(function () {
-    if (text_mode) {
-      setupPerPlayerTextCardCounts();
-    } else {
-      setupPerPlayerImageCardCounts('kingdom');
-      setupPerPlayerImageCardCounts('basic');
-    }
-    updateCardCountVisibility();
-  });
-}
-
-// Set up player data area and the per-card count columns.
-function setupPerPlayerInfoArea() {
-  if (disabled) return;
-
-  //!! Show how far through the deck each player is
-  //!! Include sub-score areas for each 'extra' type (Duke, Fairgrounds, ...)
-  //!! Show how much each 'extra' type would be worth (Duke, Fairgrounds, ...)
-  rewriteTree(function () {
-    setupPlayerArea();
-    markCurrentPlayer();
-  });
-}
-
-function markCurrentPlayer() {
-  if (disabled) return;
-  if (last_player == null) return;
-
-  // Even if we're not tracking active player data, we mark the current player
-  $('.activeMark').removeClass('activeMark');
-  $('#' + last_player.idFor('mark')).addClass('activeMark');
-
-  activeDataPlace();
-}
-
-// Remove the card counts columns
-function removeCardCounts() {
-  $(".playerCardCountCol").remove();
-}
-
-// Remove the player area, such as at the end of the game or if disabled.
-function removePlayerArea() {
-  var ptab = document.getElementById("playerData");
-  if (!ptab) {
-    // If there is no overall 'playerData' item, then it's just the table
-    ptab = document.getElementById('playerDataTable');
-  }
-  if (ptab != null && ptab.parentNode != null) {
-    activeDataStop();
-    ptab.parentNode.removeChild(ptab);
-  }
-  removeCardCounts();
-  ungrowHeaderColumns();
-}
-
 function getDecks() {
   var decks = "Cards: ";
   for (var player in players) {
@@ -1835,12 +1194,8 @@ function getDecks() {
   return decks;
 }
 
-function updateDeck(player) {
-  player = player || last_player;
-  if (player == null) return;
-  rewriteTree(function() {
-    player.updateDeck();
-  });
+function updateDeck() {
+  view.updateDeck();
 }
 
 function topScope(skipping) {
@@ -1873,20 +1228,14 @@ function initialize(doc) {
   possessed_turn = false;
   announced_error = false;
   test_only_my_score = false;
-  maxTradeRoute = undefined;
-  seen_first_turn = false;
   turn_number = 0;
 
   last_gain_player = null;
   scopes = [];
-  activeDataInitialize();
   players = new Object();
   player_rewrites = new Object();
   player_re = "";
   player_count = 0;
-
-  discoverGUIMode();
-  setupPerPlayerInfoArea();
 
   if (localStorage['disabled']) {
     disabled = true;
@@ -1933,7 +1282,6 @@ function initialize(doc) {
     if (arr[i] != "You") {
       other_player_names.push(RegExp.quote(arr[i]));
     }
-
   }
   player_re = '(' + other_player_names.join('|') + ')';
 
@@ -1947,7 +1295,7 @@ function initialize(doc) {
 
   // Assume it's already introduced if it's rewriting the tree for a reload.
   // Otherwise setup to maybe introduce the extension.
-  if (!restoring_history) {
+  if (!restoring_log) {
     var wait_time = 200 * Math.floor(Math.random() * 10 + 5);
     if (self_index != -1) {
       wait_time = 300 * self_index;
@@ -1995,16 +1343,6 @@ function maybeIntroducePlugin() {
 function maybeShowStatus(request, request_time) {
   if (!started) return;
 
-  //noinspection ConstantIfStatementJS
-  if (true) {
-    // This code lets us loop through a set of possible prefix chars to choose
-    // one we like.
-    chat_prefix = chat_prefix_symbols[chat_prefix_num++];
-    if (chat_prefix_num >= chat_prefix_symbols.length) {
-      chat_prefix_num = 0;
-    }
-  }
-
   if (last_status_print < request_time) {
     last_status_print = new Date().getTime();
     showStatus(request, writeText);
@@ -2047,20 +1385,17 @@ function showStatus(request, show) {
 }
 
 function storeLog() {
-  if (!debug_mode && !restoring_history) {
+  if (!debug_mode && !restoring_log) {
     localStorage["log"] = $('#full_log').html();
   }
 }
 
-function removeLog() {
+function removeStoredLog() {
   localStorage.removeItem("log");
 }
 
 function hideExtension() {
-  stopCounting();
-  removePlayerData();
-  $('#optionPanelHolder').hide();
-  $('div[reinserted="true"]').css('display', 'none');
+  view.hide();
 }
 
 function canDisable() {
@@ -2119,45 +1454,19 @@ function settingsString() {
   return JSON.stringify(settings);
 }
 
-function putBackRealLog() {
-  // All children -- other things are there to be correctly located with log.
-  $('#header').after($('#logContainer').children());
-  $('#log').show();
-  $('#full_log').remove();
-  $('#playerDataArranger').remove();
-}
-
-function removePlayerData() {
-  removePlayerArea();
-  forgetGUIMode();
-  putBackRealLog();
-  // Return true because this is used as an event handler.
-  return true;
-}
-
-function stopCounting() {
-  started = false;
-
-  if (deck_spot) deck_spot.innerHTML = "exit";
-  if (points_spot) points_spot.innerHTML = "faq";
-
-  removeLog();
-  activeDataStop();
-  $('#optionPanelHolder').show();
-  text_mode = undefined;
-  players = undefined;
-}
-
 function handleGameEnd(doc) {
   for (var node in doc.childNodes) {
     var childNode = doc.childNodes[node];
     if (childNode.innerText == "game log") {
       // Reset exit / faq at end of game.
       stopCounting();
+      removeStoredLog();
+
+      // Leave the view up until the user clicks "return"
       $(doc).children('a:contains(return)').each(function() {
         $(this).click(removePlayerData);
       });
-      removeLog();
+
       // Collect information about the game.
       var href = childNode.href;
       var game_id_str = href.substring(href.lastIndexOf("/") + 1);
@@ -2169,7 +1478,7 @@ function handleGameEnd(doc) {
       var win_log = $('div.logline.em').prev()[0];
       if (!announced_error && win_log) {
         var summary = win_log.innerText;
-        for (player in players) {
+        for (var player in players) {
           var player_name = players[player].name;
           if (player_name == "You") {
             player_name = rewriteName(name);
@@ -2205,11 +1514,24 @@ function handleGameEnd(doc) {
         version: extension_version,
         settings: settingsString() });
     } else if (childNode.innerText == "return") {
-      childNode.addEventListener("DOMActivate", function() {
-        removePlayerData();
-      }, true);
+      childNode.addEventListener("DOMActivate", removePlayerData, true);
     }
   }
+}
+
+function removePlayerData() {
+  putBackRealLog();
+  view.remove();
+  // Return true because this is used as an event handler.
+  return true;
+}
+
+function stopCounting() {
+  view.stop();
+  started = false;
+  removeStoredLog();
+  $('#optionPanelHolder').show();
+  players = undefined;
 }
 
 // If this connotes the start of the game, start it.
@@ -2241,17 +1563,17 @@ function maybeStartOfGame(node) {
     // The game is starting, so put in the initial blank entries and clear
     // out any local storage.
     console.log("--- starting game ---");
-    removeLog();
+    removeStoredLog();
     localStorage.removeItem("disabled");
     createFullLog();
   } else {
     try {
-      restoring_history = true;
+      restoring_log = true;
       console.log("--- replaying history ---");
       disabled = localStorage['disabled'];
       if (!restoreHistory(node)) return;
     } finally {
-      restoring_history = false;
+      restoring_log = false;
     }
   }
 
@@ -2261,7 +1583,7 @@ function maybeStartOfGame(node) {
 // Returns true if the log node should be handled as part of the game.
 function logEntryForGame(node) {
   if (inLobby()) {
-    removeLog();
+    removeStoredLog();
     return false;
   }
 
@@ -2281,7 +1603,6 @@ function restoreHistory(node) {
   }
 
   createFullLog();
-  restoring_history = true;
 
   // First build a DOM tree of the old log messages in a copy of the log.
   var log_entries = $('<pre id="temp"></pre>').html(logHistory).children();
@@ -2301,66 +1622,8 @@ function inLobby() {
   return (playerTable.length > 0);
 }
 
-// Drop any state related to knowing text vs. image mode.
-function forgetGUIMode() {
-  document.firstChild.id = "";
-  $("#body").removeClass("textMode").removeClass("imageMode")
-      .removeClass("playing");
-}
-
-// Discover whether we are in text mode or image mode. The primary bit of state
-// that this sets is for the benefit of CSS: If we are in text mode, body tag
-// has the "textMode" class, otherwise it has the "imageMode" class. In both
-// cases it has the "playing" class, which allows CSS to tell the difference
-// between being in the lobby vs. playing an actual game.
-function discoverGUIMode() {
-  if (inLobby()) return;
-
-  $('#chat ~ a[href^="/mode/"]').each(function() {
-    // The link is to the "text" mode when it's in image mode and vice versa.
-    text_mode = $(this).text().indexOf("text") < 0;
-  });
-
-  // Setting the class enables css selectors that distinguish between the modes.
-  $("#body").addClass("playing").addClass(text_mode ? "textMode" : "imageMode");
-}
-
-// Perform a function that rewrites the tree, suppressing the processing of all
-// change-related DOM events.
-function rewriteTree(func) {
-  try {
-    rewritingTree++;
-    func();
-  } finally {
-    rewritingTree--;
-  }
-}
-
-function maybeWatchTradeRoute() {
-  if (!tablePlayer) return;
-
-  var stars = $('#supply').find('span.trade-route-star');
-  rewriteTree(function () {
-    if (stars.length > 0 && !maxTradeRoute) {
-      maxTradeRoute = stars.length;
-      tablePlayer.change('tradeRoute',
-          {suffix: '/' + maxTradeRoute, visible: true});
-    }
-    if (maxTradeRoute) {
-      tablePlayer.set('tradeRoute', maxTradeRoute - stars.length);
-    }
-  });
-}
-
 function updateCardCountVisibility() {
-  var countCols = $('.playerCardCountCol');
-  if (optionButtons['show_card_counts'].attr('checked')) {
-    growHeaderColumns();
-    countCols.show();
-  } else {
-    ungrowHeaderColumns();
-    countCols.hide();
-  }
+  view.updateCardCountVisibility();
 }
 
 function addOptionHandler(name, updateVisibility) {
@@ -2379,6 +1642,17 @@ function addOptionControls(game) {
   addOptionHandler('show_active_data', activeDataUpdateVisibility);
 }
 
+// Perform a function that rewrites the tree, suppressing the processing of all
+// change-related DOM events.
+function rewriteTree(func) {
+  try {
+    rewritingTree++;
+    func();
+  } finally {
+    rewritingTree--;
+  }
+}
+
 function handle(doc) {
   // Ignore DOM events when we are rewriting the tree; see rewriteTree().
   if (rewritingTree > 0) return;
@@ -2389,6 +1663,7 @@ function handle(doc) {
     $('#autotracker').val('yes').attr('disabled', true);
   }
 
+  // Make sure the panel that shows the options is present.
   var game = $('#game');
   if (game.length > 0) {
     rewriteTree(function () {
@@ -2409,16 +1684,7 @@ function handle(doc) {
   try {
     if (!started && maybeOfferToPlay(doc)) return;
 
-    // Detect the "Say" button so we can find some children
-    if (doc.constructor == HTMLDivElement &&
-        doc.innerText.indexOf("Say") == 0) {
-      // Pull out the links for future reference.
-      var links = doc.getElementsByTagName("a");
-      deck_spot = links[1];
-      points_spot = links[2];
-    }
-
-    activeDataStartHandle(doc);
+    view.handle(doc);
 
     if (doc.parentNode.id == 'log') {
       activeDataSetupTests();
@@ -2444,20 +1710,9 @@ function handle(doc) {
         if (elems[elem].innerText == "Duke") show_duchy_count = true;
         if (elems[elem].innerText == "Silk Road") show_victory_count = true;
       }
-      if (tablePlayer) {
-        maybeWatchTradeRoute();
-      }
     }
 
-    // If the game hasn't started, everything after this is irrelevant.
-    if (!started) {
-      // This is sometimes left around
-      if (document.getElementById("playerDataTable") && inLobby()) {
-        removePlayerData();
-        $("#copied_temp_say").remove();
-      }
-      return;
-    }
+    if (!started) return;
 
     // If we're adding choices, it may be the choices at the end of the game
     if (doc.constructor == HTMLDivElement && doc.parentNode.id == "choices") {
@@ -2538,7 +1793,7 @@ function enterLobby() {
     });
   }
 
-  my_icon = $('#log img').first()[0];
+  view.enterLobby();
 }
 
 setTimeout("enterLobby()", 600);

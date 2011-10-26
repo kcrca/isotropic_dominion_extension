@@ -159,7 +159,32 @@ function ActiveData() {
 
 //noinspection JSUnusedLocalSymbols
 function activeDataSetupPlayer(player) {
+  player.cards_aside = {};
 
+  player.setAside = function(elems) {
+    for (var i = 0; i < elems.length; i++) {
+      var card = elems[i];
+      var cardName = getSingularCardName(card.innerText);
+      if (!this.cards_aside[cardName]) {
+        this.cards_aside[cardName] = 1;
+      } else {
+        this.cards_aside[cardName]++;
+      }
+      this.deck_size--;
+      this.updateCardDisplay(cardName);
+    }
+  };
+
+  player.asideCount = function() {
+    var count = 0;
+    for (var cardName in this.cards_aside) {
+      var aside = this.cards_aside[cardName];
+      if (aside) {
+        count += aside;
+      }
+    }
+    return count;
+  };
 }
 
 // Add some things to the card objects that we only need for active data
@@ -360,7 +385,7 @@ function activeDataTestValuesVsYou() {
 function activeDataAlert(msg) {
   if (debug['actvData']) {
     logDebug('actvData', "ALERT: " + msg);
-    if (!restoring_history) {
+    if (!restoring_log) {
       alert(msg);
     }
   }
