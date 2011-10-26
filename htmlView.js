@@ -40,9 +40,6 @@ function HtmlView() {
   var maxTradeRoute = undefined;
   var seen_first_turn = false;
 
-  // Are we in text mode (vs. image mode) in the UI?
-  var text_mode;
-
   // How many different player CSS classes are supported?
   //noinspection LocalVariableNamingConventionJS
   var PLAYER_CLASS_COUNT = 4;
@@ -385,24 +382,6 @@ function HtmlView() {
     }
 
   };
-
-  // Discover whether we are in text mode or image mode. The primary bit of state
-  // that this sets is for the benefit of CSS: If we are in text mode, body tag
-  // has the "textMode" class, otherwise it has the "imageMode" class. In both
-  // cases it has the "playing" class, which allows CSS to tell the difference
-  // between being in the lobby vs. playing an actual game.
-  function discoverGUIMode() {
-    if (inLobby()) return;
-
-    $('#chat ~ a[href^="/mode/"]').each(function() {
-      // The link is to the "text" mode when it's in image mode and vice versa.
-      text_mode = $(this).text().indexOf("text") < 0;
-    });
-
-    // Setting the class enables css selectors that distinguish between the modes.
-    $("#body").addClass("playing").addClass(
-        text_mode ? "textMode" : "imageMode");
-  }
 
   this.updateScores = function() {
     if (last_player == null) return;
