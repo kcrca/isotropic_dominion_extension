@@ -339,8 +339,9 @@ function HtmlView() {
     maybeWatchTradeRoute();
 
     card = $(card);
-    if (!supplied_cards[card.text()]) {
-      player.addToCardGroup('otherCards', card, count);
+    var cardName = getSingularCardName(card.text());
+    if (!supplied_cards[cardName]) {
+      player.addToCardGroup('otherCards', cardName, count);
     }
 
     if (trashing || player.isTable) {
