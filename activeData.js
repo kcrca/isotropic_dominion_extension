@@ -508,13 +508,8 @@ function maybeHandleCoppersmith(elems, text_arr, text) {
   return false;
 }
 
-function maybeHandleVp(text) {
-  var re = new RegExp("[+]([0-9]+) ▼");
-  var arr = text.match(re);
-  if (arr && arr.length == 2) {
-    last_player.changeScore(arr[1]);
-    activeData.changeField('VP', parseInt(arr[1]));
-  }
+function activeDataHandleVP(text) {
+  activeData.changeField('VP', parseInt(text));
 }
 
 function isNormalBuy() {
