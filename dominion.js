@@ -396,17 +396,32 @@ function getPlayer(name) {
   return players[name];
 }
 
+function tempSayChange() {
+  var clones = $('#temp_say').contents().clone();
+  var copy = $('#copied_temp_say');
+
+  rewriteTree(function () {
+    copy.empty();
+    copy.append(clones);
+  });
+}
+
+// Create the full log blob and hide the normal log part.
 function createFullLog() {
-  // Create the visible log blob and hide the normal log part.
+  rewriteTree(function () {
   $('#full_log').remove();
-  $('#log').hide().before($('<pre id="full_log">'));
+    var full_log = $('<pre id="full_log"/>');
+    $('#log').hide().before(full_log);
+    var temp_say = $('#temp_say');
+    var copied_temp_say = temp_say.clone();
+    copied_temp_say.attr('id', 'copied_temp_say');
+    full_log.append(copied_temp_say);
+    temp_say.bind('DOMSubtreeModified', tempSayChange);
+  });
 }
 
 function maybeAddToFullLog(node) {
-  if (!restoring_log) {
-    $('#copied_temp_say').remove();
-    $('#full_log').append($(node).clone());
-  }
+  $('#copied_temp_say').before($(node).clone());
 }
 
 function putBackRealLog() {
