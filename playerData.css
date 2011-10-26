@@ -1,0 +1,374 @@
+/*
+ * Styles that apply to both text and image mode -- where needed (to avoid
+ * any problems in the lobby usually) they require a parent node with the id
+ * "playing".
+ */
+
+/* !! The behavior of the log area is right, but it isn't full height at the start. */
+
+#optionPanel, .testInfo div.black,
+.you, .you *, #header > :not(.lobby) {
+    background-color: #dbf8db;
+}
+
+.you:not(.resigned) *.activeMark {
+    background-color: #2de52d;
+}
+
+.player1, .player1 * {
+    background: #fdfed3;
+}
+
+.player1:not(.resigned) *.activeMark {
+    background: #f1f600;
+}
+
+.player2, .player2 * {
+    background: #feefd3;
+}
+
+.player2:not(.resigned) *.activeMark {
+    background: #ffb733;
+}
+
+.player3, .player3 * {
+    background: #e7fefe;
+}
+
+.player3:not(.resigned) *.activeMark {
+    background: #19ffff;
+}
+
+.player4, .player4 * {
+    background: #fee5fe;
+}
+
+.player4:not(.resigned) *.activeMark {
+    background: #f200f2;
+}
+
+.activeMark {
+    width: 0.75em;
+}
+
+.markPlace:not(.activeMark) {
+    visibility: hidden;
+}
+
+.table, .table * {
+    background: #f2f2f2;
+}
+
+.resigned, .resigned * {
+    background: #ccc;
+    color: white !important;
+}
+
+#playerDataTable, #playerDataTable * {
+    vertical-align: top;
+    text-align: right;
+}
+
+#playerDataTable {
+    border-collapse: collapse;
+    border-spacing: 0;
+    border-color: white;
+    margin: 0.1em 0.5em;
+}
+
+#playerDataTable td {
+    padding: 0.25ex 0.4em;
+    margin: 0;
+}
+
+.playerDataKey {
+    white-space: nowrap;
+    text-align: right;
+}
+
+.scoreValue {
+    font-weight: bold;
+}
+
+.playerCardCountCol {
+    padding: 0 0.25em;
+    /*width: 1.5em;*/
+    text-align: right;
+}
+
+.playerOtherCards:empty {
+    height: 0;
+    padding: 0;
+    margin: 0;
+    border: 0;
+}
+
+.playerOtherCards {
+    text-align: left !important;
+}
+
+.playerDataName img {
+    float: left;
+    padding: 0.25ex 0.5em 0.25ex 0.3em;
+}
+
+.playerDataName {
+    font-weight: bold;
+    padding-right: .75em;
+}
+
+.playerDataKey {
+    font-style: italic;
+}
+
+.activePlayerData:empty {
+    background: white;
+}
+
+.textMode #supply td.table + td:empty {
+    width: 1em;
+}
+
+html {
+    height: 100%;
+}
+
+.playing #body {
+    height: 100%;
+    margin: 0 !important;
+}
+
+.playing #game {
+    width: 100%;
+    height: 100%;
+}
+
+#body.imageMode {
+    display: table;
+}
+
+.card-none {
+    white-space: nowrap;
+}
+
+.internalInfoPage {
+    font: bold italic;
+}
+
+.tall {
+    height: 100%;
+}
+/*
+ * Styles that apply only to image mode -- where needed they require a parent
+ * node with the id "imageMode". Classes and ID's that exist only in image mode
+ * don't need that qualification.
+ */
+
+td.kingdom-column, td.basic-column {
+    width: auto !important;
+}
+
+.kingdom-column > *, .basic-column > * {
+    display: table-row;
+}
+
+.kingdom-column > * > *, .basic-column > * > * {
+    display: table-cell;
+}
+
+/* Cause the prices + count display for basic cards to be vertical just like for kingdom cards */
+.imbasic > .imprice {
+    display: inline-block;
+}
+
+.imageMode #game, .imageMode #optionPanelHolder {
+    display: table-row !important;
+}
+
+.imageMode #optionPanel {
+    display: table-cell;
+    width: 100%;
+}
+
+.imageMode #supply {
+    position: static !important;
+    display: table-cell !important;
+    width: auto !important;
+    left: inherit !important;
+    bottom: inherit !important;
+    vertical-align: bottom;
+}
+
+.imageMode #supply > table {
+    bottom: inherit !important;
+    position: static !important;
+}
+
+.imageMode #playerData {
+    border-bottom: black 1px groove;
+}
+
+.playing #right {
+    padding-left: 1em;
+    margin-left: auto !important;
+    vertical-align: bottom;
+    width: 100%;
+    display: table-cell;
+}
+
+.playing #full_log {
+    height: auto !important;
+    overflow-y: auto;
+    margin-left: 2em;
+}
+
+.playing #full_log > .logline > div[style] {
+    height: 0 !important;
+}
+
+#copied_temp_say {
+    color: #36f;
+    font-style: italic;
+    margin-left: 50px;
+}
+
+/*
+ * Styles that apply only to text mode -- where needed they require a parent
+ * node with the id "textMode". Classes and ID's that exist only in text mode
+ * don't need that qualification.
+ */
+
+#playerDataArranger, #logContainer {
+    height: 100%;
+    width: 100%;
+}
+
+.atevail {
+    text-align: right;
+    padding-right: 0.5em !important;
+}
+
+.price {
+    white-space: nowrap;
+}
+
+.textMode #supply td.table + td:empty {
+    width: 2em;
+}
+
+.textMode #choices {
+    margin-left: 2em;
+}
+
+/*
+ * Styles for the options.
+ */
+
+#optionPanel {
+    padding: 0.5em;
+    width: 100%;
+}
+
+#optionPanel, #optionPanelHolder {
+    display: block;
+}
+
+.imageMode #optionPanelHolder {
+    display: table-row;
+}
+
+.imageMode #optionPanel {
+    display: table-cell;
+}
+
+#optionPanel > label {
+    display: block;
+}
+
+#optionPanel .optionNote {
+    font-style: italic;
+}
+
+.playing .notInGame {
+    display: none !important;
+}
+
+/*
+ * The rest of the file are just css tweaks to the original UI to make it easier
+ * to use. They have nothing to do with the point counter, just simple UI
+ * improvements.
+ */
+
+/*
+ * Mark the selectable cards more clearly
+ */
+a.buy, .kingdom-column .buy {
+    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.1, #dbf8db), color-stop(0.4, white)) !important;
+    background-image: -moz-linear-gradient(left center, white 10%, #dbf8db 40%) !important;
+}
+
+.basic-column .buy > .imbasic {
+    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.0, white), color-stop(1.0, #dbf8db)) !important;
+    background-image: -moz-linear-gradient(left center, white 0%, #dbf8db 100%) !important;
+}
+
+/* 
+ * The 'card-...' styles override the colored backgrounds for card names to make
+ * them less intense, so it's easier to read the text.
+ */
+.card-treasure {
+    background: #fce992 !important;
+}
+
+.card-curse {
+    background: #e8cfe9 !important;
+}
+
+.card-victory {
+    background: #c0e4b1 !important;
+}
+
+.card-reaction {
+    background: #c1e1f4 !important;
+}
+
+.card-duration {
+    background: #ffcc99 !important;
+}
+
+/*
+ * These use css, not images, to make a gradation from one color to the other.
+ * Also they do it horizontally, not vertically, so there is more room to see
+ * what's going on. (Each is done two ways because there is not yet browser
+ * compatibility about this; overriding background-image is what is shown in
+ * all the examples, although some validators choke on it.)
+ */
+.card-victory-action {
+    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.3, #c0e4b1), color-stop(0.7, #f0f0f0)) !important;
+    background-image: -moz-linear-gradient(left center, #c0e4b1 30%, #f0f0f0 70%) !important;
+}
+
+.card-victory-treasure {
+    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.3, #c0e4b1), color-stop(0.7, #fce992)) !important;
+    background-image: -moz-linear-gradient(left center, #c0e4b1 30%, #fce992 70%) !important;
+}
+
+.card-treasure-reaction {
+    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.3, #fce992), color-stop(0.7, #c1e1f4)) !important;
+    background-image: -moz-linear-gradient(left center, #fce992 30%, #c1e1f4 70%) !important;
+}
+
+.card-victory-reaction {
+    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.3, #c0e4b1), color-stop(0.7, #c1e1f4)) !important;
+    background-image: -moz-linear-gradient(left center, #c0e4b1 30%, #c1e1f4 70%) !important;
+}
+
+/* When a card is removed from play in text mode, make that easier to see. */
+.gone {
+    background: #ccc;
+}
+
+/* Mark text mode column headers for supply cards so they're easier to spot .*/
+body.textMode [grown]:not(:empty) {
+    background: #f2f2f2;
+}
