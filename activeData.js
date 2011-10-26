@@ -455,6 +455,8 @@ function activeDataStop() {
 // If appropriate, adjust active data values. Return 'true' if there is no
 // possibility of other useful data to be handled in this log line.
 function activeDataHandleCounts(elems, text) {
+  
+  
   // Handle lines like "You play a Foo", or "You play a Silver and 2 Coppers."
   // But ignore "You trash xyz from your play area" after you buy a Mint.
   var match;

@@ -47,8 +47,6 @@ function HtmlView() {
   this.setupPlayer = function(player) {
     player.icon = undefined;
 
-    player.cards_aside = {};
-
     // The set of "other" cards -- ones that aren't in the supply piles
     player.otherCards = {};
 
@@ -340,8 +338,9 @@ function HtmlView() {
   this.gainCard = function(player, card, count, trashing) {
     maybeWatchTradeRoute();
 
-    if (!supplied_cards[card]) {
-      player.addToCardGroup('otherCards', $(card), count);
+    card = $(card);
+    if (!supplied_cards[card.text()]) {
+      player.addToCardGroup('otherCards', card, count);
     }
 
     if (trashing || player.isTable) {
@@ -363,6 +362,7 @@ function HtmlView() {
   };
 
   this.beforeTurn = function() {
+    this.maybeHandleFirstTurn();
     // End the previous turn.
     activeDataEndTurn();
   };
@@ -683,6 +683,5 @@ function HtmlView() {
   };
 
   activeDataInitialize();
-  discoverGUIMode();
   setupPerPlayerInfoArea();
 }
