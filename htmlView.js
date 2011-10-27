@@ -351,6 +351,10 @@ function HtmlView() {
     }
   };
 
+  this.buy = function(count, card_obj) {
+    activeDataCardBought(count, card_obj);
+  }
+
   this.maybeHandleFirstTurn = function() {
     if (seen_first_turn) return;
 
@@ -455,7 +459,7 @@ function HtmlView() {
         setupPerPlayerImageCardCounts('kingdom');
         setupPerPlayerImageCardCounts('basic');
       }
-      updateCardCountVisibility();
+      view.updateCardCountVisibility();
     });
   }
 
@@ -526,6 +530,10 @@ function HtmlView() {
 
   this.handleLog = function(elems, nodeText) {
     activeDataHandleCounts(elems, nodeText)
+  };
+
+  this.handleLogDone = function() {
+    if (started) activeDataMaybeRunTests();
   };
 
   // Add a row to a table.
@@ -646,6 +654,10 @@ function HtmlView() {
       countCols.hide();
     }
   };
+  
+  this.updateShowActiveData = function() {
+    activeDataUpdateVisibility();
+  }
 
   this.hide = function() {
     this.stop();
@@ -685,6 +697,7 @@ function HtmlView() {
   };
 
   this.addChatCommands = function() {
+    activeDataAddChatCommands();
     chatCommands.counts = {
       help:  "see card counts",
       execute: function(writeStatus) {
@@ -703,5 +716,6 @@ function HtmlView() {
     };
   };
 
+  activeDataInitialize();
   setupPerPlayerInfoArea();
 }
