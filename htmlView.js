@@ -46,6 +46,7 @@ function HtmlView() {
 
   this.setupPlayer = function(player) {
     player.icon = undefined;
+    player.cards_aside = {};
 
     // The set of "other" cards -- ones that aren't in the supply piles
     player.otherCards = {};
@@ -321,7 +322,8 @@ function HtmlView() {
     };
 
     player.infoString = function() {
-      return this.name + ': ' + this.fields.toString();
+      var name = (this.name.length > 0 ? this.name : "Trash");
+      return name + ': ' + this.fields.toString();
     };
 
     activeDataSetupPlayer(this);
@@ -659,7 +661,6 @@ function HtmlView() {
   };
 
   this.stop = function() {
-    text_mode = undefined;
     activeDataStop();
   };
 
@@ -683,6 +684,24 @@ function HtmlView() {
   this.enterLobby = function() {
   };
 
-  activeDataInitialize();
+  this.addChatCommands = function() {
+    chatCommands.counts = {
+      help:  "see card counts",
+      execute: function(writeStatus) {
+        allPlayers(function(player) {
+          writeStatus(player.countString());
+        });
+      }
+    };
+    chatCommands.info = {
+      help: "see per-player info",
+      execute: function(writeStatus) {
+        allPlayers(function(player) {
+          writeStatus(player.infoString());
+        });
+      }
+    };
+  };
+
   setupPerPlayerInfoArea();
 }

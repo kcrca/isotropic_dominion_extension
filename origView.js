@@ -6,7 +6,7 @@ function OrigView() {
   this.hide = function() {
     if (deck_spot) deck_spot.innerHTML = "exit";
     if (points_spot) points_spot.innerHTML = "faq";
-  }
+  };
 
   this.handle = function(doc) {
     // Detect the "Say" button so we can find some children
@@ -29,6 +29,7 @@ function OrigView() {
     points_spot.innerHTML = getScores();
   };
 
+  //noinspection JSUnusedLocalSymbols
   this.updateDeck = function(player) {
     if (deck_spot == undefined) {
       var spot = $('a[href="/signout"]');
@@ -38,33 +39,42 @@ function OrigView() {
     deck_spot.innerHTML = getDecks();
   };
 
+  //noinspection JSUnusedLocalSymbols
   this.setupPlayer = function(player) {
   };
 
+  //noinspection JSUnusedLocalSymbols
   this.set = function(name, value) {
   };
 
+  //noinspection JSUnusedLocalSymbols
   this.recordCard = function(player, cardName) {
   };
 
+  //noinspection JSUnusedLocalSymbols
   this.gainCard = function(player, card, count, trashing) {
   };
 
   this.beforeTurn = function() {
   };
 
+  //noinspection JSUnusedLocalSymbols
   this.startTurn = function(node) {
   };
 
+  //noinspection JSUnusedLocalSymbols
   this.gainPirateShipToken = function(player, count) {
   };
 
+  //noinspection JSUnusedLocalSymbols
   this.toNativeVillage = function(player, spec) {
   };
 
+  //noinspection JSUnusedLocalSymbols
   this.clearNativeVillage = function(player) {
   };
 
+  //noinspection JSUnusedLocalSymbols
   this.handleLog = function(elems, nodeText) {
   };
 
@@ -77,12 +87,16 @@ function OrigView() {
   this.remove = function() {
   };
 
-  this.stop() = function() {
+  this.stop = function() {
   };
 
+  //noinspection JSUnusedLocalSymbols
   this.handle = function(doc) {
   };
 
   this.enterLobby = function() {
+  };
+
+  this.addChatCommands = function() {
   };
 }

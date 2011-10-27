@@ -61,9 +61,11 @@ var infoIsForTests = false;
 
 var test_only_my_score = false;
 
-var view = new HtmlView();
+var view = createView();
 
 var chat_prefix = "⟣";
+
+var chatCommands = {};
 
 var debug = {'actvData': false, 'infoData': true, 'logShown': true };
 
@@ -79,6 +81,11 @@ function htmlEncode(value) {
 
 function rewriteName(name) {
   return name.replace(/ /g, "_").replace(/'/g, "’").replace(/\./g, "");
+}
+
+function createView() {
+  activeDataInitialize();
+  return new OrigView();
 }
 
 function handleError(text) {
@@ -137,7 +144,6 @@ function Player(name, num) {
   this.num = num;
   this.score = 3;
   this.deck_size = 10;
-  this.cards_aside = {};
 
   this.isTable = name == "";
 
@@ -348,31 +354,6 @@ function Player(name, num) {
     this.resigned = true;
   };
 
-  this.setAside = function(elems) {
-    for (var i = 0; i < elems.length; i++) {
-      var card = elems[i];
-      var cardName = getSingularCardName(card.innerText);
-      if (!this.cards_aside[cardName]) {
-        this.cards_aside[cardName] = 1;
-      } else {
-        this.cards_aside[cardName]++;
-      }
-      this.deck_size--;
-      this.updateCardDisplay(cardName);
-    }
-  };
-
-  this.asideCount = function() {
-    var count = 0;
-    for (var cardName in this.cards_aside) {
-      var aside = this.cards_aside[cardName];
-      if (aside) {
-        count += aside;
-      }
-    }
-    return count;
-  };
-
   view.setupPlayer(this);
 }
 
@@ -414,7 +395,7 @@ function tempSayChange() {
 // Create the full log blob and hide the normal log part.
 function createFullLog() {
   rewriteTree(function () {
-  $('#full_log').remove();
+    $('#full_log').remove();
     var full_log = $('<pre id="full_log"/>');
     $('#log').hide().before(full_log);
     var temp_say = $('#temp_say');
@@ -626,6 +607,8 @@ function infoWindowTests(table) {
       act: function(row, match) {
         // The score isn't reliable if we've had an error.
         if (test_only_my_score && player.name != "You") return;
+        // Depends on the player.get() method which isn't universally supported.
+        if (!player.get) return;
         var scoreStr = player.get('score');
         var equals = scoreStr.indexOf('=');
         if (equals > 0) {
@@ -1287,8 +1270,8 @@ function initialize(doc) {
   if (localStorage['disabled']) {
     disabled = true;
   }
-  
-  view = new HtmlView();
+
+  view = createView();
 
   // Figure out which turn we are. We'll use that to figure out how long to wait
   // before announcing the extension.
@@ -1372,13 +1355,57 @@ function originalName(maybeRewrittenName) {
   return maybeRewrittenName;
 }
 
-function writeHelp() {
-  writeText("Type !status to see player score and deck info.");
-  writeText("Type !counts to see card counts.");
-  activeDataWriteTextPrompt();
-  if (canDisable()) {
-    writeText("Type !disable by turn 5 to disable the point counter.");
+function chatCommandAvailable(request) {
+  if (typeof(request) == 'string') {
+    request = chatCommands[request];
   }
+  return !request.checkAvailability || request.checkAvailability();
+}
+
+function writeHelp() {
+  var inAll = [];
+  for (var request in chatCommands) {
+    var requestObj = chatCommands[request];
+    if (chatCommandAvailable(requestObj)) {
+      writeText('Type !' + request + ' to ' + requestObj.help);
+      if (!requestObj.actionCommand) {
+        inAll.push(request);
+      }
+    }
+  }
+  if (inAll.length > 1) {
+    var last = inAll.length - 1;
+    inAll[last] = 'and ' + inAll[last];
+    var sep = (inAll.length == 2 ? ' ' : ', ');
+    writeText('Type !all for ' + inAll.join(sep));
+  }
+}
+
+function setupChatCommands() {
+  chatCommands.status = {
+    help: "see player score and deck info",
+    execute: function(writeStatus) {
+      writeStatus(getDecks() + " | " + getScores());
+    }
+  };
+  chatCommands.disable = {
+    checkAvailability: canDisable,
+    actionCommand: true,
+    help: "disable the point counter (by turn 5)",
+    execute: function(writeStatus) {
+      localStorage['disabled'] = "t";
+      disabled = true;
+      hideExtension();
+      writeStatus("☠ Point counter disabled.");
+    }
+  };
+  chatCommands.help = {
+    actionCommand: true,
+    help: 'show this list of commands',
+    execute: writeHelp
+  };
+  activeDataAddChatCommands();
+  view.addChatCommands();
 }
 
 function maybeIntroducePlugin() {
@@ -1407,30 +1434,26 @@ function showStatus(request, show) {
     show(chat_prefix + " " + msg.replace(/\bYou([:=])/g, my_name + "$1"));
   }
 
-  switch (request) {
-  case "status":
-    writeStatus(getDecks() + " | " + getScores());
-    break;
-  case "counts":
-    allPlayers(function(player) {
-      writeStatus(player.countString());
-    });
-    break;
-  case "info":
-    allPlayers(function(player) {
-      writeStatus(player.infoString());
-    });
-    break;
-  case "active":
-    writeStatus(activeDataString());
-    break;
-  case 'all':
-    writeStatus(activeDataString());
-    allPlayers(function(player) {
-      writeStatus(player.countString());
-      writeStatus(player.infoString());
-    });
+  if (request == 'all') {
+    for (var name in chatCommands) {
+      var command = chatCommands[name];
+      if (!command.actionCommand && chatCommandAvailable(command)) {
+        command.execute(writeStatus);
+      }
+    }
+    return;
   }
+
+  var requestObj = chatCommands[request];
+  if (!requestObj) {
+    show("⚠ Unknown chat request: !" + request);
+    return;
+  }
+  if (!chatCommandAvailable(requestObj)) {
+    show("⚠ Chat request not available: !" + request);
+    return;
+  }
+  requestObj.execute(writeStatus);
 }
 
 function storeLog() {
@@ -1455,7 +1478,7 @@ function handleChatText(speaker, text) {
   if (!text) return;
   if (disabled) return;
 
-  var match = text.match("!(status|counts|" + activeDataCommands() + "all)");
+  var match = text.match(/^\s*!([^\s]+)/);
   if (match) {
     var time = new Date().getTime();
     var command = "maybeShowStatus('" + match[1] + "', " + time + ")";
@@ -1463,16 +1486,6 @@ function handleChatText(speaker, text) {
     // If we introduced the extension, we get first dibs on answering.
     if (i_introduced) wait_time = 100;
     setTimeout(command, wait_time);
-  } else if (text == " !disable" && canDisable()) {
-    localStorage['disabled'] = "t";
-    disabled = true;
-    hideExtension();
-    writeText("☠ Point counter disabled.");
-  } else if (text.indexOf(' !') == 0) {
-    if (text != '!help') {
-      writeText("⚠ Unknown command:" + text);
-    }
-    writeHelp();
   }
 
   if (text.indexOf(" " + chat_prefix + " ") == 0) {
@@ -1582,6 +1595,7 @@ function stopCounting() {
   removeStoredLog();
   $('#optionPanelHolder').show();
   players = undefined;
+  text_mode = undefined;
 }
 
 // If this connotes the start of the game, start it.
@@ -1821,6 +1835,7 @@ function handle(doc) {
 //
 // Chat status handling.
 //
+setupChatCommands();
 
 function buildStatusMessage() {
   var status_message = "/me Auto▼Count";
