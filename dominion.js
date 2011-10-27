@@ -3,7 +3,7 @@
 var player_rewrites = new Object();
 
 // Map from player name to Player object.
-var players = new Object();
+var players = undefined;
 // Regular expression that is an OR of players other than "You".
 var player_re = "";
 // Count of the number of players in the game.
@@ -61,9 +61,11 @@ var infoIsForTests = false;
 
 var test_only_my_score = false;
 
-var view = new HtmlView();
+var view = createView();
 
 var chat_prefix = "⟣";
+
+var chatCommands = {};
 
 var debug = {'actvData': false, 'infoData': true, 'logShown': true };
 
@@ -73,12 +75,17 @@ RegExp.quote = function(str) {
 };
 
 // Returns an html encoded version of a string.
-function htmlEncode(value){
+function htmlEncode(value) {
   return $('<div/>').text(value).html();
 }
 
 function rewriteName(name) {
   return name.replace(/ /g, "_").replace(/'/g, "’").replace(/\./g, "");
+}
+
+function createView() {
+  activeDataInitialize();
+  return new OrigView();
 }
 
 function handleError(text) {
@@ -127,21 +134,9 @@ function pointsForCard(card_name) {
     handleError("Undefined card for points...");
     return 0;
   }
-  if (card_name.indexOf("Colony") == 0) return 10;
-  if (card_name.indexOf("Province") == 0) return 6;
-  if (card_name.indexOf("Duchy") == 0) return 3;
-  if (card_name.indexOf("Duchies") == 0) return 3;
-  if (card_name.indexOf("Estate") == 0) return 1;
-  if (card_name.indexOf("Curse") == 0) return -1;
 
-  if (card_name.indexOf("Island") == 0) return 2;
-  if (card_name.indexOf("Nobles") == 0) return 2;
-  if (card_name.indexOf("Harem") == 0) return 2;
-  if (card_name.indexOf("Great Hall") == 0) return 1;
-
-  if (card_name.indexOf("Farmland") == 0) return 2;
-  if (card_name.indexOf("Tunnel") == 0) return 2;
-  return 0;
+  var card = card_map[card_name];
+  return card.getVP();
 }
 
 function Player(name, num) {
@@ -149,7 +144,6 @@ function Player(name, num) {
   this.num = num;
   this.score = 3;
   this.deck_size = 10;
-  this.cards_aside = {};
 
   this.isTable = name == "";
 
@@ -173,18 +167,18 @@ function Player(name, num) {
   };
 
   this.getScore = function() {
-    var score_str = this.score;
+    var score_str = this.score + "";
     var total_score = this.score;
 
-    if (this.card_counts["Gardens"] != undefined) {
-      var gardens = this.card_counts["Gardens"];
+    if (this.special_counts["Gardens"] != undefined) {
+      var gardens = this.special_counts["Gardens"];
       var garden_points = Math.floor(this.deck_size / 10);
       score_str = score_str + "+" + gardens + "g@" + garden_points;
       total_score = total_score + gardens * garden_points;
     }
 
-    if (this.card_counts["Silk Road"] != undefined) {
-      var silk_roads = this.card_counts["Silk Road"];
+    if (this.special_counts["Silk Roads"] != undefined) {
+      var silk_roads = this.special_counts["Silk Roads"];
       var silk_road_points = 0;
       if (this.special_counts["Victory"] != undefined) {
         silk_road_points = Math.floor(this.special_counts["Victory"] / 4);
@@ -193,18 +187,18 @@ function Player(name, num) {
       total_score = total_score + silk_roads * silk_road_points;
     }
 
-    if (this.card_counts["Duke"] != undefined) {
-      var dukes = this.card_counts["Duke"];
+    if (this.special_counts["Duke"] != undefined) {
+      var dukes = this.special_counts["Duke"];
       var duke_points = 0;
-      if (this.card_counts["Duchy"] != undefined) {
-        duke_points = this.card_counts["Duchy"];
+      if (this.special_counts["Duchy"] != undefined) {
+        duke_points = this.special_counts["Duchy"];
       }
       score_str = score_str + "+" + dukes + "d@" + duke_points;
       total_score = total_score + dukes * duke_points;
     }
 
-    if (this.card_counts["Vineyard"] != undefined) {
-      var vineyards = this.card_counts["Vineyard"];
+    if (this.special_counts["Vineyard"] != undefined) {
+      var vineyards = this.special_counts["Vineyard"];
       var vineyard_points = 0;
       if (this.special_counts["Actions"] != undefined) {
         vineyard_points = Math.floor(this.special_counts["Actions"] / 3);
@@ -213,8 +207,8 @@ function Player(name, num) {
       total_score = total_score + vineyards * vineyard_points;
     }
 
-    if (this.card_counts["Fairgrounds"] != undefined) {
-      var fairgrounds = this.card_counts["Fairgrounds"];
+    if (this.special_counts["Fairgrounds"] != undefined) {
+      var fairgrounds = this.special_counts["Fairgrounds"];
       var fairgrounds_points = 0;
       if (this.special_counts["Uniques"] != undefined) {
         fairgrounds_points = Math.floor(this.special_counts["Uniques"] / 5) * 2;
@@ -227,15 +221,19 @@ function Player(name, num) {
       score_str = score_str + "=" + total_score;
     }
     return score_str;
-  }
+  };
 
   this.getDeckString = function() {
     var str = this.deck_size;
-    var need_action_string = (show_action_count && this.special_counts["Actions"]);
-    var need_unique_string = (show_unique_count && this.special_counts["Uniques"]);
-    var need_victory_string = (show_victory_count && this.special_counts["Victory"]);
-    var need_duchy_string = (show_duchy_count && this.card_counts["Duchy"]);
-    if (need_action_string || need_unique_string || need_duchy_string || need_victory_string) {
+    var need_action_string = (show_action_count &&
+        this.special_counts["Actions"]);
+    var need_unique_string = (show_unique_count &&
+        this.special_counts["Uniques"]);
+    var need_victory_string = (show_victory_count &&
+        this.special_counts["Victory"]);
+    var need_duchy_string = (show_duchy_count && this.special_counts["Duchy"]);
+    if (need_action_string || need_unique_string || need_duchy_string ||
+        need_victory_string) {
       var special_types = [];
       if (need_unique_string) {
         special_types.push(this.special_counts["Uniques"] + "u");
@@ -244,7 +242,7 @@ function Player(name, num) {
         special_types.push(this.special_counts["Actions"] + "a");
       }
       if (need_duchy_string) {
-        special_types.push(this.card_counts["Duchy"] + "d");
+        special_types.push(this.special_counts["Duchy"] + "d");
       }
       if (need_victory_string) {
         special_types.push(this.special_counts["Victory"] + "v");
@@ -252,18 +250,18 @@ function Player(name, num) {
       str += '(' + special_types.join(", ") + ')';
     }
     return str;
-  }
+  };
 
   this.changeScore = function(points) {
     this.score = this.score + parseInt(points);
-  }
+  };
 
   this.changeSpecialCount = function(name, delta) {
     if (this.special_counts[name] == undefined) {
       this.special_counts[name] = 0;
     }
     this.special_counts[name] = this.special_counts[name] + delta;
-  }
+  };
 
   this.recordCards = function(name, count) {
     if (this.card_counts[name] == undefined || this.card_counts[name] == 0) {
@@ -275,7 +273,8 @@ function Player(name, num) {
 
     if (this.card_counts[name] <= 0) {
       if (this.card_counts[name] < 0) {
-        handleError("Card count for " + name + " is negative (" + this.card_counts[name] + ")");
+        maybeAnnounceFailure("Card count for " + name + " is negative (" +
+            this.card_counts[name] + ")");
       }
       delete this.card_counts[name];
       this.special_counts["Uniques"] -= 1;
@@ -283,24 +282,32 @@ function Player(name, num) {
     view.recordCard(this, name);
   };
 
-  this.recordSpecialCounts = function(singular_card_name, card, count) {
-    // Hack! Hinterlands adds reactions that are not actions. Currently there
-    // is no easy way to see this based on the class names. I've made a request
-    // to change this but for now special case them. :(
-    if (singular_card_name == "Tunnel") {
-      this.changeSpecialCount("Victory", count);
-      return;
+  this.recordSpecialCards = function(card, count) {
+    var name = card.innerHTML;
+    if (name.indexOf("Gardens") == 0) {
+      this.changeSpecialCount("Gardens", count);
     }
-    if (singular_card_name == "Fool's Gold") {
-      this.changeSpecialCount("Treasure", count);
-      return;
+    if (name.indexOf("Duke") == 0) {
+      this.changeSpecialCount("Duke", count);
+    }
+    if (name.indexOf("Duchy") == 0 || name.indexOf("Duchies") == 0) {
+      this.changeSpecialCount("Duchy", count);
+    }
+    if (name.indexOf("Vineyard") == 0) {
+      this.changeSpecialCount("Vineyard", count);
+    }
+    if (name.indexOf("Fairgrounds") == 0) {
+      this.changeSpecialCount("Fairgrounds", count);
+    }
+    if (name.indexOf("Silk Road") == 0) {
+      this.changeSpecialCount("Silk Roads", count);
     }
 
     var types = card.className.split("-").slice(1);
-    for (type_i in types) {
+    for (var type_i in types) {
       var type = types[type_i];
-      if (type == "none" || type == "duration" ||
-          type == "action" || type == "reaction") {
+      if (type == "none" || type == "duration" || type == "action" ||
+          type == "reaction") {
         this.changeSpecialCount("Actions", count);
       } else if (type == "curse") {
         this.changeSpecialCount("Curse", count);
@@ -309,10 +316,11 @@ function Player(name, num) {
       } else if (type == "treasure") {
         this.changeSpecialCount("Treasure", count);
       } else {
-        handleError("Unknown card class: " + card.className + " for " + card.innerText);
+        handleError("Unknown card class: " + card.className + " for " +
+            card.innerText);
       }
     }
-  }
+  };
 
   this.gainCard = function(card, count, trashing) {
     if (debug_mode) {
@@ -346,32 +354,11 @@ function Player(name, num) {
     this.resigned = true;
   };
 
-  this.setAside = function(elems) {
-    for (var i = 0; i < elems.length; i++) {
-      var card = elems[i];
-      var cardName = getSingularCardName(card.innerText);
-      if (!this.cards_aside[cardName]) {
-        this.cards_aside[cardName] = 1;
-      } else {
-        this.cards_aside[cardName]++;
-      }
-      this.deck_size--;
-      this.updateCardDisplay(cardName);
-    }
-  };
-
-  this.asideCount = function() {
-    var count = 0;
-    for (var cardName in this.cards_aside) {
-      var aside = this.cards_aside[cardName];
-      if (aside) {
-        count += aside;
-      }
-    }
-    return count;
-  };
-
   view.setupPlayer(this);
+}
+
+function htmlToText(html) {
+  return $('<span/>').html(html).text()
 }
 
 function stateStrings() {
@@ -387,8 +374,7 @@ function stateStrings() {
 }
 
 function getSingularCardName(name) {
-  if (plural_map[name] == undefined) return name;
-  return plural_map[name];
+  return card_map[name].Singular;
 }
 
 function getPlayer(name) {
@@ -409,7 +395,7 @@ function tempSayChange() {
 // Create the full log blob and hide the normal log part.
 function createFullLog() {
   rewriteTree(function () {
-  $('#full_log').remove();
+    $('#full_log').remove();
     var full_log = $('<pre id="full_log"/>');
     $('#log').hide().before(full_log);
     var temp_say = $('#temp_say');
@@ -433,13 +419,10 @@ function putBackRealLog() {
 
 function findTrailingPlayer(text) {
   var arr = text.match(/ ([^\s.]+)\.[\s]*$/);
-  if (arr == null) {
-    handleError("Couldn't find trailing player: '" + text + "'");
-    return null;
-  }
-  if (arr.length == 2) {
+  if (arr != null && arr.length == 2) {
     return getPlayer(arr[1]);
   }
+  handleError("Could not find trailing player from: " + text);
   return null;
 }
 
@@ -498,6 +481,245 @@ function maybeHandleTurnChange(node) {
   return false;
 }
 
+function markInfoAsOurs(table) {
+  table.parent().addClass('internalInfoPage');
+  var row = $('<tr/>');
+  var col = $('<td/>').attr('colspan', '2');
+  table.append(row);
+  row.append(col.html('This info window is for internal testing purposes. ' +
+      'It should have been dismissed automatically without you seeing it. ' +
+      'If you see this, please dismiss it and let us know.'));
+}
+
+function maybeRunInfoWindowTests(table) {
+  if (!infoIsForTests) return;
+
+  // Make sure the table we're looking at is the info table
+  if (table.tagName != 'TABLE') return;
+  if (table.innerText.indexOf("Trash:") < 0) return;
+
+  try {
+    table = $(table);
+    markInfoAsOurs(table);
+    infoWindowTests(table);
+  } finally {
+    infoIsForTests = false;
+    $("body > div.black").remove();
+  }
+}
+
+function infoWindowTests(table) {
+  // Our checks will definitely fail in an erroneous state.
+  if (announced_error) return;
+
+  if ($('#choices span.stash-pos-marker').length > 0) {
+    // This check exists because it is possible to have the info window pop up
+    // when the user is being asked where to locate the Stash card in the deck.
+    // When that happens, the info window is incorrect (it doesn't show the
+    // cards already drawn before the shuffle). This means that we cannot tell
+    // how big the deck is, even if we count the number of cards shown in the
+    // span choice. This is rare, so we just skip the tests in this case.
+    logDebug('infoData',
+        "--- Skipping info window tests during stash placement\n");
+    return;
+  }
+
+  logDebug('infoData', "--- Running info tests ---\n");
+
+  var msgs = [];
+  var foundProblem = false;
+
+  function checkValue(actual, expected, text) {
+    var valid = (actual == expected);
+    var label;
+    var op;
+    if (valid) {
+      label = 'valid';
+      op = '==';
+    } else {
+      label = '==INVALID==';
+      op = '!=';
+      foundProblem = true;
+    }
+    var msg = label + ': ' + actual + ' ' + op + ' ' + expected + ' ' +
+        player.name + ': ' + text;
+    logDebug('infoData', msg);
+    msgs.push(msg);
+  }
+
+  function countCards(str) {
+    if (str == 'nothing') {
+      return 0;
+    }
+    var sep = /(?:,\s*|,?\s*\band\b\s*)+/g;
+    var split = str.split(sep);
+    logDebug('infoDataDetailed', 'pattern: ' + sep);
+    logDebug('infoDataDetailed',
+        'split ' + split.length + ': |' + split.join('|') + '|');
+    var count = split.length;
+    for (var i = 0; i < split.length; i++) {
+      var cardSpec = split[i];
+      var match = cardSpec.match(/^\d+/);
+      if (match) {
+        count += parseInt(match[0]) - 1;
+      }
+    }
+    return count;
+  }
+
+  function addToCardCount(count) {
+    if (isNaN(player.testCardCount)) return;
+    player.testCardCount += count;
+    if (player.testCardCountStr.length > 0) {
+      player.testCardCountStr += '+';
+    }
+    player.testCardCountStr += count;
+  }
+
+  function parseInfoNumber(str) {
+    return str == 'nothing' ? 0 : parseInt(str);
+  }
+
+  function setCurrentPlayer(p) {
+    player = p;
+    player.testCardCount = 0;
+    player.testCardCountStr = '';
+    player.testSeenIslandMat = false;
+  }
+
+  var player = tablePlayer;
+  setCurrentPlayer(tablePlayer);
+
+  var tests = [
+    { pat: /^Trash:\(?(nothing|\d+)/,
+      act: function(row, match) {
+        var count = parseInfoNumber(match[1]);
+        checkValue(count, tablePlayer.deck_size, row.text());
+      }
+    },
+    { pat: /^—— (.*) ——/,
+      act: function(row, match) {
+        var playerName = rewriteName(match[1]);
+        setCurrentPlayer(getPlayer(playerName));
+      }
+    },
+    { pat: /Current score:([0-9]+)/,
+      act: function(row, match) {
+        // The score isn't reliable if we've had an error.
+        if (test_only_my_score && player.name != "You") return;
+        // Depends on the player.get() method which isn't universally supported.
+        if (!player.get) return;
+        var scoreStr = player.get('score');
+        var equals = scoreStr.indexOf('=');
+        if (equals > 0) {
+          scoreStr = scoreStr.substring(equals + 1);
+        }
+        checkValue(parseInt(match[1]), parseInt(scoreStr), row.text());
+      }
+    },
+    // The rest of the tests rely on active data, so they only run if it's on.
+    { pat: /^(Hand|Play area|Previous duration): *([^\d].*)/,
+      act: function(row, match) {
+        if (!debug['actvData']) return;
+        addToCardCount(countCards(match[2]));
+        if (match[1] == 'Previous duration') {
+          // Each Haven in the duration implies one *or more* cards set aside.
+          // These cards are not listed in the info window, even for you. Which
+          // means that if there are Havens, we can't really tell how many cards
+          // are in the decks. (It can be more than one card if Haven was played
+          // with Throne Room or King's Court.)
+          if (match[2].match(/\bHaven\b/g)) {
+            player.testCardCount = NaN;
+            player.testCardCountStr = 'Haven prevents deck size test';
+          }
+        }
+      }
+    },
+    { pat: /^(.*) (?:mat|aside): *(.*)/,
+      act: function(row, match) {
+        if (!debug['actvData']) return;
+        // Test set for the mat/aside area (includes chapel for thinning):
+        // haven, horse traders, library, possession, island, native village, pirate ship, trade route, chapel
+        // Island mat (also uses the term "aside" in the text)
+        // Native Village mat (also uses the term "aside" in the text)
+        // Pirate Ship mat
+        // Trade Route mat
+        // aside: Haven
+        // aside: Horse Traders (reaction)
+        // aside: Library (only during the turn)
+        // aside: Possession (only during the turn)
+        var count = countCards(match[2]);
+        if (match[1] == "Island") {
+          // cards held by islands are not in the deck count (as we show it)
+          checkValue(count, player.asideCount(), row.text());
+          player.testSeenIslandMat = true;
+        } else if (match[1] == 'Pirate Ship') {
+          // We should count and show pirate ship mat tokens
+        } else {
+          addToCardCount(count);
+        }
+      }
+    },
+    { pat: /^(?:Hand|Draw pile):(nothing|\d+)/,
+      act: function(row, match) {
+        if (!debug['actvData']) return;
+        addToCardCount(parseInfoNumber(match[1]));
+      }
+    },
+    { pat: /^(Draw|Discard) pile:/,
+      act: function(row, match) {
+        if (!debug['actvData']) return;
+        if (player == null) {
+          logDebug('actvData', "Warning: Player is null!!\n");
+          return;
+        }
+        var isDiscard = (match[1] == "Discard");
+        var count = 0;
+        var paddingStrs = '';
+        $(row).find('span.discards').each(function() {
+          var paddingSpec = $(this).css('padding-left');
+          if (paddingStrs.length > 0) {
+            paddingStrs += '+';
+          }
+          match = paddingSpec.match(/([0-9]+)px/);
+          if (match) {
+            paddingStrs += match[1];
+            count += parseInt(match[1]) / 6;
+          }
+        });
+        addToCardCount(count);
+        player.testCardCountStr += '[' + paddingStrs + 'px]';
+        if (isDiscard && !isNaN(player.testCardCount)) {
+          if (!player.testSeenIslandMat) {
+            // The info window is can be silent about the island mat for other
+            // players so we have to expect the deck to include what's there.
+            player.testCardCount += player.asideCount()
+          }
+          checkValue(player.testCardCount, player.deck_size,
+              player.testCardCountStr);
+        }
+      }
+    }
+  ];
+
+  table.find('tr').each(function() {
+    var tr = $(this);
+    var text = tr.text().replace(/\s+/g, ' ');
+    for (var i = 0; i < tests.length; i++) {
+      var test = tests[i];
+      var match = test.pat.exec(text);
+      if (match) {
+        test.act(tr, match);
+        break;
+      }
+    }
+  });
+
+  if (foundProblem && debug['infoData']) {
+    alert("Found problems with data: see console log");
+  }
+}
+
 function handleScoping(text_arr, text) {
   var depth = 1;
   for (var t in text_arr) {
@@ -514,8 +736,8 @@ function handleScoping(text_arr, text) {
     var re = new RegExp("(?:You|" + player_re +
         ") (?:play|buy)s? an? ([^.]*)\\.");
     var arr = text.match(re);
-    if (arr && arr.length == 2) {
-      scope = arr[1];
+    if (arr && arr.length == 3) {
+      scope = arr[2];
     }
   }
   scopes.push(scope);
@@ -537,9 +759,19 @@ function maybeReturnToSupply(text) {
   });
 }
 
-function maybeHandleExplorer(elems, text) {
-  if (text.match(/gain(ing)? a (Silver|Gold) in (your )?hand/)) {
-    last_player.gainCard(elems[elems.length - 1], 1);
+function maybeHandleGainInHand(elems, text) {
+  // Normally, "Bob gains a Gold in hand" means that Bob gets a new Gold.
+  // But if Alice is currently possessing Bob, and uses a card like Mine to
+  // trash a Silver to replace it with a Gold in the hand, we will see a message
+  // like "Bob gains a Gold in hand". This doesn't mean that Bob gets a new
+  // Gold, it actually means "A Gold is put into Bob's hand". A following
+  // message will say who literally gets the new Gold: "... Alice gains the
+  // Gold". So during Possession, "gains [...] in hand" doesn't mean "gain"
+  // in the same way as everywhere else.
+  if (text.match(/gain(ing)? a (.*) in (your )?hand/)) {
+    if (!possessed_turn) {
+      last_player.gainCard(elems[elems.length - 1], 1);
+    }
     return true;
   }
   return false;
@@ -594,6 +826,7 @@ function maybeHandleSwindler(elems, text) {
   return false;
 }
 
+//noinspection JSUnusedLocalSymbols
 function maybeHandlePirateShip(elems, text_arr, text) {
   // Swallow gaining pirate ship tokens.
   // It looks like gaining a pirate ship otherwise.
@@ -657,13 +890,15 @@ function maybeHandleOffensiveTrash(elems, text_arr, text) {
       return true;
     }
 
-    var arr = text.match(new RegExp("trash(?:es)? (?:one of )?" + player_re + "'s"));
+    var arr = text.match(new RegExp("trash(?:es)? (?:one of )?" + player_re +
+        "'s"));
     if (arr && arr.length == 2) {
       getPlayer(arr[1]).gainCard(elems[0], -1);
       return true;
     }
     return false;
   }
+  return false;
 }
 
 function maybeHandleTournament(elems, text_arr, text) {
@@ -686,10 +921,6 @@ function maybeHandleTrader(elems, text_arr, text) {
 function maybeHandleGainViaReveal(elems, text_arr, text) {
   if (elems.length == 2 &&
       text.match(/reveal(ing|s) an? (.*) and gain(ing|s)? an? (.*)\./)) {
-    last_player.gainCard(elems[1], 1);
-    return true;
-  }
-  if (elems.length == 2 && text.match(/revealing a Tunnel and gaining/)) {
     last_player.gainCard(elems[1], 1);
     return true;
   }
@@ -723,7 +954,7 @@ function getCardCount(card, text) {
 }
 
 function handleGainOrTrash(player, elems, text, multiplier) {
-  for (elem in elems) {
+  for (var elem in elems) {
     if (elems[elem].innerText != undefined) {
       var card = elems[elem].innerText;
       var count = getCardCount(card, text);
@@ -798,6 +1029,12 @@ function showCurrentInfo() {
 }
 
 function handleLogEntry(node) {
+  // These are used for messages from the administrator, and should be ignored.
+  if (node.innerText.indexOf("»»»") == 0) return;
+  if (node.parentNode.id == 'full_log') return;
+
+  logDebug('logShown', node.innerText);
+
   if (maybeHandleGameStart(node)) return;
 
   if (!started) return;
@@ -826,18 +1063,23 @@ function handleLogEntry(node) {
 function handlePlayLog(node) {
   maybeRewriteName(node);
 
-  if (maybeHandleTurnChange(node)) return;
+  if (maybeHandleTurnChange(node)) {
+    startInfoWIndowTests();
+    return;
+  }
+  if (maybeHandleResignation(node)) return;
 
   // Make sure this isn't a duplicate possession entry.
   if (node.className.indexOf("possessed-log") > 0) return;
 
-  var text = node.innerText.split(" ");
+  var nodeText = node.innerText;
+  var text = nodeText.split(" ");
 
   // Keep track of what sort of scope we're in for things like watchtower.
-  handleScoping(text, node.innerText);
+  handleScoping(text, nodeText);
 
   // Gaining VP could happen in combination with other stuff.
-  maybeHandleVp(node.innerText);
+  maybeHandleVp(nodeText);
 
   var elems = node.getElementsByTagName("span");
 
@@ -875,20 +1117,29 @@ function handlePlayLog(node) {
   if (maybeHandleNobleBrigand(elems, text, nodeText)) return;
 
   if (text[0] == "trashing") {
-    var player = last_player;
-    if (scopes[scopes.length - 1] == "Watchtower") {
-      player = last_gain_player;
+    var trasher = last_player;
+    if (topScope() == "Watchtower") {
+      trasher = last_gain_player;
     }
-    return handleGainOrTrash(player, elems, node.innerText, -1);
+    handleGainOrTrash(trasher, elems, nodeText, -1);
+    return;
   }
   if (text[1].indexOf("trash") == 0) {
-    return handleGainOrTrash(getPlayer(text[0]), elems, node.innerText, -1);
+    handleGainOrTrash(getPlayer(text[0]), elems, nodeText, -1);
+    return;
   }
   if (text[0] == "gaining") {
-    return handleGainOrTrash(last_player, elems, node.innerText, 1);
+    // When possessed, gaining a card (from, say, a University) is like
+    // buying one -- it's the possessor, not the possessee, who gains it, which
+    // is stated by a later log message.
+    if (!possessed_turn) {
+      handleGainOrTrash(last_player, elems, nodeText, 1);
+    }
+    return;
   }
   if (text[1].indexOf("gain") == 0) {
-    return handleGainOrTrash(getPlayer(text[0]), elems, node.innerText, 1);
+    handleGainOrTrash(getPlayer(text[0]), elems, nodeText, 1);
+    return;
   }
 
   var player = getPlayer(text[0]);
@@ -982,7 +1233,17 @@ function topScope(skipping) {
       if (--skipping < 0) return scopes[i];
     }
   }
-  deck_spot.innerHTML = getDecks();
+  return undefined;
+}
+
+function findScope(name) {
+  var top = scopes.length - 1;
+  for (var i = top; i >= 0; i--) {
+    if (scopes[i] == name) {
+      return top - i;
+    }
+  }
+  return -1;
 }
 
 function initialize(doc) {
@@ -1009,18 +1270,14 @@ function initialize(doc) {
   if (localStorage['disabled']) {
     disabled = true;
   }
-  
-  view = new HtmlView();
 
-  if (!disabled && localStorage["always_display"] != "f") {
-    updateScores();
-    updateDeck();
-  }
+  view = createView();
 
-  // Figure out what turn we are. We'll use that to figure out how long to wait
+  // Figure out which turn we are. We'll use that to figure out how long to wait
   // before announcing the extension.
   var self_index = -1;
 
+  //!! We need to also rewrite players named "you", "You", "Your", etc.
   // Hack: collect player names with spaces and apostrophes in them. We'll
   // rewrite them and then all the text parsing works as normal.
   var arr;
@@ -1029,13 +1286,15 @@ function initialize(doc) {
   } else {
     var p = "(?:([^,]+), )";    // an optional player
     var pl = "(?:([^,]+),? )";  // the last player (might not have a comma)
-    var re = new RegExp("Turn order is "+p+"?"+p+"?"+p+"?"+pl+"and then (.+).");
+    var re = new RegExp("Turn order is " + p + "?" + p + "?" + p + "?" + pl +
+        "and then (.+).");
     arr = doc.innerText.match(re);
   }
   if (arr == null) {
     handleError("Couldn't parse: " + doc.innerText);
   }
   var other_player_names = [];
+  player_count = 0;
   for (var i = 1; i < arr.length; ++i) {
     if (arr[i] == undefined) continue;
 
@@ -1050,13 +1309,21 @@ function initialize(doc) {
       arr[i] = rewritten;
     }
     // Initialize the player.
-    players[arr[i]] = new Player(arr[i]);
+    players[arr[i]] = new Player(arr[i], player_count);
 
     if (arr[i] != "You") {
       other_player_names.push(RegExp.quote(arr[i]));
     }
   }
   player_re = '(' + other_player_names.join('|') + ')';
+
+  // Create a new "player" representing the playing table, mostly the trash.
+  tablePlayer = new Player('', i);
+
+  if (!disabled) {
+    updateScores();
+    updateDeck();
+  }
 
   // Assume it's already introduced if it's rewriting the tree for a reload.
   // Otherwise setup to maybe introduce the extension.
@@ -1065,29 +1332,87 @@ function initialize(doc) {
     if (self_index != -1) {
       wait_time = 300 * self_index;
     }
-    console.log("Waiting " + wait_time + " to introduce " +
-        "(index is: " + self_index + ").");
+    console.log("Waiting " + wait_time + " to introduce " + "(index is: " +
+        self_index + ").");
     setTimeout("maybeIntroducePlugin()", wait_time);
   }
 }
 
 function maybeRewriteName(doc) {
   if (doc.innerHTML != undefined && doc.innerHTML != null) {
-    for (player in player_rewrites) {
+    for (var player in player_rewrites) {
       doc.innerHTML = doc.innerHTML.replace(player, player_rewrites[player]);
     }
   }
+}
+
+function originalName(maybeRewrittenName) {
+  for (var name in player_rewrites) {
+    if (player_rewrites[name] == maybeRewrittenName) {
+      return name;
+    }
+  }
+  return maybeRewrittenName;
+}
+
+function chatCommandAvailable(request) {
+  if (typeof(request) == 'string') {
+    request = chatCommands[request];
+  }
+  return !request.checkAvailability || request.checkAvailability();
+}
+
+function writeHelp() {
+  var inAll = [];
+  for (var request in chatCommands) {
+    var requestObj = chatCommands[request];
+    if (chatCommandAvailable(requestObj)) {
+      writeText('Type !' + request + ' to ' + requestObj.help);
+      if (!requestObj.actionCommand) {
+        inAll.push(request);
+      }
+    }
+  }
+  if (inAll.length > 1) {
+    var last = inAll.length - 1;
+    inAll[last] = 'and ' + inAll[last];
+    var sep = (inAll.length == 2 ? ' ' : ', ');
+    writeText('Type !all for ' + inAll.join(sep));
+  }
+}
+
+function setupChatCommands() {
+  chatCommands.status = {
+    help: "see player score and deck info",
+    execute: function(writeStatus) {
+      writeStatus(getDecks() + " | " + getScores());
+    }
+  };
+  chatCommands.disable = {
+    checkAvailability: canDisable,
+    actionCommand: true,
+    help: "disable the point counter (by turn 5)",
+    execute: function(writeStatus) {
+      localStorage['disabled'] = "t";
+      disabled = true;
+      hideExtension();
+      writeStatus("☠ Point counter disabled.");
+    }
+  };
+  chatCommands.help = {
+    actionCommand: true,
+    help: 'show this list of commands',
+    execute: writeHelp
+  };
+  activeDataAddChatCommands();
+  view.addChatCommands();
 }
 
 function maybeIntroducePlugin() {
   if (!introduced && !disabled) {
     writeText("★ Game scored by Dominion Point Counter ★");
     writeText("http://goo.gl/iDihS");
-    writeText("Type !status to see the current score.");
-    writeText("Type !details to see deck details for each player.");
-    if (localStorage["allow_disable"] != "f") {
-      writeText("Type !disable by turn 5 to disable the point counter.");
-    }
+    writeHelp();
   }
 }
 
@@ -1096,29 +1421,39 @@ function maybeShowStatus(request, request_time) {
 
   if (last_status_print < request_time) {
     last_status_print = new Date().getTime();
-    var to_show = ">> " + getDecks() + " | " + getScores();
-    var my_name = localStorage["name"];
-    if (my_name == undefined || my_name == null) my_name = "Me";
-    writeText(to_show.replace(/You=/g, my_name + "="));
+    showStatus(request, writeText);
   }
 }
 
-function maybeShowDetails(request_time) {
-  if (last_status_print < request_time) {
-    last_status_print = new Date().getTime();
+function showStatus(request, show) {
+  var my_name = localStorage["name"];
+  if (my_name == undefined || my_name == null) my_name = "Me";
 
-    var my_name = localStorage["name"];
-    if (my_name == undefined || my_name == null) my_name = "Me";
-
-    for (var player in players) {
-      player = players[player];
-      var name = player.name == "You" ? my_name : player.name;
-      writeText('>> *' + name + '* => ' + player.getScore() +
-                ' points [deck size is ' + player.getDeckString() + '] - ' +
-                JSON.stringify(player.special_counts));
-      writeText('>>    ' + JSON.stringify(player.card_counts));
-    }
+  show = show || writeText;
+  function writeStatus(msg) {
+    show(chat_prefix + " " + msg.replace(/\bYou([:=])/g, my_name + "$1"));
   }
+
+  if (request == 'all') {
+    for (var name in chatCommands) {
+      var command = chatCommands[name];
+      if (!command.actionCommand && chatCommandAvailable(command)) {
+        command.execute(writeStatus);
+      }
+    }
+    return;
+  }
+
+  var requestObj = chatCommands[request];
+  if (!requestObj) {
+    show("⚠ Unknown chat request: !" + request);
+    return;
+  }
+  if (!chatCommandAvailable(requestObj)) {
+    show("⚠ Chat request not available: !" + request);
+    return;
+  }
+  requestObj.execute(writeStatus);
 }
 
 function storeLog() {
@@ -1135,32 +1470,25 @@ function hideExtension() {
   view.hide();
 }
 
-function delayedRunCommand(command) {
-  var time = new Date().getTime();
-  var command = command + "(" + time + ")";
-  var wait_time = 200 * Math.floor(Math.random() * 10 + 1);
-  // If we introduced the extension, we get first dibs on answering.
-  if (i_introduced) wait_time = 100;
-  setTimeout(command, wait_time);
+function canDisable() {
+  return optionSet('allow_disable') && turn_number <= 5;
 }
 
 function handleChatText(speaker, text) {
   if (!text) return;
   if (disabled) return;
 
-  if (text == " !status") delayedRunCommand("maybeShowStatus");
-  if (text == " !details") delayedRunCommand("maybeShowDetails");
-
-  if (localStorage["allow_disable"] != "f" &&
-      text == " !disable" &&
-      turn_number <= 5) {
-    localStorage.setItem("disabled", "t");
-    disabled = true;
-    hideExtension();
-    writeText(">> Point counter disabled.");
+  var match = text.match(/^\s*!([^\s]+)/);
+  if (match) {
+    var time = new Date().getTime();
+    var command = "maybeShowStatus('" + match[1] + "', " + time + ")";
+    var wait_time = 200 * Math.floor(Math.random() * 10 + 1);
+    // If we introduced the extension, we get first dibs on answering.
+    if (i_introduced) wait_time = 100;
+    setTimeout(command, wait_time);
   }
 
-  if (text.indexOf(" >> ") == 0) {
+  if (text.indexOf(" " + chat_prefix + " ") == 0) {
     last_status_print = new Date().getTime();
   }
   if (!introduced && text.indexOf(" ★ ") == 0) {
@@ -1176,6 +1504,7 @@ function addSetting(setting, output) {
     output[setting] = localStorage[setting];
   }
 }
+
 function settingsString() {
   var settings = new Object();
   addSetting("debug", settings);
@@ -1189,7 +1518,8 @@ function settingsString() {
 
 function handleGameEnd(doc) {
   for (var node in doc.childNodes) {
-    if (doc.childNodes[node].innerText == "game log") {
+    var childNode = doc.childNodes[node];
+    if (childNode.innerText == "game log") {
       // Reset exit / faq at end of game.
       stopCounting();
       removeStoredLog();
@@ -1200,7 +1530,7 @@ function handleGameEnd(doc) {
       });
 
       // Collect information about the game.
-      var href = doc.childNodes[node].href;
+      var href = childNode.href;
       var game_id_str = href.substring(href.lastIndexOf("/") + 1);
       var name = localStorage["name"];
       if (name == undefined || name == null) name = "Unknown";
@@ -1221,7 +1551,8 @@ function handleGameEnd(doc) {
           if (arr && arr.length == 2) {
             var score = ("" + players[player].getScore()).replace(/^.*=/, "");
             if (score.indexOf("+") != -1) {
-              score = ("" + players[player].getScore()).replace(/^([0-9]+)\+.*/, "$1");
+              score = ("" + players[player].getScore()).replace(/^([0-9]+)\+.*/,
+                  "$1");
             }
             if (has_correct_score && arr[1] != score) {
               has_correct_score = false;
@@ -1234,6 +1565,7 @@ function handleGameEnd(doc) {
       var printed_state_strings = stateStrings();
 
       // Post the game information to app-engine for later use for tests, etc.
+      //noinspection JSUnusedGlobalSymbols
       chrome.extension.sendRequest({
         type: "log",
         game_id: game_id_str,
@@ -1263,6 +1595,7 @@ function stopCounting() {
   removeStoredLog();
   $('#optionPanelHolder').show();
   players = undefined;
+  text_mode = undefined;
 }
 
 // If this connotes the start of the game, start it.
@@ -1272,20 +1605,25 @@ function maybeStartOfGame(node) {
     return;
   }
 
-  if (localStorage.getItem("log") == undefined &&
-      nodeText.indexOf("Your turn 1 —") != -1) {
-    // We don't have a log but it's turn 1. This must be a solitaire game.
-    // Create a fake (and invisible) setup line. We'll get called back again
-    // with it.
+  if (!localStorage["log"] && nodeText.indexOf("Your turn 1 —") != -1) {
+    // We don't have a any players but it's your turn 1. This must be a
+    // solitaire game. Create a fake (and invisible) setup line. We'll get
+    // called back again with it by the simple act of adding it (which is why
+    // this code is *not* wrapped in rewriteTree()).
     console.log("Single player game.");
     node = $('<div class="logline" style="display:none;">' +
         'Turn order is you.</div>)').insertBefore(node)[0];
     return;
   }
 
-  // The first line of actual text is either "Turn order" or something in
-  // the middle of the game.
-  if (nodeText.indexOf("Turn order") == 0) {
+  // Either this is a turn-order log, the start of a new game, or there is a
+  // log to restore from, or it isn't the start of any game.
+  var isTurnOrder = nodeText.indexOf("Turn order") == 0;
+  if (!isTurnOrder && !localStorage["log"]) return;
+
+  createFullLog();
+
+  if (isTurnOrder) {
     // The game is starting, so put in the initial blank entries and clear
     // out any local storage.
     console.log("--- starting game ---");
@@ -1302,6 +1640,7 @@ function maybeStartOfGame(node) {
       restoring_log = false;
     }
   }
+
   started = true;
 }
 
@@ -1318,10 +1657,11 @@ function logEntryForGame(node) {
   return started;
 }
 
+// Restore the game history from a stored log.
 function restoreHistory(node) {
   // The first log line is not the first line of the game, so restore the
   // log from history. Of course, there must be a log history to restore.
-  var logHistory = localStorage.getItem("log");
+  var logHistory = localStorage['log'];
   if (logHistory == undefined || logHistory.length == 0) {
     return false;
   }
@@ -1330,18 +1670,20 @@ function restoreHistory(node) {
 
   // First build a DOM tree of the old log messages in a copy of the log.
   var log_entries = $('<pre id="temp"></pre>').html(logHistory).children();
-  for (log in log_entries) {
-    var entry = $(log_entries[log]);
-    if (entry.html() == node.innerHTML) break;
-    $('#full_log').append(entry.clone());
+  var full_log = $('#full_log');
+  log_entries.each(function() {
+    var entry = $(this);
+    if (entry.html() == node.innerHTML) return false;
     handleLogEntry(entry[0]);
-  }
-  restoring_log = false;
+    return true;
+  });
   return true;
 }
 
 function inLobby() {
-  return $('#lobby').length != 0 && $('#lobby').css('display') != "none";
+  // In the lobby there is no real supply region -- it's empty.
+  var playerTable = $('#player_table');
+  return (playerTable.length > 0);
 }
 
 // Drop any state related to knowing text vs. image mode.
@@ -1400,6 +1742,9 @@ function rewriteTree(func) {
 }
 
 function handle(doc) {
+  // Ignore DOM events when we are rewriting the tree; see rewriteTree().
+  if (rewritingTree > 0) return;
+
   // When the lobby screen is built, make sure point tracker settings are used.
   if (doc.className && doc.className == "constr") {
     $('#tracker').attr('checked', true).attr('disabled', true);
@@ -1430,20 +1775,23 @@ function handle(doc) {
     view.handle(doc);
 
     if (doc.parentNode.id == 'log') {
+      activeDataSetupTests();
       if (logEntryForGame(doc)) {
         handleLogEntry(doc);
         if (started) {
+          activeDataMaybeRunTests();
           storeLog();
         }
       }
     }
 
+    // The child nodes of "supply" tell us whether certain cards are in play.
     if (doc.parentNode.id == "supply") {
       show_action_count = false;
       show_unique_count = false;
       show_duchy_count = false;
       show_victory_count = false;
-      elems = doc.getElementsByTagName("span");
+      var elems = doc.getElementsByTagName("span");
       for (var elem in elems) {
         if (elems[elem].innerText == "Vineyard") show_action_count = true;
         if (elems[elem].innerText == "Fairgrounds") show_unique_count = true;
@@ -1454,24 +1802,26 @@ function handle(doc) {
 
     if (!started) return;
 
+    // If we're adding choices, it may be the choices at the end of the game
     if (doc.constructor == HTMLDivElement && doc.parentNode.id == "choices") {
       handleGameEnd(doc);
       if (!started) return;
     }
 
+    // We follow the chat lines to see if it says something we should react to.
     if (doc.parentNode.id == "chat" && doc.childNodes.length > 2) {
       handleChatText(doc.childNodes[1].innerText.slice(0, -1),
-                     doc.childNodes[2].nodeValue);
+          doc.childNodes[2].nodeValue);
     }
 
-    if (localStorage["always_display"] != "f") {
-      if (!disabled) {
-        updateScores();
-        updateDeck();
-      }
+    // Something was added, this is a good time to update the display.
+    if (!disabled) {
+      updateScores();
+      updateDeck();
     }
-  }
-  catch (err) {
+
+    maybeRunInfoWindowTests(doc);
+  } catch (err) {
     console.log(err);
     console.log(doc);
     var error = '';
@@ -1482,10 +1832,10 @@ function handle(doc) {
   }
 }
 
-
 //
 // Chat status handling.
 //
+setupChatCommands();
 
 function buildStatusMessage() {
   var status_message = "/me Auto▼Count";
@@ -1497,14 +1847,15 @@ function buildStatusMessage() {
 }
 
 function enterLobby() {
-  if (localStorage["status_announce"] == "t" &&
-      $('#lobby').length != 0 && $('#lobby').css('display') != "none") {
+  if (optionSet('status_announce') && $('#lobby').length != 0 &&
+      $('#lobby').css('display') != "none") {
     // Set the original status message.
     writeText(buildStatusMessage());
 
     // Handle updating status message as needed.
     $('#entry').css('display', 'none');
-    $('#entry').after('<input id="fake_entry" class="entry" style="width: 350px;">');
+    $('#entry')
+        .after('<input id="fake_entry" class="entry" style="width: 350px;">');
     $('#fake_entry').keyup(function(event) {
       var value = $('#fake_entry').val();
       var re = new RegExp("^/me(?: (.*))?$");
@@ -1528,11 +1879,12 @@ function enterLobby() {
 
     getSayButton().addEventListener('click', function() {
       $('#fake_entry').val("");
-    })
+    });
   }
 
   view.enterLobby();
 }
+
 setTimeout("enterLobby()", 600);
 
 function maybeUpdateTempSay(ev) {
@@ -1563,3 +1915,10 @@ document.body.addEventListener('DOMNodeInserted', function(ev) {
 chrome.extension.sendRequest({ type: "version" }, function(response) {
   extension_version = response;
 });
+
+function logDebug(area, msg) {
+  if (debug[area]) {
+    msg = msg.replace(/^/mg, area + ':');
+    console.log(msg);
+  }
+}

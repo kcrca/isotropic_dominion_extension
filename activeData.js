@@ -455,8 +455,6 @@ function activeDataStop() {
 // If appropriate, adjust active data values. Return 'true' if there is no
 // possibility of other useful data to be handled in this log line.
 function activeDataHandleCounts(elems, text) {
-  
-  
   // Handle lines like "You play a Foo", or "You play a Silver and 2 Coppers."
   // But ignore "You trash xyz from your play area" after you buy a Mint.
   var match;
@@ -487,6 +485,8 @@ function activeDataHandleCounts(elems, text) {
   return false; // the log message may say something else valuable
 }
 
+//!! Doesn't this really belong in the general card counting? It's not active,
+//   nor is it about the view, it's just tracking what's going on.
 function maybeHandleIsland(elems, text_arr, text) {
   if (!activeData || !activeData.lastPlayed) return false;
   var lastPlayed = activeData.lastPlayed.Singular;
@@ -526,17 +526,19 @@ function activeDataCardBought(count, card) {
   activeData.changeField('potions', -(count * card.getCurrentPotionCost()));
 }
 
-function activeDataWriteTextPrompt() {
-  if (tracking_active_data) {
-    writeText("Type !active to see active player's counts.");
-  }
-}
-
-function activeDataCommands() {
-  return "active|";
+function activeDataAddChatCommands() {
+  chatCommands.counts = {
+    checkAvailability: function() {
+      return started && tracking_active_data;
+    },
+    help: "see active player's counts",
+    execute: function(writeStatus) {
+      writeStatus(activeDataString());
+    }
+  };
 }
 
 function activeDataString() {
-  if (!last_player) return "[none]";
+  if (!started || !last_player) return "[none]";
   return "Active: " + last_player.name + ", " + activeData.toString();
 }
