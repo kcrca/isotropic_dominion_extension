@@ -84,8 +84,7 @@ function rewriteName(name) {
 }
 
 function createView() {
-  activeDataInitialize();
-  return new OrigView();
+  return new HtmlView();
 }
 
 function handleError(text) {
@@ -221,7 +220,7 @@ function Player(name, num) {
       score_str = score_str + "=" + total_score;
     }
     return score_str;
-  };
+  }
 
   this.getDeckString = function() {
     var str = this.deck_size;
@@ -250,18 +249,18 @@ function Player(name, num) {
       str += '(' + special_types.join(", ") + ')';
     }
     return str;
-  };
+  }
 
   this.changeScore = function(points) {
     this.score = this.score + parseInt(points);
-  };
+  }
 
   this.changeSpecialCount = function(name, delta) {
     if (this.special_counts[name] == undefined) {
       this.special_counts[name] = 0;
     }
     this.special_counts[name] = this.special_counts[name] + delta;
-  };
+  }
 
   this.recordCards = function(name, count) {
     if (this.card_counts[name] == undefined || this.card_counts[name] == 0) {
@@ -320,7 +319,7 @@ function Player(name, num) {
             card.innerText);
       }
     }
-  };
+  }
 
   this.gainCard = function(card, count, trashing) {
     if (debug_mode) {
@@ -365,7 +364,7 @@ function stateStrings() {
   var state = '';
   for (var player in players) {
     player = players[player];
-    state += '<strong>' + player.name + "</strong>: " + player.getScore() +
+    state += '<b>' + player.name + "</b>: " + player.getScore() +
         " points [deck size is " + player.getDeckString() + "] - " +
         JSON.stringify(player.special_counts) + "<br>" +
         JSON.stringify(player.card_counts) + "<br>";
@@ -439,7 +438,9 @@ function maybeHandleTurnChange(node) {
   var text = node.innerText;
   if (text.indexOf("—") != -1) {
     if (!supplied_cards) {
-      // Figure out which cards are in supply piles
+      // Figure out which cards are in supply piles.
+      // Done here because if we're in veto mode the supply piles don't exist,
+      // they are only guaranteed to exist on the first turn.
       supplied_cards = {};
       $("[cardname]").each(function() {
         supplied_cards[$(this).attr("cardname")] = true;
@@ -768,10 +769,8 @@ function maybeHandleGainInHand(elems, text) {
   // message will say who literally gets the new Gold: "... Alice gains the
   // Gold". So during Possession, "gains [...] in hand" doesn't mean "gain"
   // in the same way as everywhere else.
-  if (text.match(/gain(ing)? a (.*) in (your )?hand/)) {
-    if (!possessed_turn) {
-      last_player.gainCard(elems[elems.length - 1], 1);
-    }
+  if (!possessed_turn && text.match(/gain(ing)? a (.*) in (your )?hand/)) {
+    last_player.gainCard(elems[elems.length - 1], 1);
     return true;
   }
   return false;
@@ -936,10 +935,10 @@ function maybeHandleNobleBrigand(elems, text_arr, text) {
 }
 
 function maybeHandleVp(text) {
-  var arr = text.match(/\+([0-9]+) ▼/);
+  var re = new RegExp("[+]([0-9]+) ▼");
+  var arr = text.match(re);
   if (arr && arr.length == 2) {
     last_player.changeScore(arr[1]);
-    activeDataHandleVP(arr[1]);
   }
 }
 
@@ -1057,6 +1056,7 @@ function handleLogEntry(node) {
     // make sure we are using the node after any rewrites
     maybeAddToFullLog(node);
     showCurrentInfo();
+    view.handleLogDone();
   }
 }
 
@@ -1072,24 +1072,23 @@ function handlePlayLog(node) {
   // Make sure this isn't a duplicate possession entry.
   if (node.className.indexOf("possessed-log") > 0) return;
 
-  var nodeText = node.innerText;
-  var text = nodeText.split(" ");
+  var text = node.innerText.split(" ");
 
   // Keep track of what sort of scope we're in for things like watchtower.
-  handleScoping(text, nodeText);
+  handleScoping(text, node.innerText);
 
   // Gaining VP could happen in combination with other stuff.
-  maybeHandleVp(nodeText);
+  maybeHandleVp(node.innerText);
 
   var elems = node.getElementsByTagName("span");
 
-  view.handleLog(elems, nodeText);
+  view.handleLog(elems, node.innerText);
 
   // elems.length may be zero for this, so try before the check for zero elems.
-  if (maybeHandleFromNativeVillage(nodeText)) return;
+  if (maybeHandleFromNativeVillage(node.innerText)) return;
 
   if (elems.length == 0) {
-    if (maybeReturnToSupply(nodeText)) return;
+    if (maybeReturnToSupply(node.innerText)) return;
     return;
   }
 
@@ -1101,31 +1100,31 @@ function handlePlayLog(node) {
   if (i == text.length) return;
   text = text.slice(i);
 
-  if (maybeHandleMint(elems, nodeText)) return;
-  if (maybeHandleTradingPost(elems, nodeText)) return;
-  if (maybeHandleGainInHand(elems, nodeText)) return;
-  if (maybeHandleSwindler(elems, nodeText)) return;
-  if (maybeHandlePirateShip(elems, text, nodeText)) return;
-  if (maybeHandleSeaHag(elems, text, nodeText)) return;
-  if (maybeHandleOffensiveTrash(elems, text, nodeText)) return;
-  if (maybeHandleTournament(elems, text, nodeText)) return;
-  if (maybeHandleIsland(elems, text, nodeText)) return;
-  if (maybeHandleCoppersmith(elems, text, nodeText)) return;
-  if (maybeHandleToNativeVillage(elems, text, nodeText)) return;
-  if (maybeHandleGainViaReveal(elems, text, nodeText)) return;
-  if (maybeHandleTrader(elems, text, nodeText)) return;
-  if (maybeHandleNobleBrigand(elems, text, nodeText)) return;
+  if (maybeHandleMint(elems, node.innerText)) return;
+  if (maybeHandleTradingPost(elems, node.innerText)) return;
+  if (maybeHandleGainInHand(elems, node.innerText)) return;
+  if (maybeHandleSwindler(elems, node.innerText)) return;
+  if (maybeHandlePirateShip(elems, text, node.innerText)) return;
+  if (maybeHandleSeaHag(elems, text, node.innerText)) return;
+  if (maybeHandleOffensiveTrash(elems, text, node.innerText)) return;
+  if (maybeHandleTournament(elems, text, node.innerText)) return;
+  if (maybeHandleIsland(elems, text, node.innerText)) return;
+  if (maybeHandleCoppersmith(elems, text, node.innerText)) return;
+  if (maybeHandleToNativeVillage(elems, text, node.innerText)) return;
+  if (maybeHandleTrader(elems, text, node.innerText)) return;
+  if (maybeHandleGainViaReveal(elems, text, node.innerText)) return;
+  if (maybeHandleNobleBrigand(elems, text, node.innerText)) return;
 
   if (text[0] == "trashing") {
-    var trasher = last_player;
+    var player = last_player;
     if (topScope() == "Watchtower") {
-      trasher = last_gain_player;
+      player = last_gain_player;
     }
-    handleGainOrTrash(trasher, elems, nodeText, -1);
+    handleGainOrTrash(player, elems, node.innerText, -1);
     return;
   }
   if (text[1].indexOf("trash") == 0) {
-    handleGainOrTrash(getPlayer(text[0]), elems, nodeText, -1);
+    handleGainOrTrash(getPlayer(text[0]), elems, node.innerText, -1);
     return;
   }
   if (text[0] == "gaining") {
@@ -1133,12 +1132,12 @@ function handlePlayLog(node) {
     // buying one -- it's the possessor, not the possessee, who gains it, which
     // is stated by a later log message.
     if (!possessed_turn) {
-      handleGainOrTrash(last_player, elems, nodeText, 1);
+      handleGainOrTrash(last_player, elems, node.innerText, 1);
     }
     return;
   }
   if (text[1].indexOf("gain") == 0) {
-    handleGainOrTrash(getPlayer(text[0]), elems, nodeText, 1);
+    handleGainOrTrash(getPlayer(text[0]), elems, node.innerText, 1);
     return;
   }
 
@@ -1160,18 +1159,18 @@ function handlePlayLog(node) {
   var card_obj = card_map[card_text];
 
   if (action.indexOf("buy") == 0) {
-    var count = getCardCount(card_text, nodeText);
+    var count = getCardCount(card_text, node.innerText);
     // In possessed turns, it isn't who buys something, it's who "gains" it
     // (and who gains it is stated in a separate log entry).
     if (!possessed_turn) {
       player.gainCard(card, count);
     }
-    activeDataCardBought(count, card_obj);
+    view.buy(count, card_obj);
   } else if (action.indexOf("pass") == 0) {
     unpossessed(function() {
       if (player_count > 2) {
-        maybeAnnounceFailure("⚠ Warning: Masquerade with more than 2 " +
-            "players causes inaccurate score counting.");
+        maybeAnnounceFailure("⚠ Warning: Masquerade with more than 2 players" +
+            " causes inaccurate score counting.");
         test_only_my_score = true;
       }
       player.gainCard(card, -1, false);
@@ -1260,6 +1259,7 @@ function initialize(doc) {
 
   last_gain_player = null;
   scopes = [];
+
   players = new Object();
   player_rewrites = new Object();
   player_re = "";
@@ -1271,11 +1271,11 @@ function initialize(doc) {
     disabled = true;
   }
 
-  view = createView();
-
-  // Figure out which turn we are. We'll use that to figure out how long to wait
+  // Figure out what turn we are. We'll use that to figure out how long to wait
   // before announcing the extension.
   var self_index = -1;
+
+  view = createView();
 
   //!! We need to also rewrite players named "you", "You", "Your", etc.
   // Hack: collect player names with spaces and apostrophes in them. We'll
@@ -1365,10 +1365,10 @@ function chatCommandAvailable(request) {
 function writeHelp() {
   var inAll = [];
   for (var request in chatCommands) {
-    var requestObj = chatCommands[request];
-    if (chatCommandAvailable(requestObj)) {
-      writeText('Type !' + request + ' to ' + requestObj.help);
-      if (!requestObj.actionCommand) {
+    var command = chatCommands[request];
+    if (chatCommandAvailable(command)) {
+      writeText('Type !' + request + ' to ' + command.help);
+      if (!command.actionCommand) {
         inAll.push(request);
       }
     }
@@ -1404,7 +1404,6 @@ function setupChatCommands() {
     help: 'show this list of commands',
     execute: writeHelp
   };
-  activeDataAddChatCommands();
   view.addChatCommands();
 }
 
@@ -1444,16 +1443,16 @@ function showStatus(request, show) {
     return;
   }
 
-  var requestObj = chatCommands[request];
-  if (!requestObj) {
+  var command = chatCommands[request];
+  if (!command) {
     show("⚠ Unknown chat request: !" + request);
     return;
   }
-  if (!chatCommandAvailable(requestObj)) {
+  if (!chatCommandAvailable(command)) {
     show("⚠ Chat request not available: !" + request);
     return;
   }
-  requestObj.execute(writeStatus);
+  command.execute(writeStatus);
 }
 
 function storeLog() {
@@ -1518,8 +1517,7 @@ function settingsString() {
 
 function handleGameEnd(doc) {
   for (var node in doc.childNodes) {
-    var childNode = doc.childNodes[node];
-    if (childNode.innerText == "game log") {
+    if (doc.childNodes[node].innerText == "game log") {
       // Reset exit / faq at end of game.
       stopCounting();
       removeStoredLog();
@@ -1530,7 +1528,7 @@ function handleGameEnd(doc) {
       });
 
       // Collect information about the game.
-      var href = childNode.href;
+      var href = doc.childNodes[node].href;
       var game_id_str = href.substring(href.lastIndexOf("/") + 1);
       var name = localStorage["name"];
       if (name == undefined || name == null) name = "Unknown";
@@ -1606,7 +1604,7 @@ function maybeStartOfGame(node) {
   }
 
   if (!localStorage["log"] && nodeText.indexOf("Your turn 1 —") != -1) {
-    // We don't have a any players but it's your turn 1. This must be a
+    // We don't have any players but it's your turn 1. This must be a
     // solitaire game. Create a fake (and invisible) setup line. We'll get
     // called back again with it by the simple act of adding it (which is why
     // this code is *not* wrapped in rewriteTree()).
@@ -1681,9 +1679,7 @@ function restoreHistory(node) {
 }
 
 function inLobby() {
-  // In the lobby there is no real supply region -- it's empty.
-  var playerTable = $('#player_table');
-  return (playerTable.length > 0);
+  return ($('#player_table').length > 0);
 }
 
 // Drop any state related to knowing text vs. image mode.
@@ -1710,10 +1706,6 @@ function discoverGUIMode() {
   $("#body").addClass("playing").addClass(text_mode ? "textMode" : "imageMode");
 }
 
-function updateCardCountVisibility() {
-  view.updateCardCountVisibility();
-}
-
 function addOptionHandler(name, updateVisibility) {
   var button = optionButtons[name];
   button.change(updateVisibility);
@@ -1726,8 +1718,12 @@ function addOptionControls(game) {
   controls.attr('colspan', 2);
   holder.append(controls);
   game.after(holder);
-  addOptionHandler('show_card_counts', updateCardCountVisibility);
-  addOptionHandler('show_active_data', activeDataUpdateVisibility);
+  addOptionHandler('show_card_counts', function() {
+    view.updateCardCountVisibility()
+  });
+  addOptionHandler('show_active_data', function() {
+    view.updateShowActiveData();
+  });
 }
 
 // Perform a function that rewrites the tree, suppressing the processing of all
@@ -1775,11 +1771,9 @@ function handle(doc) {
     view.handle(doc);
 
     if (doc.parentNode.id == 'log') {
-      activeDataSetupTests();
       if (logEntryForGame(doc)) {
         handleLogEntry(doc);
         if (started) {
-          activeDataMaybeRunTests();
           storeLog();
         }
       }
@@ -1879,7 +1873,7 @@ function enterLobby() {
 
     getSayButton().addEventListener('click', function() {
       $('#fake_entry').val("");
-    });
+    })
   }
 
   view.enterLobby();

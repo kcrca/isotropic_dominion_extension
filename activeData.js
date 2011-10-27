@@ -256,11 +256,14 @@ function activeDataSetupPlayer(player) {
 
 function activeDataStartHandle(doc) {
   doc = $(doc);
-  if (doc.parent().attr('id') == 'choices' &&
-      doc.text().match(/^\s*play or buy cards/)) {
+  var parentID = doc.parent().attr('id');
+  if (parentID == 'choices' && doc.text().match(/^\s*play or buy cards/)) {
     blackMarketPrices = doc.find('.choice').filter(function() {
       return $(this).text().indexOf('($') > 0;
     });
+  }
+  if (parentID == 'log') {
+    activeDataSetupTests();
   }
 }
 
@@ -482,6 +485,7 @@ function activeDataHandleCounts(elems, text) {
   adjustActive('actions', /\+([0-9]+) action/.exec(text));
   adjustActive('buys', /\+([0-9]+) buy/.exec(text));
   adjustActive('coins', /\+\$([0-9]+)/.exec(text));
+  adjustActive('VP', /\+([0-9]+) ▼/.exec(text));
   return false; // the log message may say something else valuable
 }
 
@@ -508,10 +512,6 @@ function maybeHandleCoppersmith(elems, text_arr, text) {
     return true;
   }
   return false;
-}
-
-function activeDataHandleVP(text) {
-  activeData.changeField('VP', parseInt(text));
 }
 
 function isNormalBuy() {
