@@ -919,8 +919,10 @@ function maybeHandleTrader(elems, text_arr, text) {
 //noinspection JSUnusedLocalSymbols
 function maybeHandleGainViaReveal(elems, text_arr, text) {
   if (elems.length == 2 &&
-      text.match(/reveal(ing|s) an? (.*) and gain(ing|s)? an? (.*)\./)) {
-    last_player.gainCard(elems[1], 1);
+      text.match(/reveal(ing|s)? an? (.*) and gain(ing|s)? an? (.*)\./)) {
+    var player = getPlayer(text_arr[0]);
+    if (!player) player = last_player;
+    player.gainCard(elems[1], 1);
     return true;
   }
   return false;
@@ -1116,11 +1118,11 @@ function handlePlayLog(node) {
   if (maybeHandleNobleBrigand(elems, text, node.innerText)) return;
 
   if (text[0] == "trashing") {
-    var player = last_player;
+    var trasher = last_player;
     if (topScope() == "Watchtower") {
-      player = last_gain_player;
+      trasher = last_gain_player;
     }
-    handleGainOrTrash(player, elems, node.innerText, -1);
+    handleGainOrTrash(trasher, elems, node.innerText, -1);
     return;
   }
   if (text[1].indexOf("trash") == 0) {
@@ -1435,9 +1437,9 @@ function showStatus(request, show) {
 
   if (request == 'all') {
     for (var name in chatCommands) {
-      var command = chatCommands[name];
-      if (!command.actionCommand && chatCommandAvailable(command)) {
-        command.execute(writeStatus);
+      var subCommand = chatCommands[name];
+      if (!subCommand.actionCommand && chatCommandAvailable(subCommand)) {
+        subCommand.execute(writeStatus);
       }
     }
     return;
@@ -1517,7 +1519,8 @@ function settingsString() {
 
 function handleGameEnd(doc) {
   for (var node in doc.childNodes) {
-    if (doc.childNodes[node].innerText == "game log") {
+    var child = doc.childNodes[node];
+    if (child.innerText == "game log") {
       // Reset exit / faq at end of game.
       stopCounting();
       removeStoredLog();
@@ -1528,7 +1531,7 @@ function handleGameEnd(doc) {
       });
 
       // Collect information about the game.
-      var href = doc.childNodes[node].href;
+      var href = child.href;
       var game_id_str = href.substring(href.lastIndexOf("/") + 1);
       var name = localStorage["name"];
       if (name == undefined || name == null) name = "Unknown";
@@ -1573,8 +1576,8 @@ function handleGameEnd(doc) {
         log: document.body.innerHTML,
         version: extension_version,
         settings: settingsString() });
-    } else if (childNode.innerText == "return") {
-      childNode.addEventListener("DOMActivate", removePlayerData, true);
+    } else if (child.innerText == "return") {
+      child.addEventListener("DOMActivate", removePlayerData, true);
     }
   }
 }
@@ -1598,6 +1601,22 @@ function stopCounting() {
 
 // If this connotes the start of the game, start it.
 function maybeStartOfGame(node) {
+  if (inLobby()) {
+    // If we're in the lobby, this can't be the start of a game.
+    // But if we have a stored log, that means that the last we knew, we were in 
+    // the middle of a game in this same browser. Which means that we were
+    // booted from the game for inactivity, or we hit exit, etc. In some cases
+    // that would mean that when the user logged in they would be taken straight
+    // to the still-in-progress game, but if the game is over, the server puts
+    // us straight into the lobby. So if we are in the lobby but have a stored
+    // log, we need to clean up.
+    if (localStorage['log']) {
+      removeStoredLog();
+      removePlayerData();
+    }
+    return;
+  }
+
   var nodeText = node.innerText.trim();
   if (nodeText.length == 0) {
     return;
