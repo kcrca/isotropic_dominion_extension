@@ -59,8 +59,6 @@ function ActiveData() {
     fields.add('played', { initial: 0 });
   });
 
-  this.lastPlayed = undefined;
-
   // The default value of each field is held was set above, so remember them.
   var defaultValues = fields.values();
 
@@ -71,7 +69,6 @@ function ActiveData() {
     for (var f in defaultValues) {
       fields.set(f, defaultValues[f]);
     }
-    this.lastPlayed = undefined;
     valid = true;
   }
 
@@ -123,8 +120,6 @@ function ActiveData() {
       return;
     }
 
-    this.lastPlayed = card;
-
     // Change 'played' field first because the values of some cards rely on it.
     var scope = topScope(1);
     if ((scope == "King's Court" || scope == "Throne Room") && isAgain) {
@@ -149,36 +144,6 @@ function ActiveData() {
 
   this.toString = function() {
     return fields.toString();
-  };
-
-  //noinspection JSUnusedLocalSymbols
-  this.setupPlayer = function(player) {
-    player.cards_aside = {};
-
-    player.setAside = function(elems) {
-      for (var i = 0; i < elems.length; i++) {
-        var card = elems[i];
-        var cardName = getSingularCardName(card.innerText);
-        if (!this.cards_aside[cardName]) {
-          this.cards_aside[cardName] = 1;
-        } else {
-          this.cards_aside[cardName]++;
-        }
-        this.deck_size--;
-        this.updateCardDisplay(cardName);
-      }
-    };
-
-    player.asideCount = function() {
-      var count = 0;
-      for (var cardName in this.cards_aside) {
-        var aside = this.cards_aside[cardName];
-        if (aside) {
-          count += aside;
-        }
-      }
-      return count;
-    };
   };
 
   (function() {
@@ -448,14 +413,20 @@ function ActiveData() {
     removeActivePlayerData();
   };
 
+  this.handleLog = function(elems, text, nodeText) {
+    handleCounts(elems, text, nodeText);
+    maybeHandleCoppersmith(elems, text, nodeText);
+  };
+
   // If appropriate, adjust active data values. Return 'true' if there is no
   // possibility of other useful data to be handled in this log line.
-  this.handleCounts = function(elems, text) {
+  //noinspection JSUnusedLocalSymbols
+  function handleCounts(elems, text, nodeText) {
     // Handle lines like "You play a Foo", or "You play a Silver and 2 Coppers."
     // But ignore "You trash xyz from your play area" after you buy a Mint.
     var match;
-    if ((match = text.match(/ play(?:s?|ing) (.*)/)) &&
-        !text.match(/ play area/)) {
+    if ((match = nodeText.match(/ play(?:s?|ing) (.*)/)) &&
+        !nodeText.match(/ play area/)) {
       var parts = match[1].split(/,|,?\s+and\b/);
       var elemNum = 0;
       for (var i = 0; i < parts.length; i++) {
@@ -464,8 +435,8 @@ function ActiveData() {
         var cardElem = $(elems[elemNum++]);
         var cardName = cardElem.text();
         var card = card_map[cardName];
-        var userAction = !text.match(/^\.\.\. /);
-        var isAgain = text.match(/ (again|a ([^ ]*) time)\.$/);
+        var userAction = !nodeText.match(/^\.\.\. /);
+        var isAgain = nodeText.match(/ (again|a ([^ ]*) time)\.$/);
         cardHasBeenPlayed(match[1], cardName, userAction, isAgain);
         if (card.isDuration()) {
           last_player.addToCardGroup('durations', cardElem, 1);
@@ -475,12 +446,22 @@ function ActiveData() {
     }
 
     // Handle lines like "You get +1 buy and +$1."
-    adjustActive('actions', /\+([0-9]+) action/.exec(text));
-    adjustActive('buys', /\+([0-9]+) buy/.exec(text));
-    adjustActive('coins', /\+\$([0-9]+)/.exec(text));
-    adjustActive('VP', /\+([0-9]+) ▼/.exec(text));
+    adjustActive('actions', /\+([0-9]+) action/.exec(nodeText));
+    adjustActive('buys', /\+([0-9]+) buy/.exec(nodeText));
+    adjustActive('coins', /\+\$([0-9]+)/.exec(nodeText));
+    adjustActive('VP', /\+([0-9]+) ▼/.exec(nodeText));
     return false; // the log message may say something else valuable
-  };
+  }
+
+  //noinspection JSUnusedLocalSymbols
+  function maybeHandleCoppersmith(elems, text_arr, text) {
+    var match = text.match(/ Copper (?:is now )?worth \$([0-9]+)/);
+    if (match) {
+      activeData.set('copper', parseInt(match[1]));
+      return true;
+    }
+    return false;
+  }
 
   function isNormalBuy() {
     return findScope("Black Market") < 1;
@@ -511,29 +492,3 @@ function ActiveData() {
     return "Active: " + last_player.name + ", " + this.toString();
   };
 }
-
-function maybeHandleIsland(elems, text_arr, text) {
-  if (!activeData || !activeData.lastPlayed) return false;
-  var lastPlayed = activeData.lastPlayed.Singular;
-  if (lastPlayed == "Island" && text.match(/ set(ting|s)? aside /)) {
-    var player = getPlayer(text_arr[0]);
-    if (player == null)
-      player = last_player;
-    player.setAside(elems);
-    return true;
-  }
-  return false;
-}
-
-//!! Doesn't this really belong in the general card counting? It's not active,
-//   nor is it about the view, it's just tracking what's going on.
-//noinspection JSUnusedLocalSymbols
-function maybeHandleCoppersmith(elems, text_arr, text) {
-  var match = text.match(/ Copper (?:is now )?worth \$([0-9]+)/);
-  if (match) {
-    activeData.set('copper', parseInt(match[1]));
-    return true;
-  }
-  return false;
-}
-
