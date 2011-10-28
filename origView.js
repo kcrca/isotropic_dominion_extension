@@ -63,18 +63,6 @@ function OrigView() {
   };
 
   //noinspection JSUnusedLocalSymbols
-  this.gainPirateShipToken = function(player, count) {
-  };
-
-  //noinspection JSUnusedLocalSymbols
-  this.toNativeVillage = function(player, spec) {
-  };
-
-  //noinspection JSUnusedLocalSymbols
-  this.clearNativeVillage = function(player) {
-  };
-
-  //noinspection JSUnusedLocalSymbols
   this.handleLog = function(elems, nodeText) {
   };
 

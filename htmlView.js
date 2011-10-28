@@ -575,31 +575,44 @@ function HtmlView() {
     ungrowHeaderColumns();
   }
 
-  this.gainPirateShipToken = function(player, count) {
-    count = count == undefined ? 1 : count;
-    player.changeField('pirateShipTokens', count);
-  };
+  //noinspection JSUnusedLocalSymbols
+  function maybeGainPirateShipToken(elems, text, nodeText) {
+    if (nodeText.indexOf("a Pirate Ship token") != -1) {
+      var player = getPlayer(text[0]);
+      player.changeField('pirateShipTokens', 1);
+    }
+  }
 
-  this.toNativeVillage = function(player, spec) {
+  function toNativeVillage(player, spec) {
+    var field = player.fields.field('nativeVillage');
     if (typeof(spec) == 'number') {
+      if (!field) {
+        player.fields.set('nativeVillage', 0);
+      }
+      field.change({suffix: ' cards'});
       player.changeField('nativeVillage', 1);
+      if (field.get() == 1) {
+        field.change({suffix: ' card'});
+      }
     } else {
+      if (field) field.change({suffix: undefined});
       player.addToCardGroup('nativeVillage', spec);
     }
-  };
+  }
 
-  this.clearNativeVillage = function(player) {
+  function clearNativeVillage(player) {
     if (typeof(player.get('nativeVillage')) == 'number') {
-      player.changeField('nativeVIllage', 0);
+      player.set('nativeVillage', 0);
     } else {
       player.clearCardGroup('nativeVillage');
     }
-  };
+  }
 
   this.handleLog = function(elems, text, nodeText) {
     activeData.handleLog(elems, text, nodeText);
-    maybeHandleIsland(elems, text, nodeText);
-    maybeHandleToNativeVillage(elems, text, nodeText);
+    maybeGainPirateShipToken(elems, text, nodeText) ||
+        maybeHandleIsland(elems, text, nodeText) ||
+        maybeHandleToNativeVillage(elems, text, nodeText) ||
     maybeHandleFromNativeVillage(elems, text, nodeText);
   };
 
@@ -624,9 +637,9 @@ function HtmlView() {
     var m = text.match(/ (to|on) the Native Village mat\./);
     if (m) {
       if (elems.length == 2) {
-        view.toNativeVillage(last_player, $(elems[0]));
+        toNativeVillage(last_player, $(elems[0]));
       } else if (!text.match(/ drawing nothing /)) {
-        view.toNativeVillage(last_player, 1);
+        toNativeVillage(last_player, 1);
       }
       return true;
     }
@@ -637,7 +650,7 @@ function HtmlView() {
   function maybeHandleFromNativeVillage(elems, text_arr, text) {
     if (text.match(/ pick(s|ing) up .+ from the Native Village mat/) ||
         text.match(/ puts? the mat contents into (.+) hand\./)) {
-      view.clearNativeVillage(last_player);
+      clearNativeVillage(last_player);
       return true;
     }
     return false;
