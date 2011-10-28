@@ -1,6 +1,4 @@
 (function() {
-  // The card list is just to log the cards 10 at a time so I have a list of all
-  // cards in groups I can request to use for testing.
   for (var i = 0; i < card_list.length; i++) {
     var card = card_list[i];
     card.isAction = function() {
@@ -39,6 +37,7 @@
 function HtmlView() {
   var maxTradeRoute = undefined;
   var seen_first_turn = false;
+  var activeData = new ActiveData();
 
   // How many different player CSS classes are supported?
   //noinspection LocalVariableNamingConventionJS
@@ -181,7 +180,7 @@ function HtmlView() {
     rewriteTree(function() {
       var ptab = $('#playerDataTable')[0];
       var row1 = addRow(ptab, player.classFor,
-          activeDataColumn(player) + '<td id="' + player.idFor('mark') +
+          activeData.column(player) + '<td id="' + player.idFor('mark') +
               '" class="rowStretch markPlace"></td>' + '<td id="' +
               player.idFor('name') + '" class="playerDataName" rowspan="0">' +
               originalName(player.name) + '</td>');
@@ -326,7 +325,7 @@ function HtmlView() {
       return name + ': ' + this.fields.toString();
     };
 
-    activeDataSetupPlayer(this);
+    activeData.setupPlayer(this);
   };
 
   this.set = function(player, name, value) {
@@ -343,7 +342,7 @@ function HtmlView() {
     card = $(card);
     var cardName = getSingularCardName(card.text());
     if (!supplied_cards[cardName]) {
-      player.addToCardGroup('otherCards', cardName, count);
+      player.addToCardGroup('otherCards', card, count);
     }
 
     if (trashing || player.isTable) {
@@ -352,8 +351,8 @@ function HtmlView() {
   };
 
   this.buy = function(count, card_obj) {
-    activeDataCardBought(count, card_obj);
-  }
+    activeData.cardBought(count, card_obj);
+  };
 
   this.maybeHandleFirstTurn = function() {
     if (seen_first_turn) return;
@@ -365,18 +364,18 @@ function HtmlView() {
 
     maybeWatchTradeRoute();
 
-    activeDataHandleFirstTurn();
+    activeData.handleFirstTurn();
   };
 
   this.beforeTurn = function() {
     this.maybeHandleFirstTurn();
     // End the previous turn.
-    activeDataEndTurn();
+    activeData.endTurn();
   };
 
   this.startTurn = function(node) {
     markCurrentPlayer();
-    activeDataStartTurn();
+    activeData.startTurn();
 
     // The start of the turn is styled to match the player's data area.
     $(node).addClass(last_player.classFor);
@@ -484,7 +483,7 @@ function HtmlView() {
     $('.activeMark').removeClass('activeMark');
     $('#' + last_player.idFor('mark')).addClass('activeMark');
 
-    activeDataPlace();
+    activeData.place();
   }
 
   // Remove the card counts columns
@@ -500,7 +499,7 @@ function HtmlView() {
       ptab = document.getElementById('playerDataTable');
     }
     if (ptab != null && ptab.parentNode != null) {
-      activeDataStop();
+      activeData.stop();
       ptab.parentNode.removeChild(ptab);
     }
     removeCardCounts();
@@ -529,11 +528,11 @@ function HtmlView() {
   };
 
   this.handleLog = function(elems, nodeText) {
-    activeDataHandleCounts(elems, nodeText)
+    activeData.handleCounts(elems, nodeText)
   };
 
   this.handleLogDone = function() {
-    if (started) activeDataMaybeRunTests();
+    if (started) activeData.maybeRunTests();
   };
 
   // Add a row to a table.
@@ -621,13 +620,6 @@ function HtmlView() {
     });
   }
 
-  // Drop any state related to knowing text vs. image mode.
-  function forgetGUIMode() {
-    document.firstChild.id = "";
-    $("#body").removeClass("textMode").removeClass("imageMode")
-        .removeClass("playing");
-  }
-
   function maybeWatchTradeRoute() {
     if (!tablePlayer) return;
 
@@ -654,10 +646,10 @@ function HtmlView() {
       countCols.hide();
     }
   };
-  
+
   this.updateShowActiveData = function() {
-    activeDataUpdateVisibility();
-  }
+    activeData.updateVisibility();
+  };
 
   this.hide = function() {
     this.stop();
@@ -668,16 +660,15 @@ function HtmlView() {
 
   this.remove = function() {
     removePlayerArea();
-    forgetGUIMode();
     $('#playerDataArranger').remove();
   };
 
   this.stop = function() {
-    activeDataStop();
+    activeData.stop();
   };
 
   this.handle = function(doc) {
-    activeDataStartHandle(doc);
+    activeData.startHandle(doc);
 
     if (!started) {
       // This is sometimes left around
@@ -697,7 +688,7 @@ function HtmlView() {
   };
 
   this.addChatCommands = function() {
-    activeDataAddChatCommands();
+    activeData.addChatCommands();
     chatCommands.counts = {
       help:  "see card counts",
       execute: function(writeStatus) {
@@ -716,6 +707,5 @@ function HtmlView() {
     };
   };
 
-  activeDataInitialize();
   setupPerPlayerInfoArea();
 }
