@@ -836,29 +836,6 @@ function maybeHandlePirateShip(elems, text_arr, text) {
   return false;
 }
 
-//noinspection JSUnusedLocalSymbols
-function maybeHandleToNativeVillage(elems, text_arr, text) {
-  var m = text.match(/ (to|on) the Native Village mat\./);
-  if (m) {
-    if (elems.length == 2) {
-      view.toNativeVillage(last_player, $(elems[0]));
-    } else if (!text.match(/ drawing nothing /)) {
-      view.toNativeVillage(last_player, 1);
-    }
-    return true;
-  }
-  return false;
-}
-
-function maybeHandleFromNativeVillage(text) {
-  if (text.match(/ pick(s|ing) up .+ from the Native Village mat/) ||
-      text.match(/ puts? the mat contents into (.+) hand\./)) {
-    view.clearNativeVillage(last_player);
-    return true;
-  }
-  return false;
-}
-
 function maybeHandleSeaHag(elems, text_arr, text) {
   if (text.indexOf("a Curse on top of") != -1) {
     if (elems < 1 || elems[elems.length - 1].innerHTML != "Curse") {
@@ -1084,16 +1061,6 @@ function handlePlayLog(node) {
 
   var elems = node.getElementsByTagName("span");
 
-  view.handleLog(elems, node.innerText);
-
-  // elems.length may be zero for this, so try before the check for zero elems.
-  if (maybeHandleFromNativeVillage(node.innerText)) return;
-
-  if (elems.length == 0) {
-    if (maybeReturnToSupply(node.innerText)) return;
-    return;
-  }
-
   // Remove leading stuff from the text.
   var i = 0;
   for (i = 0; i < text.length; i++) {
@@ -1101,6 +1068,8 @@ function handlePlayLog(node) {
   }
   if (i == text.length) return;
   text = text.slice(i);
+
+  view.handleLog(elems, text, node.innerText);
 
   if (maybeHandleMint(elems, node.innerText)) return;
   if (maybeHandleTradingPost(elems, node.innerText)) return;
@@ -1110,37 +1079,34 @@ function handlePlayLog(node) {
   if (maybeHandleSeaHag(elems, text, node.innerText)) return;
   if (maybeHandleOffensiveTrash(elems, text, node.innerText)) return;
   if (maybeHandleTournament(elems, text, node.innerText)) return;
-  if (maybeHandleIsland(elems, text, node.innerText)) return;
-  if (maybeHandleCoppersmith(elems, text, node.innerText)) return;
-  if (maybeHandleToNativeVillage(elems, text, node.innerText)) return;
   if (maybeHandleTrader(elems, text, node.innerText)) return;
   if (maybeHandleGainViaReveal(elems, text, node.innerText)) return;
   if (maybeHandleNobleBrigand(elems, text, node.innerText)) return;
+
+  if (elems.length == 0) {
+    if (maybeReturnToSupply(node.innerText)) return;
+    return;
+  }
 
   if (text[0] == "trashing") {
     var trasher = last_player;
     if (topScope() == "Watchtower") {
       trasher = last_gain_player;
     }
-    handleGainOrTrash(trasher, elems, node.innerText, -1);
-    return;
+    return handleGainOrTrash(trasher, elems, node.innerText, -1);
   }
   if (text[1].indexOf("trash") == 0) {
-    handleGainOrTrash(getPlayer(text[0]), elems, node.innerText, -1);
-    return;
+    return handleGainOrTrash(getPlayer(text[0]), elems, node.innerText, -1);
   }
   if (text[0] == "gaining") {
     // When possessed, gaining a card (from, say, a University) is like
     // buying one -- it's the possessor, not the possessee, who gains it, which
     // is stated by a later log message.
-    if (!possessed_turn) {
-      handleGainOrTrash(last_player, elems, node.innerText, 1);
-    }
-    return;
+    if (possessed_turn) return;
+    return handleGainOrTrash(last_player, elems, node.innerText, 1);
   }
   if (text[1].indexOf("gain") == 0) {
-    handleGainOrTrash(getPlayer(text[0]), elems, node.innerText, 1);
-    return;
+    return handleGainOrTrash(getPlayer(text[0]), elems, node.innerText, 1);
   }
 
   var player = getPlayer(text[0]);
@@ -1192,18 +1158,6 @@ function handlePlayLog(node) {
   }
 }
 
-function getScores() {
-  var scores = "Points: ";
-  for (var player in players) {
-    scores = scores + " " + player + "=" + players[player].getScore();
-  }
-  return scores;
-}
-
-function updateScores() {
-  view.updateScores();
-}
-
 // Execute a function for all players, including the trash player.
 function allPlayers(func) {
   for (var playerName in players) {
@@ -1212,18 +1166,6 @@ function allPlayers(func) {
   if (tablePlayer) {
     func(tablePlayer);
   }
-}
-
-function getDecks() {
-  var decks = "Cards: ";
-  for (var player in players) {
-    decks = decks + " " + player + "=" + players[player].getDeckString();
-  }
-  return decks;
-}
-
-function updateDeck() {
-  view.updateDeck();
 }
 
 function topScope(skipping) {
@@ -1245,6 +1187,30 @@ function findScope(name) {
     }
   }
   return -1;
+}
+
+function getScores() {
+  var scores = "Points: ";
+  for (var player in players) {
+    scores = scores + " " + player + "=" + players[player].getScore();
+  }
+  return scores;
+}
+
+function updateScores() {
+  view.updateScores();
+}
+
+function getDecks() {
+  var decks = "Cards: ";
+  for (var player in players) {
+    decks = decks + " " + player + "=" + players[player].getDeckString();
+  }
+  return decks;
+}
+
+function updateDeck() {
+  view.updateDeck();
 }
 
 function initialize(doc) {
@@ -1269,7 +1235,7 @@ function initialize(doc) {
 
   discoverGUIMode();
 
-  if (localStorage['disabled']) {
+  if (localStorage.getItem("disabled")) {
     disabled = true;
   }
 
@@ -1468,6 +1434,9 @@ function removeStoredLog() {
 }
 
 function hideExtension() {
+  $('#optionPanelHolder').hide();
+  $('#log').show();
+  $('#full_log').hide();
   view.hide();
 }
 
@@ -1622,7 +1591,8 @@ function maybeStartOfGame(node) {
     return;
   }
 
-  if (!localStorage["log"] && nodeText.indexOf("Your turn 1 —") != -1) {
+  if (!localStorage.getItem("log") && 
+      nodeText.indexOf("Your turn 1 —") != -1) {
     // We don't have any players but it's your turn 1. This must be a
     // solitaire game. Create a fake (and invisible) setup line. We'll get
     // called back again with it by the simple act of adding it (which is why
@@ -1678,7 +1648,7 @@ function logEntryForGame(node) {
 function restoreHistory(node) {
   // The first log line is not the first line of the game, so restore the
   // log from history. Of course, there must be a log history to restore.
-  var logHistory = localStorage['log'];
+  var logHistory = localStorage.getItem("log");
   if (logHistory == undefined || logHistory.length == 0) {
     return false;
   }

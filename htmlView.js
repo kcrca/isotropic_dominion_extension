@@ -325,7 +325,30 @@ function HtmlView() {
       return name + ': ' + this.fields.toString();
     };
 
-    activeData.setupPlayer(this);
+    player.setAside = function(elems) {
+      for (var i = 0; i < elems.length; i++) {
+        var card = elems[i];
+        var cardName = getSingularCardName(card.innerText);
+        if (!this.cards_aside[cardName]) {
+          this.cards_aside[cardName] = 1;
+        } else {
+          this.cards_aside[cardName]++;
+        }
+        this.deck_size--;
+        this.updateCardDisplay(cardName);
+      }
+    };
+
+    player.asideCount = function() {
+      var count = 0;
+      for (var cardName in this.cards_aside) {
+        var aside = this.cards_aside[cardName];
+        if (aside) {
+          count += aside;
+        }
+      }
+      return count;
+    };
   };
 
   this.set = function(player, name, value) {
@@ -527,9 +550,48 @@ function HtmlView() {
     }
   };
 
-  this.handleLog = function(elems, nodeText) {
-    activeData.handleCounts(elems, nodeText)
+  this.handleLog = function(elems, text, nodeText) {
+    activeData.handleLog(elems, text, nodeText);
+    maybeHandleIsland(elems, text, nodeText);
+    maybeHandleToNativeVillage(elems, text, nodeText);
+    maybeHandleFromNativeVillage(elems, text, nodeText);
   };
+
+  function maybeHandleIsland(elems, text_arr, text) {
+    var lastPlayed = topScope();
+    if (lastPlayed == "Island" && text.match(/ set(ting|s)? aside /)) {
+      var player = getPlayer(text_arr[0]);
+      if (player == null)
+        player = last_player;
+      player.setAside(elems);
+      return true;
+    }
+    return false;
+  }
+
+  //noinspection JSUnusedLocalSymbols
+  function maybeHandleToNativeVillage(elems, text_arr, text) {
+    var m = text.match(/ (to|on) the Native Village mat\./);
+    if (m) {
+      if (elems.length == 2) {
+        view.toNativeVillage(last_player, $(elems[0]));
+      } else if (!text.match(/ drawing nothing /)) {
+        view.toNativeVillage(last_player, 1);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  //noinspection JSUnusedLocalSymbols
+  function maybeHandleFromNativeVillage(elems, text_arr, text) {
+    if (text.match(/ pick(s|ing) up .+ from the Native Village mat/) ||
+        text.match(/ puts? the mat contents into (.+) hand\./)) {
+      view.clearNativeVillage(last_player);
+      return true;
+    }
+    return false;
+  }
 
   this.handleLogDone = function() {
     if (started) activeData.maybeRunTests();
@@ -654,7 +716,6 @@ function HtmlView() {
   this.hide = function() {
     this.stop();
     removePlayerData();
-    $('#optionPanelHolder').hide();
     $('div[reinserted="true"]').css('display', 'none');
   };
 
