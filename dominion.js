@@ -437,14 +437,14 @@ function maybeHandleResignation(node) {
 function maybeHandleTurnChange(node) {
   var text = node.innerText;
   if (text.indexOf("—") != -1) {
-    if (!supplied_cards) {
+    if ($.isEmptyObject(supplied_cards)) {
       // Figure out which cards are in supply piles.
       // Done here because if we're in veto mode the supply piles don't exist,
       // they are only guaranteed to exist on the first turn.
-      supplied_cards = {};
-      $("[cardname]").each(function() {
+      $("#supply [cardname]").each(function() {
         supplied_cards[$(this).attr("cardname")] = true;
       });
+      view.suppliedCardsKnown();
     }
 
     view.beforeTurn();
@@ -590,9 +590,9 @@ function infoWindowTests(table) {
 
   var player = tablePlayer;
   setCurrentPlayer(tablePlayer);
-
+  
   var tests = [
-    { pat: /^Trash:\(?(nothing|\d+)/,
+    { pat: /^Trash: *\(?(nothing|\d+)/,
       act: function(row, match) {
         var count = parseInfoNumber(match[1]);
         checkValue(count, tablePlayer.deck_size, row.text());
@@ -604,7 +604,7 @@ function infoWindowTests(table) {
         setCurrentPlayer(getPlayer(playerName));
       }
     },
-    { pat: /Current score:([0-9]+)/,
+    { pat: /Current score: *([0-9]+)/,
       act: function(row, match) {
         // The score isn't reliable if we've had an error.
         if (test_only_my_score && player.name != "You") return;
@@ -618,12 +618,11 @@ function infoWindowTests(table) {
         checkValue(parseInt(match[1]), parseInt(scoreStr), row.text());
       }
     },
-    // The rest of the tests rely on active data, so they only run if it's on.
     { pat: /^(Hand|Play area|Previous duration): *([^\d].*)/,
       act: function(row, match) {
-        if (!debug['actvData']) return;
+        if (!view.tests.handSize) return;
         addToCardCount(countCards(match[2]));
-        if (match[1] == 'Previous duration') {
+        if (match[1].indexOf('Previous duration') == 0) {
           // Each Haven in the duration implies one *or more* cards set aside.
           // These cards are not listed in the info window, even for you. Which
           // means that if there are Havens, we can't really tell how many cards
@@ -638,7 +637,7 @@ function infoWindowTests(table) {
     },
     { pat: /^(.*) (?:mat|aside): *(.*)/,
       act: function(row, match) {
-        if (!debug['actvData']) return;
+        if (!view.tests.handSize) return;
         // Test set for the mat/aside area (includes chapel for thinning):
         // haven, horse traders, library, possession, island, native village, pirate ship, trade route, chapel
         // Island mat (also uses the term "aside" in the text)
@@ -650,30 +649,26 @@ function infoWindowTests(table) {
         // aside: Library (only during the turn)
         // aside: Possession (only during the turn)
         var count = countCards(match[2]);
-        if (match[1] == "Island") {
-          // cards held by islands are not in the deck count (as we show it)
-          checkValue(count, player.asideCount(), row.text());
-          player.testSeenIslandMat = true;
-        } else if (match[1] == 'Pirate Ship') {
-          // We should count and show pirate ship mat tokens
+        if (match[1] == 'Pirate Ship') {
+          //!! We should count and show pirate ship mat tokens
         } else {
+          if (match[1] == "Island") {
+            checkValue(count, player.islandMatCount(), row.text());
+            player.testSeenIslandMat = true;
+          }
           addToCardCount(count);
         }
       }
     },
-    { pat: /^(?:Hand|Draw pile):(nothing|\d+)/,
+    { pat: /^(?:Hand|Draw pile): *(nothing|\d+)/,
       act: function(row, match) {
-        if (!debug['actvData']) return;
+        if (!view.tests.handSize) return;
         addToCardCount(parseInfoNumber(match[1]));
       }
     },
     { pat: /^(Draw|Discard) pile:/,
       act: function(row, match) {
-        if (!debug['actvData']) return;
-        if (player == null) {
-          logDebug('actvData', "Warning: Player is null!!\n");
-          return;
-        }
+        if (!view.tests.handSize) return;
         var isDiscard = (match[1] == "Discard");
         var count = 0;
         var paddingStrs = '';
@@ -693,8 +688,9 @@ function infoWindowTests(table) {
         if (isDiscard && !isNaN(player.testCardCount)) {
           if (!player.testSeenIslandMat) {
             // The info window is can be silent about the island mat for other
-            // players so we have to expect the deck to include what's there.
-            player.testCardCount += player.asideCount()
+            // players so we have to expect the deck to include what's on the
+            // mat, even though it hasn't been listed.
+            player.testCardCount += player.islandMatCount()
           }
           checkValue(player.testCardCount, player.deck_size,
               player.testCardCountStr);
@@ -1223,7 +1219,7 @@ function initialize(doc) {
   announced_error = false;
   test_only_my_score = false;
   turn_number = 0;
-  supplied_cards = undefined;
+  supplied_cards = {};
 
   last_gain_player = null;
   scopes = [];
@@ -1591,8 +1587,7 @@ function maybeStartOfGame(node) {
     return;
   }
 
-  if (!localStorage.getItem("log") && 
-      nodeText.indexOf("Your turn 1 —") != -1) {
+  if (!localStorage.getItem("log") && nodeText.indexOf("Your turn 1 —") != -1) {
     // We don't have any players but it's your turn 1. This must be a
     // solitaire game. Create a fake (and invisible) setup line. We'll get
     // called back again with it by the simple act of adding it (which is why

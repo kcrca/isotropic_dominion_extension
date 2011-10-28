@@ -99,4 +99,7 @@ function OrigView() {
 
   this.addChatCommands = function() {
   };
+
+  this.suppliedCardsKnown = function() {
+  };
 }

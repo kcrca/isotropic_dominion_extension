@@ -39,9 +39,13 @@ function HtmlView() {
   var seen_first_turn = false;
   var activeData = new ActiveData();
 
+  var splitOutIslands = false;
+
   // How many different player CSS classes are supported?
   //noinspection LocalVariableNamingConventionJS
   var PLAYER_CLASS_COUNT = 4;
+
+  this.tests = { handSize: true };
 
   this.setupPlayer = function(player) {
     player.icon = undefined;
@@ -91,30 +95,47 @@ function HtmlView() {
 
     // Add a card to a group of cards. Adding in the 'cardname' attribute means
     // that hovering over the card will pop up the tooltip window about the card.
-    player.addToCardGroup = function(which, cardElem, count, updateField) {
+    player.addToCardGroup = function(which, cards, count, updateField) {
       count = count != undefined ? count : 1;
       updateField = updateField != undefined ? updateField : true;
       var group = this[which];
       if (!group) group = this[which] = {};
-      var cardName = getSingularCardName(cardElem.text());
-      var cardInfo = group[cardName];
-      if (!cardInfo) {
-        cardInfo = group[cardName] = new Object();
-        cardInfo.count = 0;
-        cardInfo.card = card_map[cardName];
-        if (!cardElem.attr('cardname')) {
-          // we need a copy so we can add the 'cardname' attribute to it
-          cardElem = cardElem.clone();
-          cardElem.attr('cardname', cardName);
+      $(cards).each(function() {
+        var cardElem = $(this);
+        var cardName = getSingularCardName(cardElem.text());
+        var cardInfo = group[cardName];
+        if (!cardInfo) {
+          cardInfo = group[cardName] = new Object();
+          cardInfo.count = 0;
+          cardInfo.card = card_map[cardName];
+          if (!cardElem.attr('cardname')) {
+            // we need a copy so we can add the 'cardname' attribute to it
+            cards = cardElem.clone();
+            cardElem.attr('cardname', cardName);
+          }
+          cardInfo.html = cardElem[0].outerHTML;
         }
-        cardInfo.html = cardElem[0].outerHTML;
-      }
-      cardInfo.count += count;
-      if (cardInfo.count <= 0) {
-        delete group[cardName];
-      }
+        cardInfo.count += count;
+        if (cardInfo.count <= 0) {
+          delete group[cardName];
+        }
+      });
       if (updateField) {
-        this.fields.set(which, this.cardGroupHtml(which));
+        player.fields.set(which, player.cardGroupHtml(which));
+      }
+    };
+
+    player.removeFromCardGroup = function(which, cardName, updateField) {
+      updateField = (updateField != undefined ? updateField : true);
+      var group = this[which];
+      if (!group) return;
+      cardName = getSingularCardName(cardName);
+      if (group[cardName]) {
+        delete group[cardName];
+        updateField = true;
+        if (updateField) {
+          player.fields.set(which, player.cardGroupHtml(which));
+        }
       }
     };
 
@@ -122,34 +143,56 @@ function HtmlView() {
     player.cardGroupHtml = function(which, sort) {
       sort = sort != undefined ? sort : false;
       var group = this[which];
-      var html = '';
       var keys = [];
       for (var key in group) {
         keys.push(key);
       }
+      if (keys.length == 0) {
+        return '';
+      }
       if (sort) {
         keys.sort();
       }
+      var html = '';
+      var total = 0;
       for (var i = 0; i < keys.length; i++) {
         var name = keys[i];
         if (html.length > 0) {
           html += ", ";
         }
         var cardInfo = group[name];
+        total += cardInfo.count;
         if (cardInfo.count == 1) {
-          html += cardInfo.html;
+          html += 1 + '&nbsp;' + cardInfo.html;
         } else {
           var card = cardInfo.card;
           var cardElemHtml = cardInfo.html;
           if (card.Singular != card.Plural) {
-            // we use the '>' because we don't want to change the cardname attr.
+            // Include the '>' so we don't change the cardname attr.
             cardElemHtml =
                 cardElemHtml.replace('>' + card.Singular, '>' + card.Plural);
           }
           html += cardInfo.count + '&nbsp;' + cardElemHtml;
         }
       }
-      return html;
+      return total + '&nbsp;card' + (total == 1 ? '' : 's') + ': ' + html;
+    };
+
+    player.countCardGroup = function(which, cardName) {
+      var group = this[which];
+      if (!group) return 0;
+
+      if (cardName) {
+        var namedInfo = group[cardName];
+        return (namedInfo ? namedInfo.count : undefined);
+      }
+
+      var count = 0;
+      for (cardName in group) {
+        var cardInfo = group[cardName];
+        count += cardInfo.count;
+      }
+      return count;
     };
 
     player.clearCardGroup = function(which) {
@@ -163,11 +206,16 @@ function HtmlView() {
         return '-';
       }
 
-      var aside = this.cards_aside[cardName];
-      if (aside == undefined || aside == 0) {
+      if (!splitOutIslands) {
         return count + "";
       } else {
-        return count + '(' + aside + '<span class="asideCountNum">i</span>)';
+        var onIsland = this.countCardGroup('island', cardName);
+        if (onIsland == undefined || onIsland == 0) {
+          return count + "";
+        } else {
+          return count + '(' + onIsland +
+              '<span class="islandCountNum">i</span>)';
+        }
       }
     };
 
@@ -267,6 +315,10 @@ function HtmlView() {
         }
         fields.add('nativeVillage', {
           label: "Native Village", initial: initialNV, isVisible: visibleNV});
+        fields.add('island', {
+          label: 'Island Mat',
+          initial: player.cardGroupHtml('island'),
+          isVisible: fieldInvisibleIfEmpty});
         fields.add('durations', {
           initial: player.cardGroupHtml('durations'),
           isVisible: fieldInvisibleIfEmpty});
@@ -326,33 +378,27 @@ function HtmlView() {
     };
 
     player.setAside = function(elems) {
-      for (var i = 0; i < elems.length; i++) {
-        var card = elems[i];
-        var cardName = getSingularCardName(card.innerText);
-        if (!this.cards_aside[cardName]) {
-          this.cards_aside[cardName] = 1;
-        } else {
-          this.cards_aside[cardName]++;
-        }
-        this.deck_size--;
-        this.updateCardDisplay(cardName);
-      }
+      this.addToCardGroup('island', elems);
     };
 
-    player.asideCount = function() {
-      var count = 0;
-      for (var cardName in this.cards_aside) {
-        var aside = this.cards_aside[cardName];
-        if (aside) {
-          count += aside;
-        }
-      }
-      return count;
+    player.islandMatCount = function() {
+      return this.countCardGroup('island');
     };
   };
 
   this.set = function(player, name, value) {
     return player.set(name, value);
+  };
+
+  this.suppliedCardsKnown = function() {
+    // Sometimes on reload this isn't known until after the log is reloaded, in
+    // which case we have to remove all the cards that were thought of as
+    // "Other cards" before we knew what the supplied cards were.
+    allPlayers(function(player) {
+      for (var cardName in supplied_cards) {
+        player.removeFromCardGroup('otherCards', cardName);
+      }
+    });
   };
 
   this.recordCard = function(player, cardName) {
@@ -563,7 +609,11 @@ function HtmlView() {
       var player = getPlayer(text_arr[0]);
       if (player == null)
         player = last_player;
-      player.setAside(elems);
+      player.addToCardGroup('island', elems);
+      player.updateCardDisplay('Island');
+      $(elems).each(function() {
+        player.updateCardDisplay($(this).text());
+      });
       return true;
     }
     return false;
