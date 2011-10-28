@@ -141,7 +141,7 @@ function Field(name, fieldGroup, params) {
     }
     if (this.suffix && this.suffix.length > 0) {
       if (val.indexOf(this.suffix) == val.length - this.suffix.length) {
-        val = val.substr(0, val.length - this.prefix.length);
+        val = val.substr(0, val.length - this.suffix.length);
       }
     }
     switch (this.valueType) {
@@ -164,6 +164,16 @@ function Field(name, fieldGroup, params) {
 
   //!! Make this work for all values.
   this.change = function(params) {
+    // See if this actually changes anything before we do any real work.
+    var changed = false;
+    for (var key in params) {
+      if (params[key] != this[key]) {
+        changed = true;
+        break;
+      }
+    }
+    if (!changed) return;
+
     var value = this.get();
     var orig = {};
     $.extend(orig, this);
@@ -258,6 +268,7 @@ function FieldGroup(params) {
     if (this.handleUnknownField(name)) {
       return fields[name].get();
     }
+    return undefined;
   };
 
   // Set the value of a field; see Field.set()
@@ -265,6 +276,11 @@ function FieldGroup(params) {
     if (this.handleUnknownField(name)) {
       fields[name].set(value);
     }
+  };
+
+  // Return the actual field object, or undefined if it is currently not defined
+  this.field = function(name) {
+    return fields[name];
   };
 
   this.change = function(name, params) {

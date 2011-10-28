@@ -391,10 +391,12 @@ function tempSayChange() {
   });
 }
 
-// Create the full log blob and hide the normal log part.
 function createFullLog() {
+// Create the visible full log blob and hide the normal log part.
   rewriteTree(function () {
+    // Remove any pre-existing node.
     $('#full_log').remove();
+
     var full_log = $('<pre id="full_log"/>');
     $('#log').hide().before(full_log);
     var temp_say = $('#temp_say');
@@ -418,20 +420,11 @@ function putBackRealLog() {
 
 function findTrailingPlayer(text) {
   var arr = text.match(/ ([^\s.]+)\.[\s]*$/);
-  if (arr != null && arr.length == 2) {
-    return getPlayer(arr[1]);
+  if (arr == null || arr.length != 2) {
+    handleError("Couldn't find trailing player: '" + text + "'");
+    return null;
   }
-  handleError("Could not find trailing player from: " + text);
-  return null;
-}
-
-// Check to see if the node shows that a player resigned.
-function maybeHandleResignation(node) {
-  if (node.innerText.match(/ resigns? from the game/)) {
-    last_player.setResigned();
-    return true;
-  }
-  return false;
+  return getPlayer(arr[1]);
 }
 
 function maybeHandleTurnChange(node) {
@@ -477,6 +470,15 @@ function maybeHandleTurnChange(node) {
       node.innerHTML.replace(" —<br>", " " + details + " —<br>");
     }
 
+    return true;
+  }
+  return false;
+}
+
+// Check to see if the node shows that a player resigned.
+function maybeHandleResignation(node) {
+  if (node.innerText.match(/ resigns? from the game/)) {
+    last_player.setResigned();
     return true;
   }
   return false;
@@ -590,7 +592,7 @@ function infoWindowTests(table) {
 
   var player = tablePlayer;
   setCurrentPlayer(tablePlayer);
-  
+
   var tests = [
     { pat: /^Trash: *\(?(nothing|\d+)/,
       act: function(row, match) {
@@ -821,14 +823,10 @@ function maybeHandleSwindler(elems, text) {
   return false;
 }
 
-//noinspection JSUnusedLocalSymbols
 function maybeHandlePirateShip(elems, text_arr, text) {
   // Swallow gaining pirate ship tokens.
   // It looks like gaining a pirate ship otherwise.
-  if (text.indexOf("a Pirate Ship token") != -1) {
-    view.gainPirateShipToken(getPlayer(text_arr[0]));
-    return true;
-  }
+  if (text.indexOf("a Pirate Ship token") != -1) return true;
   return false;
 }
 
@@ -1388,13 +1386,13 @@ function maybeShowStatus(request, request_time) {
   }
 }
 
-function showStatus(request, show) {
+function showStatus(request, showFunc) {
   var my_name = localStorage["name"];
   if (my_name == undefined || my_name == null) my_name = "Me";
 
-  show = show || writeText;
+  showFunc = showFunc || writeText;
   function writeStatus(msg) {
-    show(chat_prefix + " " + msg.replace(/\bYou([:=])/g, my_name + "$1"));
+    showFunc(chat_prefix + " " + msg.replace(/\bYou([:=])/g, my_name + "$1"));
   }
 
   if (request == 'all') {
@@ -1409,11 +1407,11 @@ function showStatus(request, show) {
 
   var command = chatCommands[request];
   if (!command) {
-    show("⚠ Unknown chat request: !" + request);
+    showFunc("⚠ Unknown chat request: !" + request);
     return;
   }
   if (!chatCommandAvailable(command)) {
-    show("⚠ Chat request not available: !" + request);
+    showFunc("⚠ Chat request not available: !" + request);
     return;
   }
   command.execute(writeStatus);
@@ -1430,9 +1428,9 @@ function removeStoredLog() {
 }
 
 function hideExtension() {
-  $('#optionPanelHolder').hide();
   $('#log').show();
   $('#full_log').hide();
+  $('#optionPanelHolder').hide();
   view.hide();
 }
 
@@ -1485,7 +1483,10 @@ function settingsString() {
 function handleGameEnd(doc) {
   for (var node in doc.childNodes) {
     var child = doc.childNodes[node];
-    if (child.innerText == "game log") {
+    if (child.innerText == "return") {
+      // Remove the visible player data when the user clicks the "return" link.
+      child.addEventListener("DOMActivate", removePlayerData, true);
+    } else if (child.innerText == "game log") {
       // Reset exit / faq at end of game.
       stopCounting();
       removeStoredLog();
@@ -1531,7 +1532,6 @@ function handleGameEnd(doc) {
       var printed_state_strings = stateStrings();
 
       // Post the game information to app-engine for later use for tests, etc.
-      //noinspection JSUnusedGlobalSymbols
       chrome.extension.sendRequest({
         type: "log",
         game_id: game_id_str,
@@ -1541,8 +1541,7 @@ function handleGameEnd(doc) {
         log: document.body.innerHTML,
         version: extension_version,
         settings: settingsString() });
-    } else if (child.innerText == "return") {
-      child.addEventListener("DOMActivate", removePlayerData, true);
+      break;
     }
   }
 }
@@ -1598,21 +1597,19 @@ function maybeStartOfGame(node) {
     return;
   }
 
-  // Either this is a turn-order log, the start of a new game, or there is a
-  // log to restore from, or it isn't the start of any game.
-  var isTurnOrder = nodeText.indexOf("Turn order") == 0;
-  if (!isTurnOrder && !localStorage["log"]) return;
+  // The first line of actual text is either "Turn order" or something in
+  // the middle of the game, in which case we restore the game from the log.
 
   createFullLog();
 
-  if (isTurnOrder) {
+  if (nodeText.indexOf("Turn order") == 0) {
     // The game is starting, so put in the initial blank entries and clear
     // out any local storage.
     console.log("--- starting game ---");
     removeStoredLog();
     localStorage.removeItem("disabled");
     createFullLog();
-  } else {
+  } else if (localStorage["log"]) {
     try {
       restoring_log = true;
       console.log("--- replaying history ---");
@@ -1621,6 +1618,9 @@ function maybeStartOfGame(node) {
     } finally {
       restoring_log = false;
     }
+  } else {
+    // It's some other situation, so we don't start the game
+    return;
   }
 
   started = true;
@@ -1629,7 +1629,13 @@ function maybeStartOfGame(node) {
 // Returns true if the log node should be handled as part of the game.
 function logEntryForGame(node) {
   if (inLobby()) {
+    // If we're in the lobby and there is a log that means that a previou s game
+    // in this same browser was ended, but upon logging back in, the server put
+    // the user in the lobby. Which means the server dropped that game. So we
+    // need to do that, and make sure that any remaining view-related behavior
+    // is terminated.
     removeStoredLog();
+    removePlayerData();
     return false;
   }
 
@@ -1746,7 +1752,7 @@ function handle(doc) {
   }
 
   // We process log entries to the hidden log, copying them to the full log.
-  // We don't then process those copies.
+  // Don't process those copies.
   if (doc.parentNode.id == 'full_log') return;
 
   try {
