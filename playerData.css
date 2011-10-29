@@ -303,13 +303,13 @@ td.kingdom-column, td.basic-column {
  * Mark the selectable cards more clearly
  */
 a.buy, .kingdom-column .buy {
-    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.1, #dbf8db), color-stop(0.4, white)) !important;
-    background-image: -moz-linear-gradient(left center, white 10%, #dbf8db 40%) !important;
+    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.1, #ced0ff), color-stop(0.4, white)) !important;
+    background-image: -moz-linear-gradient(left center, white 10%, #ced0ff 40%) !important;
 }
 
 .basic-column .buy > .imbasic {
-    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.0, white), color-stop(1.0, #dbf8db)) !important;
-    background-image: -moz-linear-gradient(left center, white 0%, #dbf8db 100%) !important;
+    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.0, white), color-stop(1.0, #ced0ff)) !important;
+    background-image: -moz-linear-gradient(left center, white 0%, #ced0ff 100%) !important;
 }
 
 /* 
