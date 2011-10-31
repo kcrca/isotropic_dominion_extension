@@ -1,7 +1,7 @@
 // Object for active player's data.
 var activeData;
 
-function ActiveData() {
+function ActiveData(htmlView) {
   var self = this;
   activeData = this;
 
@@ -160,7 +160,7 @@ function ActiveData() {
         // Cards in the supply pile have prices shown in the supply area
         if (supplied_cards[cardName]) {
           var priceBox;
-          if (text_mode) {
+          if (htmlView.inTextMode()) {
             var cardBox = $('td.txcardname > a[cardname="' + cardName + '"]');
             priceBox = cardBox.parent().prev('.price');
           } else {
