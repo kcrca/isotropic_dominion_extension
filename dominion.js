@@ -293,7 +293,7 @@ function Player(name, num) {
     }
 
     var types = card.className.split("-").slice(1);
-    for (var type_i in types) {
+    for (type_i in types) {
       var type = types[type_i];
       if (type == "none" || type == "duration" ||
           type == "action" || type == "reaction") {
@@ -344,10 +344,6 @@ function Player(name, num) {
   };
 
   view.setupPlayer(this);
-}
-
-function htmlToText(html) {
-  return $('<span/>').html(html).text()
 }
 
 function stateStrings() {
@@ -914,7 +910,7 @@ function getCardCount(card, text) {
 }
 
 function handleGainOrTrash(player, elems, text, multiplier) {
-  for (var elem in elems) {
+  for (elem in elems) {
     if (elems[elem].innerText != undefined) {
       var card = elems[elem].innerText;
       var count = getCardCount(card, text);
@@ -923,7 +919,7 @@ function handleGainOrTrash(player, elems, text, multiplier) {
         // Skip trashing any cards during possession.
       } else {
         player.gainCard(elems[elem], num);
-        // If Thief is used to gain the trashed card, take it back out
+        // If the trashed card is gained, take it back out
         if (text.match(/ gain(s|ed)? the trashed /) ||
             topScope() == "Noble Brigand") {
           tablePlayer.gainCard(elems[elem], -num);
@@ -1086,8 +1082,8 @@ function handlePlayLog(node) {
   }
   if (text[0] == "gaining") {
     // When possessed, gaining a card (from, say, a University) is like
-    // buying one -- it's the possessor, not the possessee, who gains it, which
-    // is stated by a separate log message.
+    // buying one -- it's the possessor, not the possessee, who gains it, and
+    // that is stated by a separate log message.
     if (possessed_turn) return;
     return handleGainOrTrash(last_player, elems, node.innerText, 1);
   }
