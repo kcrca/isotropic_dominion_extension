@@ -141,8 +141,11 @@ function CardGroup(name, params) {
 function HtmlView() {
   var maxTradeRoute = undefined;
   var seen_first_turn = false;
-  var activeData = new ActiveData();
+  var activeData = new ActiveData(this);
   var groups = {};
+
+  // Are we in text mode (vs. image mode) in the UI?
+  var text_mode;
 
   var splitOutIslands = false;
 
@@ -815,12 +818,42 @@ function HtmlView() {
     $('div[reinserted="true"]').css('display', 'none');
   };
 
+  // Discover whether we are in text mode or image mode. The primary bit of state
+  // that this sets is for the benefit of CSS: If we are in text mode, body tag
+  // has the "textMode" class, otherwise it has the "imageMode" class. In both
+  // cases it has the "playing" class, which allows CSS to tell the difference
+  // between being in the lobby vs. playing an actual game.
+  function discoverGUIMode() {
+    if (inLobby()) return;
+
+    $('#chat ~ a[href^="/mode/"]').each(function() {
+      // The link is to the "text" mode when it's in image mode and vice versa.
+      text_mode = $(this).text().indexOf("text") < 0;
+    });
+
+    // Setting the class enables css selectors that distinguish between the modes.
+    $("#body").addClass("playing").addClass(
+        text_mode ? "textMode" : "imageMode");
+  }
+  
+  this.inTextMode = function() {
+    return text_mode;
+  };
+
+// Drop any state related to knowing text vs. image mode.
+  function forgetGUIMode() {
+    document.firstChild.id = "";
+    $("#body").removeClass("textMode").removeClass("imageMode")
+        .removeClass("playing");
+  }
   this.remove = function() {
+    forgetGUIMode();
     removePlayerArea();
     $('#playerDataArranger').remove();
   };
 
   this.stop = function() {
+    forgetGUIMode();
     activeData.stop();
   };
 
@@ -864,5 +897,6 @@ function HtmlView() {
     };
   };
 
+  discoverGUIMode();
   setupPerPlayerInfoArea();
 }

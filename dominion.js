@@ -9,9 +9,6 @@ var player_re = "";
 // Count of the number of players in the game.
 var player_count = 0;
 
-// Are we in text mode (vs. image mode) in the UI?
-var text_mode;
-
 // pseudo-player for Trash card counts
 var tablePlayer;
 
@@ -62,8 +59,6 @@ var infoIsForTests = false;
 var test_only_my_score = false;
 
 var view = createView();
-
-var chat_prefix = "⟣";
 
 var chatCommands = {};
 
@@ -224,15 +219,11 @@ function Player(name, num) {
 
   this.getDeckString = function() {
     var str = this.deck_size;
-    var need_action_string = (show_action_count &&
-        this.special_counts["Actions"]);
-    var need_unique_string = (show_unique_count &&
-        this.special_counts["Uniques"]);
-    var need_victory_string = (show_victory_count &&
-        this.special_counts["Victory"]);
+    var need_action_string = (show_action_count && this.special_counts["Actions"]);
+    var need_unique_string = (show_unique_count && this.special_counts["Uniques"]);
+    var need_victory_string = (show_victory_count && this.special_counts["Victory"]);
     var need_duchy_string = (show_duchy_count && this.special_counts["Duchy"]);
-    if (need_action_string || need_unique_string || need_duchy_string ||
-        need_victory_string) {
+    if (need_action_string || need_unique_string || need_duchy_string || need_victory_string) {
       var special_types = [];
       if (need_unique_string) {
         special_types.push(this.special_counts["Uniques"] + "u");
@@ -272,8 +263,7 @@ function Player(name, num) {
 
     if (this.card_counts[name] <= 0) {
       if (this.card_counts[name] < 0) {
-        maybeAnnounceFailure("Card count for " + name + " is negative (" +
-            this.card_counts[name] + ")");
+        maybeAnnounceFailure("Card count for " + name + " is negative (" + this.card_counts[name] + ")");
       }
       delete this.card_counts[name];
       this.special_counts["Uniques"] -= 1;
@@ -305,8 +295,8 @@ function Player(name, num) {
     var types = card.className.split("-").slice(1);
     for (var type_i in types) {
       var type = types[type_i];
-      if (type == "none" || type == "duration" || type == "action" ||
-          type == "reaction") {
+      if (type == "none" || type == "duration" ||
+          type == "action" || type == "reaction") {
         this.changeSpecialCount("Actions", count);
       } else if (type == "curse") {
         this.changeSpecialCount("Curse", count);
@@ -315,16 +305,16 @@ function Player(name, num) {
       } else if (type == "treasure") {
         this.changeSpecialCount("Treasure", count);
       } else {
-        handleError("Unknown card class: " + card.className + " for " +
-            card.innerText);
+        handleError("Unknown card class: " + card.className + " for " + card.innerText);
       }
     }
   }
 
   this.gainCard = function(card, count, trashing) {
     if (debug_mode) {
-      $('#log').children().eq(-1).before('<div class="gain_debug">*** ' + name +
-          " gains " + count + " " + card.innerText + "</div>");
+      $('#log').children().eq(-1).before(
+          '<div class="gain_debug">*** ' + name + " gains " +
+          count + " " + card.innerText + "</div>");
     }
 
     last_gain_player = this;
@@ -364,8 +354,9 @@ function stateStrings() {
   var state = '';
   for (var player in players) {
     player = players[player];
-    state += '<b>' + player.name + "</b>: " + player.getScore() +
-        " points [deck size is " + player.getDeckString() + "] - " +
+    state += '<b>' + player.name + "</b>: " +
+        player.getScore() + " points [deck size is " +
+        player.getDeckString() + "] - " +
         JSON.stringify(player.special_counts) + "<br>" +
         JSON.stringify(player.card_counts) + "<br>";
   }
@@ -732,8 +723,7 @@ function handleScoping(text_arr, text) {
       text.indexOf("You reveal a Watchtower") != -1) {
     scope = 'Watchtower';
   } else {
-    var re = new RegExp("(?:You|" + player_re +
-        ") (?:play|buy)s? an? ([^.]*)\\.");
+    var re = new RegExp("(?:You|" + player_re + ") (?:play|buy)s? an? ([^.]*)\\.");
     var arr = text.match(re);
     if (arr && arr.length == 3) {
       scope = arr[2];
@@ -744,17 +734,18 @@ function handleScoping(text_arr, text) {
 
 function maybeReturnToSupply(text) {
   return unpossessed(function () {
+    var ret = false;
     if (text.indexOf("it to the supply") != -1) {
       last_player.gainCard(last_reveal_card, -1, false);
-      return true;
+      ret = true;
     } else {
       var arr = text.match("([0-9]*) copies to the supply");
       if (arr && arr.length == 2) {
         last_player.gainCard(last_reveal_card, -arr[1], false);
-        return true;
+        ret = true;
       }
     }
-    return false;
+    return ret;
   });
 }
 
@@ -860,8 +851,7 @@ function maybeHandleOffensiveTrash(elems, text_arr, text) {
       return true;
     }
 
-    var arr = text.match(new RegExp("trash(?:es)? (?:one of )?" + player_re +
-        "'s"));
+    var arr = text.match(new RegExp("trash(?:es)? (?:one of )?" + player_re + "'s"));
     if (arr && arr.length == 2) {
       getPlayer(arr[1]).gainCard(elems[0], -1);
       return true;
@@ -887,10 +877,8 @@ function maybeHandleTrader(elems, text_arr, text) {
   return false;
 }
 
-//noinspection JSUnusedLocalSymbols
 function maybeHandleGainViaReveal(elems, text_arr, text) {
-  if (elems.length == 2 &&
-      text.match(/reveal(ing|s)? an? (.*) and gain(ing|s)? an? (.*)\./)) {
+  if (elems.length == 2 && text.match(/reveal(ing|s)? an? (.*) and gain(ing|s)? an? (.*)\./)) {
     var player = getPlayer(text_arr[0]);
     if (!player) player = last_player;
     player.gainCard(elems[1], 1);
@@ -988,6 +976,9 @@ function maybeOfferToPlay(node) {
 
 var last_summary = '';
 
+// If we're logging info data, write into the log the current info state, which
+// is the same info as if a user typed "!all", but we put it in the log, not the
+// chat stream.
 function showCurrentInfo() {
   if (!debug['infoData']) return;
   var summary = '';
@@ -1003,6 +994,7 @@ function showCurrentInfo() {
 function handleLogEntry(node) {
   // These are used for messages from the administrator, and should be ignored.
   if (node.innerText.indexOf("»»»") == 0) return;
+  // Do not handle copied log entries.
   if (node.parentNode.id == 'full_log') return;
 
   logDebug('logShown', node.innerText);
@@ -1013,7 +1005,7 @@ function handleLogEntry(node) {
 
   try {
     // Ignore the purple log entries during Possession.
-    // When someone is possessed, log entries with "possessed-log" are what
+    // When someone is possessed, log entries with class "possessed-log"
     // describe the "possession". The other (normal) log entries describe the
     // actual game effect. So we ignore the "possessed" entries because they
     // are what is being commanded, not what is actually happening to the cards.
@@ -1083,11 +1075,11 @@ function handlePlayLog(node) {
   }
 
   if (text[0] == "trashing") {
-    var trasher = last_player;
+    var player = last_player;
     if (topScope() == "Watchtower") {
-      trasher = last_gain_player;
+      player = last_gain_player;
     }
-    return handleGainOrTrash(trasher, elems, node.innerText, -1);
+    return handleGainOrTrash(player, elems, node.innerText, -1);
   }
   if (text[1].indexOf("trash") == 0) {
     return handleGainOrTrash(getPlayer(text[0]), elems, node.innerText, -1);
@@ -1095,7 +1087,7 @@ function handlePlayLog(node) {
   if (text[0] == "gaining") {
     // When possessed, gaining a card (from, say, a University) is like
     // buying one -- it's the possessor, not the possessee, who gains it, which
-    // is stated by a later log message.
+    // is stated by a separate log message.
     if (possessed_turn) return;
     return handleGainOrTrash(last_player, elems, node.innerText, 1);
   }
@@ -1227,8 +1219,6 @@ function initialize(doc) {
   player_re = "";
   player_count = 0;
 
-  discoverGUIMode();
-
   if (localStorage.getItem("disabled")) {
     disabled = true;
   }
@@ -1248,8 +1238,7 @@ function initialize(doc) {
   } else {
     var p = "(?:([^,]+), )";    // an optional player
     var pl = "(?:([^,]+),? )";  // the last player (might not have a comma)
-    var re = new RegExp("Turn order is " + p + "?" + p + "?" + p + "?" + pl +
-        "and then (.+).");
+    var re = new RegExp("Turn order is " + p + "?" + p + "?" + p + "?" + pl + "and then (.+).");
     arr = doc.innerText.match(re);
   }
   if (arr == null) {
@@ -1294,8 +1283,8 @@ function initialize(doc) {
     if (self_index != -1) {
       wait_time = 300 * self_index;
     }
-    console.log("Waiting " + wait_time + " to introduce " + "(index is: " +
-        self_index + ").");
+    console.log("Waiting " + wait_time + " to introduce " +
+        "(index is: " + self_index + ").");
     setTimeout("maybeIntroducePlugin()", wait_time);
   }
 }
@@ -1392,7 +1381,7 @@ function showStatus(request, showFunc) {
 
   showFunc = showFunc || writeText;
   function writeStatus(msg) {
-    showFunc(chat_prefix + " " + msg.replace(/\bYou([:=])/g, my_name + "$1"));
+    showFunc(">> " + msg.replace(/\bYou([:=])/g, my_name + "$1"));
   }
 
   if (request == 'all') {
@@ -1452,7 +1441,7 @@ function handleChatText(speaker, text) {
     setTimeout(command, wait_time);
   }
 
-  if (text.indexOf(" " + chat_prefix + " ") == 0) {
+  if (text.indexOf(" >> ") == 0) {
     last_status_print = new Date().getTime();
   }
   if (!introduced && text.indexOf(" ★ ") == 0) {
@@ -1484,17 +1473,12 @@ function handleGameEnd(doc) {
   for (var node in doc.childNodes) {
     var child = doc.childNodes[node];
     if (child.innerText == "return") {
-      // Remove the visible player data when the user clicks the "return" link.
+      // When the player clicks "return", notify the view to remove its data.
       child.addEventListener("DOMActivate", removePlayerData, true);
     } else if (child.innerText == "game log") {
       // Reset exit / faq at end of game.
       stopCounting();
       removeStoredLog();
-
-      // Leave the view up until the user clicks "return"
-      $(doc).children('a:contains(return)').each(function() {
-        $(this).click(removePlayerData);
-      });
 
       // Collect information about the game.
       var href = child.href;
@@ -1512,14 +1496,12 @@ function handleGameEnd(doc) {
           if (player_name == "You") {
             player_name = rewriteName(name);
           }
-          var re = new RegExp(RegExp.quote(player_name) +
-              " has (-?[0-9]+) points");
+          var re = new RegExp(RegExp.quote(player_name) + " has (-?[0-9]+) points");
           var arr = summary.match(re);
           if (arr && arr.length == 2) {
             var score = ("" + players[player].getScore()).replace(/^.*=/, "");
             if (score.indexOf("+") != -1) {
-              score = ("" + players[player].getScore()).replace(/^([0-9]+)\+.*/,
-                  "$1");
+              score = ("" + players[player].getScore()).replace(/^([0-9]+)\+.*/, "$1");
             }
             if (has_correct_score && arr[1] != score) {
               has_correct_score = false;
@@ -1548,7 +1530,6 @@ function handleGameEnd(doc) {
 
 function removePlayerData() {
   putBackRealLog();
-  forgetGUIMode();
   view.remove();
   // Return true because this is used as an event handler.
   return true;
@@ -1560,7 +1541,6 @@ function stopCounting() {
   removeStoredLog();
   $('#optionPanelHolder').show();
   players = undefined;
-  text_mode = undefined;
 }
 
 // If this connotes the start of the game, start it.
@@ -1586,7 +1566,8 @@ function maybeStartOfGame(node) {
     return;
   }
 
-  if (!localStorage.getItem("log") && nodeText.indexOf("Your turn 1 —") != -1) {
+  if (localStorage.getItem("log") == undefined &&
+      nodeText.indexOf("Your turn 1 —") != -1) {
     // We don't have any players but it's your turn 1. This must be a
     // solitaire game. Create a fake (and invisible) setup line. We'll get
     // called back again with it by the simple act of adding it (which is why
@@ -1601,7 +1582,6 @@ function maybeStartOfGame(node) {
   // the middle of the game, in which case we restore the game from the log.
 
   createFullLog();
-
   if (nodeText.indexOf("Turn order") == 0) {
     // The game is starting, so put in the initial blank entries and clear
     // out any local storage.
@@ -1669,31 +1649,7 @@ function restoreHistory(node) {
 }
 
 function inLobby() {
-  return ($('#player_table').length > 0);
-}
-
-// Drop any state related to knowing text vs. image mode.
-function forgetGUIMode() {
-  document.firstChild.id = "";
-  $("#body").removeClass("textMode").removeClass("imageMode")
-      .removeClass("playing");
-}
-
-// Discover whether we are in text mode or image mode. The primary bit of state
-// that this sets is for the benefit of CSS: If we are in text mode, body tag
-// has the "textMode" class, otherwise it has the "imageMode" class. In both
-// cases it has the "playing" class, which allows CSS to tell the difference
-// between being in the lobby vs. playing an actual game.
-function discoverGUIMode() {
-  if (inLobby()) return;
-
-  $('#chat ~ a[href^="/mode/"]').each(function() {
-    // The link is to the "text" mode when it's in image mode and vice versa.
-    text_mode = $(this).text().indexOf("text") < 0;
-  });
-
-  // Setting the class enables css selectors that distinguish between the modes.
-  $("#body").addClass("playing").addClass(text_mode ? "textMode" : "imageMode");
+  return $('#player_table').length > 0;
 }
 
 function addOptionHandler(name, updateVisibility) {
@@ -1831,15 +1787,14 @@ function buildStatusMessage() {
 }
 
 function enterLobby() {
-  if (optionSet('status_announce') && $('#lobby').length != 0 &&
-      $('#lobby').css('display') != "none") {
+  if (optionSet('status_announce') &&
+      $('#lobby').length != 0 && $('#lobby').css('display') != "none") {
     // Set the original status message.
     writeText(buildStatusMessage());
 
     // Handle updating status message as needed.
     $('#entry').css('display', 'none');
-    $('#entry')
-        .after('<input id="fake_entry" class="entry" style="width: 350px;">');
+    $('#entry').after('<input id="fake_entry" class="entry" style="width: 350px;">');
     $('#fake_entry').keyup(function(event) {
       var value = $('#fake_entry').val();
       var re = new RegExp("^/me(?: (.*))?$");
