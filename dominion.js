@@ -127,6 +127,7 @@ function pointsForCard(card_name) {
     return 0;
   }
 
+  // Use the card data rather than special-case each card here.
   var card = card_map[card_name];
   return card.getVP();
 }
@@ -365,6 +366,8 @@ function getPlayer(name) {
   return players[name];
 }
 
+// Anytime the temp_say node under #log is modified, copy it to the
+// copied_temp_say node in #full_log (which is visible to the user).
 function tempSayChange() {
   var clones = $('#temp_say').contents().clone();
   var copy = $('#copied_temp_say');
@@ -375,14 +378,16 @@ function tempSayChange() {
   });
 }
 
-function createFullLog() {
 // Create the visible full log blob and hide the normal log part.
+function createFullLog() {
   rewriteTree(function () {
     // Remove any pre-existing node.
     $('#full_log').remove();
 
     var full_log = $('<pre id="full_log"/>');
     $('#log').hide().before(full_log);
+    
+    // Make a place to put a copy of temp_say in full_log so it will be visible.
     var temp_say = $('#temp_say');
     var copied_temp_say = temp_say.clone();
     copied_temp_say.attr('id', 'copied_temp_say');
@@ -392,6 +397,7 @@ function createFullLog() {
 }
 
 function maybeAddToFullLog(node) {
+  // When adding a new log node, it should always be before the copied_temp_say.
   $('#copied_temp_say').before($(node).clone());
 }
 
@@ -426,6 +432,7 @@ function maybeHandleTurnChange(node) {
   if (text.indexOf("—") != -1) {
     // Supply piles may not exist until the first turn (veto mode).
     maybeFindSuppiedCards();
+    
     view.beforeTurn();
 
     var maybe_number = text.match(/([0-9]+) —/);
@@ -461,7 +468,7 @@ function maybeHandleTurnChange(node) {
   return false;
 }
 
-// Check to see if the node shows that a player resigned.
+// Check to see if the player resigned.
 function maybeHandleResignation(node) {
   if (node.innerText.match(/ resigns? from the game/)) {
     last_player.setResigned();
@@ -510,7 +517,7 @@ function maybeReturnToSupply(text) {
   });
 }
 
-// Handles Explorer, but also handles any other way you gain a card in hand.
+// Handles Explorer, but also handles any other way you gain a card "in hand".
 function maybeHandleGainInHand(elems, text) {
   // Normally, "Bob gains a Gold in hand" means that Bob gets a new Gold.
   // But if Alice is currently possessing Bob, and uses a card like Mine to
@@ -639,11 +646,13 @@ function maybeHandleTrader(elems, text_arr, text) {
   return false;
 }
 
+// Handles Tunnel but also any other place where revealing a card gains you
+// card.
 function maybeHandleGainViaReveal(elems, text_arr, text) {
   if (elems.length == 2 && text.match(/reveal(ing|s)? an? (.*) and gain(ing|s)? an? (.*)\./)) {
     var player = getPlayer(text_arr[0]);
     if (!player) player = last_player;
-    player.gainCard(elems[1], 1);
+    player.gainCard(elems[elems.length - 1], 1);
     return true;
   }
   return false;
@@ -685,7 +694,7 @@ function handleGainOrTrash(player, elems, text, multiplier) {
         // Skip trashing any cards during possession.
       } else {
         player.gainCard(elems[elem], num);
-        // If the trashed card is gained, take it back out
+        // If trashed card is gained by someone, take it back out of the trash.
         if (text.match(/ gain(s|ed)? the trashed /) ||
             topScope() == "Noble Brigand") {
           tablePlayer.gainCard(elems[elem], -num);
@@ -706,7 +715,8 @@ function maybeHandleGameStart(node) {
 }
 
 // Perform a function that should behave the same whether or not the current
-// player is possessed.
+// player is possessed. This clears the "possession" flag, runs the code, and
+// then restores it after.
 function unpossessed(action) {
   // Remember the current state of possession.
   var originallyPossessed = possessed_turn;
@@ -718,10 +728,10 @@ function unpossessed(action) {
   }
 }
 
+// If you get an offer to play a game, you aren't in the middle of one.
 function maybeOfferToPlay(node) {
   var innerText = node.innerText;
   if (innerText && innerText.indexOf("play this game ") == 0) {
-    // If you get an offer to play a game, you aren't in the middle of one.
     removeStoredLog();
     return true;
   }
@@ -732,7 +742,8 @@ var last_summary = '';
 
 // If we're logging info data, write into the log the current info state, which
 // is the same info as if a user typed "!all", but we put it in the log, not the
-// chat stream.
+// chat stream. It remembers the last message, and doesn't print out the new
+// info message if it is the same as the old.
 function showCurrentInfo() {
   if (!debug['infoData']) return;
   var summary = '';
@@ -799,7 +810,7 @@ function handlePlayLog(node) {
   // Gaining VP could happen in combination with other stuff.
   maybeHandleVp(node.innerText);
 
-  var elems = node.getElementsByTagName("span");
+  elems = node.getElementsByTagName("span");
 
   // Remove leading stuff from the text.
   var i = 0;
@@ -1064,6 +1075,7 @@ function chatCommandAvailable(request) {
   if (typeof(request) == 'string') {
     request = chatCommands[request];
   }
+  // If there is no check, or if it returns true, the command is available.
   return !request.checkAvailability || request.checkAvailability();
 }
 
@@ -1087,6 +1099,7 @@ function writeHelp() {
 }
 
 function setupChatCommands() {
+  // The standard command ('all' is treated specially)
   chatCommands.status = {
     help: "see player score and deck info",
     execute: function(writeStatus) {
@@ -1109,6 +1122,8 @@ function setupChatCommands() {
     help: 'show this list of commands',
     execute: writeHelp
   };
+  
+  // Add the view's commands
   view.addChatCommands();
 }
 
@@ -1129,6 +1144,7 @@ function maybeShowStatus(request, request_time) {
   }
 }
 
+// Write the status using the given function (or writeText() if not specified).
 function showStatus(request, showFunc) {
   var my_name = localStorage["name"];
   if (my_name == undefined || my_name == null) my_name = "Me";
@@ -1140,6 +1156,7 @@ function showStatus(request, showFunc) {
     showFunc(">> " + msg.replace(/\bYou([:=])/g, my_name + "$1"));
   }
 
+  // '!all' runs all non-action commands (i.e., the informational commands).
   if (request == 'all') {
     for (var name in chatCommands) {
       var subCommand = chatCommands[name];
@@ -1161,11 +1178,13 @@ function showStatus(request, showFunc) {
 }
 
 function storeLog() {
+  // Don't store the log during restoration.
   if (!debug_mode && !restoring_log) {
     localStorage["log"] = $('#full_log').html();
   }
 }
 
+// Moved this to a function so we can breakpoint any place that removes the log.
 function removeStoredLog() {
   localStorage.removeItem("log");
 }
@@ -1174,6 +1193,7 @@ function hideExtension() {
   $('#log').show();
   $('#full_log').hide();
   $('#optionPanelHolder').hide();
+  
   view.hide();
 }
 
@@ -1362,11 +1382,11 @@ function maybeStartOfGame(node) {
 // Returns true if the log node should be handled as part of the game.
 function logEntryForGame(node) {
   if (inLobby()) {
-    // If we're in the lobby and there is a log that means that a previou s game
+    // If we're in the lobby and there is a log, that means that a previous game
     // in this same browser was ended, but upon logging back in, the server put
     // the user in the lobby. Which means the server dropped that game. So we
-    // need to do that, and make sure that any remaining view-related behavior
-    // is terminated.
+    // need to do drop it too, and make sure that any remaining view-related
+    // behavior is terminated.
     removeStoredLog();
     removePlayerData();
     return false;
@@ -1438,7 +1458,7 @@ function handle(doc) {
   // Ignore DOM events when we are rewriting the tree; see rewriteTree().
   if (rewritingTree > 0) return;
 
-  // We process log entries to the hidden log, copying them to the full log.
+  // We process log entries to the hidden log, copying them to the full_log.
   // Don't process those copies.
   if (doc.parentNode.id == 'full_log') return;
 
