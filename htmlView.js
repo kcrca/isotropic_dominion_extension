@@ -455,7 +455,8 @@ function HtmlView() {
     }
   };
 
-  this.buy = function(count, card_obj) {
+  this.buy = function(count, card_text) {
+    var card_obj = card_map[card_text];
     activeData.cardBought(count, card_obj);
   };
 

@@ -427,6 +427,15 @@ function maybeFindSuppiedCards() {
   }
 }
 
+// Check to see if the player resigned.
+function maybeHandleResignation(node) {
+  if (node.innerText.match(/ resigns? from the game/)) {
+    last_player.setResigned();
+    return true;
+  }
+  return false;
+}
+
 function maybeHandleTurnChange(node) {
   var text = node.innerText;
   if (text.indexOf("—") != -1) {
@@ -468,13 +477,25 @@ function maybeHandleTurnChange(node) {
   return false;
 }
 
-// Check to see if the player resigned.
-function maybeHandleResignation(node) {
-  if (node.innerText.match(/ resigns? from the game/)) {
-    last_player.setResigned();
-    return true;
+function topScope(skipping) {
+  skipping = skipping || 0;
+  for (var i = scopes.length - 1; i >= 0; i--) {
+    var scope = scopes[i];
+    if (scope && scope.length > 0) {
+      if (--skipping < 0) return scopes[i];
+    }
   }
-  return false;
+  return undefined;
+}
+
+function findScope(name) {
+  var top = scopes.length - 1;
+  for (var i = top; i >= 0; i--) {
+    if (scopes[i] == name) {
+      return top - i;
+    }
+  }
+  return -1;
 }
 
 function handleScoping(text_arr, text) {
@@ -499,6 +520,8 @@ function handleScoping(text_arr, text) {
   }
   scopes.push(scope);
 }
+
+
 
 function maybeReturnToSupply(text) {
   return unpossessed(function () {
@@ -646,8 +669,7 @@ function maybeHandleTrader(elems, text_arr, text) {
   return false;
 }
 
-// Handles Tunnel but also any other place where revealing a card gains you
-// card.
+// Handle Tunnel and any other place where revealing a card gains you card.
 function maybeHandleGainViaReveal(elems, text_arr, text) {
   if (elems.length == 2 && text.match(/reveal(ing|s)? an? (.*) and gain(ing|s)? an? (.*)\./)) {
     var player = getPlayer(text_arr[0]);
@@ -769,18 +791,6 @@ function handleLogEntry(node) {
   if (!started) return;
 
   try {
-    // Ignore the purple log entries during Possession.
-    // When someone is possessed, log entries with class "possessed-log"
-    // describe the "possession". The other (normal) log entries describe the
-    // actual game effect. So we ignore the "possessed" entries because they
-    // are what is being commanded, not what is actually happening to the cards.
-    // (For example, if you possess Alice, then in "possessed-log" entries, it
-    // says "You play a Silver", but the actual game effect is as if Alice
-    // played the Silver (that is, Alice, as a player, gets $2 more to work
-    // with, it's just that you, not Alice, are deciding what to do with
-    // that $2).
-    if (possessed_turn && $(node).hasClass("possessed-log")) return;
-
     handlePlayLog(node);
   } finally {
     // make sure we are using the node after any rewrites
@@ -791,6 +801,18 @@ function handleLogEntry(node) {
 }
 
 function handlePlayLog(node) {
+  // Ignore the purple log entries during Possession.
+  // When someone is possessed, log entries with class "possessed-log"
+  // describe the "possession". The other (normal) log entries describe the
+  // actual game effect. So we ignore the "possessed" entries because they
+  // are what is being commanded, not what is actually happening to the cards.
+  // (For example, if you possess Alice, then in "possessed-log" entries, it
+  // says "You play a Silver", but the actual game effect is as if Alice
+  // played the Silver (that is, Alice, as a player, gets $2 more to work
+  // with, it's just that you, not Alice, are deciding what to do with
+  // that $2).
+  if (possessed_turn && $(node).hasClass("possessed-log")) return;
+
   maybeRewriteName(node);
 
   if (maybeHandleTurnChange(node)) {
@@ -822,6 +844,12 @@ function handlePlayLog(node) {
 
   view.handleLog(elems, text, node.innerText);
 
+  // With no elems, maybe the view needs to see this, but nothing else does.
+  if (elems.length == 0) {
+    if (maybeReturnToSupply(node.innerText)) return;
+    return;
+  }
+
   if (maybeHandleMint(elems, node.innerText)) return;
   if (maybeHandleTradingPost(elems, node.innerText)) return;
   if (maybeHandleGainInHand(elems, node.innerText)) return;
@@ -833,11 +861,6 @@ function handlePlayLog(node) {
   if (maybeHandleTrader(elems, text, node.innerText)) return;
   if (maybeHandleGainViaReveal(elems, text, node.innerText)) return;
   if (maybeHandleNobleBrigand(elems, text, node.innerText)) return;
-
-  if (elems.length == 0) {
-    if (maybeReturnToSupply(node.innerText)) return;
-    return;
-  }
 
   if (text[0] == "trashing") {
     var player = last_player;
@@ -875,7 +898,6 @@ function handlePlayLog(node) {
   // It's a single card action.
   var card = elems[0];
   var card_text = elems[0].innerText;
-  var card_obj = card_map[card_text];
 
   if (action.indexOf("buy") == 0) {
     var count = getCardCount(card_text, node.innerText);
@@ -884,7 +906,7 @@ function handlePlayLog(node) {
     if (!possessed_turn) {
       player.gainCard(card, count);
     }
-    view.buy(count, card_obj);
+    view.buy(count, card_text);
   } else if (action.indexOf("pass") == 0) {
     unpossessed(function() {
       if (player_count > 2) {
@@ -917,27 +939,6 @@ function allPlayers(func) {
   if (tablePlayer) {
     func(tablePlayer);
   }
-}
-
-function topScope(skipping) {
-  skipping = skipping || 0;
-  for (var i = scopes.length - 1; i >= 0; i--) {
-    var scope = scopes[i];
-    if (scope && scope.length > 0) {
-      if (--skipping < 0) return scopes[i];
-    }
-  }
-  return undefined;
-}
-
-function findScope(name) {
-  var top = scopes.length - 1;
-  for (var i = top; i >= 0; i--) {
-    if (scopes[i] == name) {
-      return top - i;
-    }
-  }
-  return -1;
 }
 
 function getScores() {
