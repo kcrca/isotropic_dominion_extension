@@ -7,6 +7,7 @@
 /* !! The behavior of the log area is right, but it isn't full height at the start. */
 
 #optionPanel, .testInfo div.black,
+.internalInfoPage,
 .you, .you *, #header > :not(.lobby) {
     background-color: #dbf8db;
 }
@@ -158,11 +159,12 @@ html {
 .tall {
     height: 100%;
 }
+
 /*
- * Styles that apply only to image mode -- where needed they require a parent
- * node with the id "imageMode". Classes and ID's that exist only in image mode
- * don't need that qualification.
- */
+* Styles that apply only to image mode -- where needed they require a parent
+* node with the id "imageMode". Classes and ID's that exist only in image mode
+* don't need that qualification.
+*/
 
 td.kingdom-column, td.basic-column {
     width: auto !important;
@@ -317,23 +319,23 @@ a.buy, .kingdom-column .buy {
  * them less intense, so it's easier to read the text.
  */
 .card-treasure {
-    background: #fce992 !important;
+    background: #fcedad !important;
 }
 
 .card-curse {
-    background: #e8cfe9 !important;
+    background: #e8d0e9 !important;
 }
 
 .card-victory {
-    background: #c0e4b1 !important;
+    background: #ceebc3 !important;
 }
 
 .card-reaction {
-    background: #c1e1f4 !important;
+    background: #cde5f3 !important;
 }
 
 .card-duration {
-    background: #ffcc99 !important;
+    background: #ffd4aa !important;
 }
 
 /*

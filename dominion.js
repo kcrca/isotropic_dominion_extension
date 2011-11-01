@@ -54,9 +54,7 @@ var extension_version = 'Unknown';
 
 var restoring_log = false;
 
-var infoIsForTests = false;
-
-var test_only_my_score = false;
+var selfTests = new SelfTests();
 
 var view = createView();
 
@@ -263,13 +261,13 @@ function Player(name, num) {
 
     if (this.card_counts[name] <= 0) {
       if (this.card_counts[name] < 0) {
-        maybeAnnounceFailure("Card count for " + name + " is negative (" + this.card_counts[name] + ")");
+        handleError("Card count for " + name + " is negative (" + this.card_counts[name] + ")");
       }
       delete this.card_counts[name];
       this.special_counts["Uniques"] -= 1;
     }
     view.recordCard(this, name);
-  };
+  }
 
   this.recordSpecialCards = function(card, count) {
     var name = card.innerHTML;
@@ -326,14 +324,13 @@ function Player(name, num) {
     this.recordSpecialCards(card, count);
     this.recordCards(singular_card_name, count);
 
-    trashing = trashing == undefined ? true : trashing;
+    view.gainCard(this, card, count, trashing);
 
+    trashing = trashing == undefined ? true : trashing;
     // If the count is going down, usually player is trashing a card.
     if (!this.isTable && count < 0 && trashing) {
       tablePlayer.gainCard(card, -count);
     }
-
-    view.gainCard(this, card, count, trashing);
   };
 
   // This player has resigned; remember it.
@@ -414,19 +411,21 @@ function findTrailingPlayer(text) {
   return getPlayer(arr[1]);
 }
 
+function maybeFindSuppiedCards() {
+  if ($.isEmptyObject(supplied_cards)) {
+    // Figure out which cards are in supply piles.
+    $("#supply [cardname]").each(function() {
+      supplied_cards[$(this).attr("cardname")] = true;
+    });
+    view.suppliedCardsKnown();
+  }
+}
+
 function maybeHandleTurnChange(node) {
   var text = node.innerText;
   if (text.indexOf("—") != -1) {
-    if ($.isEmptyObject(supplied_cards)) {
-      // Figure out which cards are in supply piles.
-      // Done here because if we're in veto mode the supply piles don't exist,
-      // they are only guaranteed to exist on the first turn.
-      $("#supply [cardname]").each(function() {
-        supplied_cards[$(this).attr("cardname")] = true;
-      });
-      view.suppliedCardsKnown();
-    }
-
+    // Supply piles may not exist until the first turn (veto mode).
+    maybeFindSuppiedCards();
     view.beforeTurn();
 
     var maybe_number = text.match(/([0-9]+) —/);
@@ -471,241 +470,6 @@ function maybeHandleResignation(node) {
   return false;
 }
 
-function markInfoAsOurs(table) {
-  table.parent().addClass('internalInfoPage');
-  var row = $('<tr/>');
-  var col = $('<td/>').attr('colspan', '2');
-  table.append(row);
-  row.append(col.html('This info window is for internal testing purposes. ' +
-      'It should have been dismissed automatically without you seeing it. ' +
-      'If you see this, please dismiss it and let us know.'));
-}
-
-function maybeRunInfoWindowTests(table) {
-  if (!infoIsForTests) return;
-
-  // Make sure the table we're looking at is the info table
-  if (table.tagName != 'TABLE') return;
-  if (table.innerText.indexOf("Trash:") < 0) return;
-
-  try {
-    table = $(table);
-    markInfoAsOurs(table);
-    infoWindowTests(table);
-  } finally {
-    infoIsForTests = false;
-    $("body > div.black").remove();
-  }
-}
-
-function infoWindowTests(table) {
-  // Our checks will definitely fail in an erroneous state.
-  if (announced_error) return;
-
-  if ($('#choices span.stash-pos-marker').length > 0) {
-    // This check exists because it is possible to have the info window pop up
-    // when the user is being asked where to locate the Stash card in the deck.
-    // When that happens, the info window is incorrect (it doesn't show the
-    // cards already drawn before the shuffle). This means that we cannot tell
-    // how big the deck is, even if we count the number of cards shown in the
-    // span choice. This is rare, so we just skip the tests in this case.
-    logDebug('infoData',
-        "--- Skipping info window tests during stash placement\n");
-    return;
-  }
-
-  logDebug('infoData', "--- Running info tests ---\n");
-
-  var msgs = [];
-  var foundProblem = false;
-
-  function checkValue(actual, expected, text) {
-    var valid = (actual == expected);
-    var label;
-    var op;
-    if (valid) {
-      label = 'valid';
-      op = '==';
-    } else {
-      label = '==INVALID==';
-      op = '!=';
-      foundProblem = true;
-    }
-    var msg = label + ': ' + actual + ' ' + op + ' ' + expected + ' ' +
-        player.name + ': ' + text;
-    logDebug('infoData', msg);
-    msgs.push(msg);
-  }
-
-  function countCards(str) {
-    if (str == 'nothing') {
-      return 0;
-    }
-    var sep = /(?:,\s*|,?\s*\band\b\s*)+/g;
-    var split = str.split(sep);
-    logDebug('infoDataDetailed', 'pattern: ' + sep);
-    logDebug('infoDataDetailed',
-        'split ' + split.length + ': |' + split.join('|') + '|');
-    var count = split.length;
-    for (var i = 0; i < split.length; i++) {
-      var cardSpec = split[i];
-      var match = cardSpec.match(/^\d+/);
-      if (match) {
-        count += parseInt(match[0]) - 1;
-      }
-    }
-    return count;
-  }
-
-  function addToCardCount(count) {
-    if (isNaN(player.testCardCount)) return;
-    player.testCardCount += count;
-    if (player.testCardCountStr.length > 0) {
-      player.testCardCountStr += '+';
-    }
-    player.testCardCountStr += count;
-  }
-
-  function parseInfoNumber(str) {
-    return str == 'nothing' ? 0 : parseInt(str);
-  }
-
-  function setCurrentPlayer(p) {
-    player = p;
-    player.testCardCount = 0;
-    player.testCardCountStr = '';
-    player.testSeenIslandMat = false;
-  }
-
-  var player = tablePlayer;
-  setCurrentPlayer(tablePlayer);
-
-  var tests = [
-    { pat: /^Trash: *\(?(nothing|\d+)/,
-      act: function(row, match) {
-        var count = parseInfoNumber(match[1]);
-        checkValue(count, tablePlayer.deck_size, row.text());
-      }
-    },
-    { pat: /^—— (.*) ——/,
-      act: function(row, match) {
-        var playerName = rewriteName(match[1]);
-        setCurrentPlayer(getPlayer(playerName));
-      }
-    },
-    { pat: /Current score: *([0-9]+)/,
-      act: function(row, match) {
-        // The score isn't reliable if we've had an error.
-        if (test_only_my_score && player.name != "You") return;
-        // Depends on the player.get() method which isn't universally supported.
-        if (!player.get) return;
-        var scoreStr = player.get('score');
-        var equals = scoreStr.indexOf('=');
-        if (equals > 0) {
-          scoreStr = scoreStr.substring(equals + 1);
-        }
-        checkValue(parseInt(match[1]), parseInt(scoreStr), row.text());
-      }
-    },
-    { pat: /^(Hand|Play area|Previous duration): *([^\d].*)/,
-      act: function(row, match) {
-        if (!view.tests.handSize) return;
-        addToCardCount(countCards(match[2]));
-        if (match[1].indexOf('Previous duration') == 0) {
-          // Each Haven in the duration implies one *or more* cards set aside.
-          // These cards are not listed in the info window, even for you. Which
-          // means that if there are Havens, we can't really tell how many cards
-          // are in the decks. (It can be more than one card if Haven was played
-          // with Throne Room or King's Court.)
-          if (match[2].match(/\bHaven\b/g)) {
-            player.testCardCount = NaN;
-            player.testCardCountStr = 'Haven prevents deck size test';
-          }
-        }
-      }
-    },
-    { pat: /^(.*) (?:mat|aside): *(.*)/,
-      act: function(row, match) {
-        if (!view.tests.handSize) return;
-        // Test set for the mat/aside area (includes chapel for thinning):
-        // haven, horse traders, library, possession, island, native village, pirate ship, trade route, chapel
-        // Island mat (also uses the term "aside" in the text)
-        // Native Village mat (also uses the term "aside" in the text)
-        // Pirate Ship mat
-        // Trade Route mat
-        // aside: Haven
-        // aside: Horse Traders (reaction)
-        // aside: Library (only during the turn)
-        // aside: Possession (only during the turn)
-        var count = countCards(match[2]);
-        if (match[1] == 'Pirate Ship') {
-          //!! We should count and show pirate ship mat tokens
-        } else {
-          if (match[1] == "Island") {
-            checkValue(count, player.islandMatCount(), row.text());
-            player.testSeenIslandMat = true;
-          }
-          addToCardCount(count);
-        }
-      }
-    },
-    { pat: /^(?:Hand|Draw pile): *(nothing|\d+)/,
-      act: function(row, match) {
-        if (!view.tests.handSize) return;
-        addToCardCount(parseInfoNumber(match[1]));
-      }
-    },
-    { pat: /^(Draw|Discard) pile:/,
-      act: function(row, match) {
-        if (!view.tests.handSize) return;
-        var isDiscard = (match[1] == "Discard");
-        var count = 0;
-        var paddingStrs = '';
-        $(row).find('span.discards').each(function() {
-          var paddingSpec = $(this).css('padding-left');
-          if (paddingStrs.length > 0) {
-            paddingStrs += '+';
-          }
-          match = paddingSpec.match(/([0-9]+)px/);
-          if (match) {
-            paddingStrs += match[1];
-            count += parseInt(match[1]) / 6;
-          }
-        });
-        addToCardCount(count);
-        player.testCardCountStr += '[' + paddingStrs + 'px]';
-        if (isDiscard && !isNaN(player.testCardCount)) {
-          if (!player.testSeenIslandMat) {
-            // The info window is can be silent about the island mat for other
-            // players so we have to expect the deck to include what's on the
-            // mat, even though it hasn't been listed.
-            player.testCardCount += player.islandMatCount()
-          }
-          checkValue(player.testCardCount, player.deck_size,
-              player.testCardCountStr);
-        }
-      }
-    }
-  ];
-
-  table.find('tr').each(function() {
-    var tr = $(this);
-    var text = tr.text().replace(/\s+/g, ' ');
-    for (var i = 0; i < tests.length; i++) {
-      var test = tests[i];
-      var match = test.pat.exec(text);
-      if (match) {
-        test.act(tr, match);
-        break;
-      }
-    }
-  });
-
-  if (foundProblem && debug['infoData']) {
-    alert("Found problems with data: see console log");
-  }
-}
-
 function handleScoping(text_arr, text) {
   var depth = 1;
   for (var t in text_arr) {
@@ -719,6 +483,7 @@ function handleScoping(text_arr, text) {
       text.indexOf("You reveal a Watchtower") != -1) {
     scope = 'Watchtower';
   } else {
+    // In Hinterland, buying a card can cause actions that set up a scope.
     var re = new RegExp("(?:You|" + player_re + ") (?:play|buy)s? an? ([^.]*)\\.");
     var arr = text.match(re);
     if (arr && arr.length == 3) {
@@ -745,6 +510,7 @@ function maybeReturnToSupply(text) {
   });
 }
 
+// Handles Explorer, but also handles any other way you gain a card in hand.
 function maybeHandleGainInHand(elems, text) {
   // Normally, "Bob gains a Gold in hand" means that Bob gets a new Gold.
   // But if Alice is currently possessing Bob, and uses a card like Mine to
@@ -952,14 +718,6 @@ function unpossessed(action) {
   }
 }
 
-function startInfoWIndowTests() {
-  // Should not run these tests while restoring from log.
-  if (!restoring_log) {
-    infoIsForTests = true;
-    $('button:contains(info)').click();
-  }
-}
-
 function maybeOfferToPlay(node) {
   var innerText = node.innerText;
   if (innerText && innerText.indexOf("play this game ") == 0) {
@@ -1025,7 +783,7 @@ function handlePlayLog(node) {
   maybeRewriteName(node);
 
   if (maybeHandleTurnChange(node)) {
-    startInfoWIndowTests();
+    selfTests.startInfoWIndowTests();
     return;
   }
   if (maybeHandleResignation(node)) return;
@@ -1121,7 +879,7 @@ function handlePlayLog(node) {
       if (player_count > 2) {
         maybeAnnounceFailure("⚠ Warning: Masquerade with more than 2 players" +
             " causes inaccurate score counting.");
-        test_only_my_score = true;
+        selfTests.testOnlyMyScore = true;
       }
       player.gainCard(card, -1, false);
       var other_player = findTrailingPlayer(node.innerText);
@@ -1203,9 +961,9 @@ function initialize(doc) {
   had_error = false;
   possessed_turn = false;
   announced_error = false;
-  test_only_my_score = false;
   turn_number = 0;
   supplied_cards = {};
+  selfTests.reset();
 
   last_gain_player = null;
   scopes = [];
@@ -1287,7 +1045,7 @@ function initialize(doc) {
 
 function maybeRewriteName(doc) {
   if (doc.innerHTML != undefined && doc.innerHTML != null) {
-    for (var player in player_rewrites) {
+    for (player in player_rewrites) {
       doc.innerHTML = doc.innerHTML.replace(player, player_rewrites[player]);
     }
   }
@@ -1376,6 +1134,8 @@ function showStatus(request, showFunc) {
   if (my_name == undefined || my_name == null) my_name = "Me";
 
   showFunc = showFunc || writeText;
+  
+  // Write status via "show", replacing "You" with the player's own name.
   function writeStatus(msg) {
     showFunc(">> " + msg.replace(/\bYou([:=])/g, my_name + "$1"));
   }
@@ -1393,13 +1153,11 @@ function showStatus(request, showFunc) {
   var command = chatCommands[request];
   if (!command) {
     showFunc("⚠ Unknown chat request: !" + request);
-    return;
-  }
-  if (!chatCommandAvailable(command)) {
+  } else if (!chatCommandAvailable(command)) {
     showFunc("⚠ Chat request not available: !" + request);
-    return;
+  } else {
+    command.execute(writeStatus);
   }
-  command.execute(writeStatus);
 }
 
 function storeLog() {
@@ -1544,12 +1302,12 @@ function maybeStartOfGame(node) {
   if (inLobby()) {
     // If we're in the lobby, this can't be the start of a game.
     // But if we have a stored log, that means that the last we knew, we were in 
-    // the middle of a game in this same browser. Which means that we were
-    // booted from the game for inactivity, or we hit exit, etc. In some cases
-    // that would mean that when the user logged in they would be taken straight
+    // the middle of a game in this same browser. Which means that the user was
+    // booted from the game for inactivity, or hit exit, etc. In some cases that
+    // would mean that when the user next logged in they would be taken straight
     // to the still-in-progress game, but if the game is over, the server puts
-    // us straight into the lobby. So if we are in the lobby but have a stored
-    // log, we need to clean up.
+    // the user straight into the lobby. So if we are in the lobby but have a
+    // stored log, we need to clean up.
     if (localStorage['log']) {
       removeStoredLog();
       removePlayerData();
@@ -1564,7 +1322,7 @@ function maybeStartOfGame(node) {
 
   if (localStorage.getItem("log") == undefined &&
       nodeText.indexOf("Your turn 1 —") != -1) {
-    // We don't have any players but it's your turn 1. This must be a
+    // We haven't seen a turn order, but it's the user's turn 1. This must be a
     // solitaire game. Create a fake (and invisible) setup line. We'll get
     // called back again with it by the simple act of adding it (which is why
     // this code is *not* wrapped in rewriteTree()).
@@ -1584,7 +1342,6 @@ function maybeStartOfGame(node) {
     console.log("--- starting game ---");
     removeStoredLog();
     localStorage.removeItem("disabled");
-    createFullLog();
   } else if (localStorage["log"]) {
     try {
       restoring_log = true;
@@ -1630,11 +1387,8 @@ function restoreHistory(node) {
     return false;
   }
 
-  createFullLog();
-
   // First build a DOM tree of the old log messages in a copy of the log.
   var log_entries = $('<pre id="temp"></pre>').html(logHistory).children();
-  var full_log = $('#full_log');
   log_entries.each(function() {
     var entry = $(this);
     if (entry.html() == node.innerHTML) return false;
@@ -1648,6 +1402,7 @@ function inLobby() {
   return $('#player_table').length > 0;
 }
 
+// Manage the option panel that belongs at the bottom of the page
 function addOptionHandler(name, updateVisibility) {
   var button = optionButtons[name];
   button.change(updateVisibility);
@@ -1683,6 +1438,10 @@ function handle(doc) {
   // Ignore DOM events when we are rewriting the tree; see rewriteTree().
   if (rewritingTree > 0) return;
 
+  // We process log entries to the hidden log, copying them to the full log.
+  // Don't process those copies.
+  if (doc.parentNode.id == 'full_log') return;
+
   // When the lobby screen is built, make sure point tracker settings are used.
   if (doc.className && doc.className == "constr") {
     $('#tracker').attr('checked', true).attr('disabled', true);
@@ -1702,10 +1461,6 @@ function handle(doc) {
       }
     });
   }
-
-  // We process log entries to the hidden log, copying them to the full log.
-  // Don't process those copies.
-  if (doc.parentNode.id == 'full_log') return;
 
   try {
     if (!started && maybeOfferToPlay(doc)) return;
@@ -1727,7 +1482,7 @@ function handle(doc) {
       show_unique_count = false;
       show_duchy_count = false;
       show_victory_count = false;
-      var elems = doc.getElementsByTagName("span");
+      elems = doc.getElementsByTagName("span");
       for (var elem in elems) {
         if (elems[elem].innerText == "Vineyard") show_action_count = true;
         if (elems[elem].innerText == "Fairgrounds") show_unique_count = true;
@@ -1756,7 +1511,7 @@ function handle(doc) {
       updateDeck();
     }
 
-    maybeRunInfoWindowTests(doc);
+    selfTests.maybeRunInfoWindowTests(doc);
   } catch (err) {
     console.log(err);
     console.log(doc);
