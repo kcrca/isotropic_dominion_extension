@@ -30,6 +30,10 @@
             "js": [ "login.js", "jquery.js", "earlyPage.js", "options.js" ],
             "css": [ "playerData.css" ],
             "matches": [ "http://dominion.isotropic.org/*loggedin*" ]
+        },
+        {
+            "matches": [ "http://dominion.isotropic.org/leaderboard*" ],
+            "css": [ "playerData.css" ]
         }
     ],
     "permissions": [

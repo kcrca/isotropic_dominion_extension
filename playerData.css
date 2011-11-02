@@ -374,3 +374,13 @@ a.buy, .kingdom-column .buy {
 body.textMode [grown]:not(:empty) {
     background: #f2f2f2;
 }
+
+/* Tweaks that appl=y to leaderboard, which shouldn't wrap things. */
+tr.level td {
+    white-space: nowrap;
+}
+
+th {
+    text-align: left;
+    padding: 3px 15px;
+}
