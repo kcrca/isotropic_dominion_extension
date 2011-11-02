@@ -118,13 +118,12 @@ function CardGroup(name, params) {
       total += info.count;
       html = info.html;
       if (info.count == 1) {
-        if (this.showCount) html= 1 + '&nbsp;' + html;
+        if (this.showCount) html = 1 + '&nbsp;' + html;
       } else {
         var card = info.card;
         if (card.Singular != card.Plural) {
           // Include the '>' so we don't change the cardname attr.
-          html =
-              html.replace('>' + card.Singular, '>' + card.Plural);
+          html = html.replace('>' + card.Singular, '>' + card.Plural);
         }
         html = info.count + '&nbsp;' + html;
       }
@@ -836,7 +835,7 @@ function HtmlView() {
     $("#body").addClass("playing").addClass(
         text_mode ? "textMode" : "imageMode");
   }
-  
+
   this.inTextMode = function() {
     return text_mode;
   };
@@ -847,6 +846,7 @@ function HtmlView() {
     $("#body").removeClass("textMode").removeClass("imageMode")
         .removeClass("playing");
   }
+
   this.remove = function() {
     forgetGUIMode();
     removePlayerArea();
@@ -854,7 +854,6 @@ function HtmlView() {
   };
 
   this.stop = function() {
-    forgetGUIMode();
     activeData.stop();
   };
 
