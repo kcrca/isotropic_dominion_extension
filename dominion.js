@@ -163,15 +163,15 @@ function Player(name, num) {
     var score_str = this.score + "";
     var total_score = this.score;
 
-    if (this.special_counts["Gardens"] != undefined) {
-      var gardens = this.special_counts["Gardens"];
+    if (this.card_counts["Gardens"] != undefined) {
+      var gardens = this.card_counts["Gardens"];
       var garden_points = Math.floor(this.deck_size / 10);
       score_str = score_str + "+" + gardens + "g@" + garden_points;
       total_score = total_score + gardens * garden_points;
     }
 
-    if (this.special_counts["Silk Roads"] != undefined) {
-      var silk_roads = this.special_counts["Silk Roads"];
+    if (this.card_counts["Silk Road"] != undefined) {
+      var silk_roads = this.card_counts["Silk Road"];
       var silk_road_points = 0;
       if (this.special_counts["Victory"] != undefined) {
         silk_road_points = Math.floor(this.special_counts["Victory"] / 4);
@@ -180,18 +180,18 @@ function Player(name, num) {
       total_score = total_score + silk_roads * silk_road_points;
     }
 
-    if (this.special_counts["Duke"] != undefined) {
-      var dukes = this.special_counts["Duke"];
+    if (this.card_counts["Duke"] != undefined) {
+      var dukes = this.card_counts["Duke"];
       var duke_points = 0;
-      if (this.special_counts["Duchy"] != undefined) {
-        duke_points = this.special_counts["Duchy"];
+      if (this.card_counts["Duchy"] != undefined) {
+        duke_points = this.card_counts["Duchy"];
       }
       score_str = score_str + "+" + dukes + "d@" + duke_points;
       total_score = total_score + dukes * duke_points;
     }
 
-    if (this.special_counts["Vineyard"] != undefined) {
-      var vineyards = this.special_counts["Vineyard"];
+    if (this.card_counts["Vineyard"] != undefined) {
+      var vineyards = this.card_counts["Vineyard"];
       var vineyard_points = 0;
       if (this.special_counts["Actions"] != undefined) {
         vineyard_points = Math.floor(this.special_counts["Actions"] / 3);
@@ -200,8 +200,8 @@ function Player(name, num) {
       total_score = total_score + vineyards * vineyard_points;
     }
 
-    if (this.special_counts["Fairgrounds"] != undefined) {
-      var fairgrounds = this.special_counts["Fairgrounds"];
+    if (this.card_counts["Fairgrounds"] != undefined) {
+      var fairgrounds = this.card_counts["Fairgrounds"];
       var fairgrounds_points = 0;
       if (this.special_counts["Uniques"] != undefined) {
         fairgrounds_points = Math.floor(this.special_counts["Uniques"] / 5) * 2;
@@ -221,7 +221,7 @@ function Player(name, num) {
     var need_action_string = (show_action_count && this.special_counts["Actions"]);
     var need_unique_string = (show_unique_count && this.special_counts["Uniques"]);
     var need_victory_string = (show_victory_count && this.special_counts["Victory"]);
-    var need_duchy_string = (show_duchy_count && this.special_counts["Duchy"]);
+    var need_duchy_string = (show_duchy_count && this.card_counts["Duchy"]);
     if (need_action_string || need_unique_string || need_duchy_string || need_victory_string) {
       var special_types = [];
       if (need_unique_string) {
@@ -231,7 +231,7 @@ function Player(name, num) {
         special_types.push(this.special_counts["Actions"] + "a");
       }
       if (need_duchy_string) {
-        special_types.push(this.special_counts["Duchy"] + "d");
+        special_types.push(this.card_counts["Duchy"] + "d");
       }
       if (need_victory_string) {
         special_types.push(this.special_counts["Victory"] + "v");
@@ -270,25 +270,17 @@ function Player(name, num) {
     view.recordCard(this, name);
   }
 
-  this.recordSpecialCards = function(card, count) {
-    var name = card.innerHTML;
-    if (name.indexOf("Gardens") == 0) {
-      this.changeSpecialCount("Gardens", count);
+  this.recordSpecialCounts = function(singular_card_name, card, count) {
+    // Hack! Hinterlands adds reactions that are not actions. Currently there
+    // is no easy way to see this based on the class names. I've made a request
+    // to change this but for now special case them. :(
+    if (singular_card_name == "Tunnel") {
+      this.changeSpecialCount("Victory", count);
+      return;
     }
-    if (name.indexOf("Duke") == 0) {
-      this.changeSpecialCount("Duke", count);
-    }
-    if (name.indexOf("Duchy") == 0 || name.indexOf("Duchies") == 0) {
-      this.changeSpecialCount("Duchy", count);
-    }
-    if (name.indexOf("Vineyard") == 0) {
-      this.changeSpecialCount("Vineyard", count);
-    }
-    if (name.indexOf("Fairgrounds") == 0) {
-      this.changeSpecialCount("Fairgrounds", count);
-    }
-    if (name.indexOf("Silk Road") == 0) {
-      this.changeSpecialCount("Silk Roads", count);
+    if (singular_card_name == "Fool's Gold") {
+      this.changeSpecialCount("Treasure", count);
+      return;
     }
 
     var types = card.className.split("-").slice(1);
@@ -322,7 +314,7 @@ function Player(name, num) {
 
     var singular_card_name = getSingularCardName(card.innerText);
     this.changeScore(pointsForCard(singular_card_name) * count);
-    this.recordSpecialCards(card, count);
+    this.recordSpecialCounts(singular_card_name, card, count);
     this.recordCards(singular_card_name, count);
 
     view.gainCard(this, card, count, trashing);
@@ -521,8 +513,6 @@ function handleScoping(text_arr, text) {
   scopes.push(scope);
 }
 
-
-
 function maybeReturnToSupply(text) {
   return unpossessed(function () {
     var ret = false;
@@ -711,15 +701,15 @@ function handleGainOrTrash(player, elems, text, multiplier) {
     if (elems[elem].innerText != undefined) {
       var card = elems[elem].innerText;
       var count = getCardCount(card, text);
-      var num = multiplier * count;
-      if (possessed_turn && num < 0) {
+      var total = multiplier * count;
+      if (possessed_turn && total < 0) {
         // Skip trashing any cards during possession.
       } else {
-        player.gainCard(elems[elem], num);
+        player.gainCard(elems[elem], total);
         // If trashed card is gained by someone, take it back out of the trash.
         if (text.match(/ gain(s|ed)? the trashed /) ||
             topScope() == "Noble Brigand") {
-          tablePlayer.gainCard(elems[elem], -num);
+          tablePlayer.gainCard(elems[elem], -total);
         }
       }
     }
@@ -1178,16 +1168,16 @@ function showStatus(request, showFunc) {
   }
 }
 
+// Moved this to a function so we can breakpoint any place that removes the log.
+function removeStoredLog() {
+  localStorage.removeItem("log");
+}
+
 function storeLog() {
   // Don't store the log during restoration.
   if (!debug_mode && !restoring_log) {
     localStorage["log"] = $('#full_log').html();
   }
-}
-
-// Moved this to a function so we can breakpoint any place that removes the log.
-function removeStoredLog() {
-  localStorage.removeItem("log");
 }
 
 function hideExtension() {
@@ -1384,7 +1374,7 @@ function maybeStartOfGame(node) {
 function logEntryForGame(node) {
   if (inLobby()) {
     // If we're in the lobby and there is a log, that means that a previous game
-    // in this same browser was ended, but upon logging back in, the server put
+    // in this same browser was exited, but upon logging back in, the server put
     // the user in the lobby. Which means the server dropped that game. So we
     // need to do drop it too, and make sure that any remaining view-related
     // behavior is terminated.
