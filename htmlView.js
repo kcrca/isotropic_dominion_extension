@@ -139,12 +139,12 @@ function CardGroup(name, params) {
 
 function HtmlView() {
   var maxTradeRoute = undefined;
-  var seen_first_turn = false;
+  var seenFirstTurn = false;
   var activeData = new ActiveData(this);
   var groups = {};
 
   // Are we in text mode (vs. image mode) in the UI?
-  var text_mode;
+  var testMode;
 
   var splitOutIslands = false;
 
@@ -156,7 +156,6 @@ function HtmlView() {
 
   this.setupPlayer = function(player) {
     player.icon = undefined;
-    player.cards_aside = {};
 
     // The set of "other" cards -- ones that aren't in the supply piles
     player.otherCards = {};
@@ -454,15 +453,15 @@ function HtmlView() {
     }
   };
 
-  this.buy = function(count, card_text) {
-    var card_obj = card_map[card_text];
-    activeData.cardBought(count, card_obj);
+  this.buy = function(count, cardText) {
+    var cardObj = card_map[cardText];
+    activeData.cardBought(count, cardObj);
   };
 
   this.maybeHandleFirstTurn = function() {
-    if (seen_first_turn) return;
+    if (seenFirstTurn) return;
 
-    seen_first_turn = true;
+    seenFirstTurn = true;
 
     // It may be hidden during veto.
     $('#playerDataTable').show();
@@ -525,12 +524,12 @@ function HtmlView() {
     }
 
     var ptab = $('<table/>');
-    if (!text_mode) {
+    if (!testMode) {
       ptab.attr('align', 'right');
     }
     ptab.attr('id', 'playerDataTable');
 
-    if (text_mode) {
+    if (testMode) {
       var outerTable = $('<table/>');
       outerTable.attr('id', 'playerDataArranger');
       var row = addRow(outerTable, null,
@@ -541,12 +540,12 @@ function HtmlView() {
       kids.last().append($('#log'), $('#full_log'), $('#choices'));
       $('#game > :first-child').before(outerTable);
     } else {
-      var player_spot = $('#supply');
+      var playerSpot = $('#supply');
       rewriteTree(function () {
         var outerCell = $('<td valign="bottom"/>');
-        $(player_spot).replaceWith(outerCell);
+        playerSpot.replaceWith(outerCell);
         outerCell.append(ptab);
-        outerCell.append(player_spot);
+        outerCell.append(playerSpot);
       });
     }
     // Start out hidden until the first turn, so if veto mode is going on, we
@@ -557,7 +556,7 @@ function HtmlView() {
   // As needed, set per-card count columns.
   function maybeSetupCardCounts() {
     rewriteTree(function () {
-      if (text_mode) {
+      if (testMode) {
         setupPerPlayerTextCardCounts();
       } else {
         setupPerPlayerImageCardCounts('kingdom');
@@ -828,16 +827,16 @@ function HtmlView() {
 
     $('#chat ~ a[href^="/mode/"]').each(function() {
       // The link is to the "text" mode when it's in image mode and vice versa.
-      text_mode = $(this).text().indexOf("text") < 0;
+      testMode = $(this).text().indexOf("text") < 0;
     });
 
     // Setting the class enables css selectors that distinguish between the modes.
     $("#body").addClass("playing").addClass(
-        text_mode ? "textMode" : "imageMode");
+        testMode ? "textMode" : "imageMode");
   }
 
   this.inTextMode = function() {
-    return text_mode;
+    return testMode;
   };
 
 // Drop any state related to knowing text vs. image mode.
