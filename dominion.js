@@ -218,11 +218,15 @@ function Player(name, num) {
 
   this.getDeckString = function() {
     var str = this.deck_size;
-    var need_action_string = (show_action_count && this.special_counts["Actions"]);
-    var need_unique_string = (show_unique_count && this.special_counts["Uniques"]);
-    var need_victory_string = (show_victory_count && this.special_counts["Victory"]);
+    var need_action_string = (show_action_count &&
+        this.special_counts["Actions"]);
+    var need_unique_string = (show_unique_count &&
+        this.special_counts["Uniques"]);
+    var need_victory_string = (show_victory_count &&
+        this.special_counts["Victory"]);
     var need_duchy_string = (show_duchy_count && this.card_counts["Duchy"]);
-    if (need_action_string || need_unique_string || need_duchy_string || need_victory_string) {
+    if (need_action_string || need_unique_string || need_duchy_string ||
+        need_victory_string) {
       var special_types = [];
       if (need_unique_string) {
         special_types.push(this.special_counts["Uniques"] + "u");
@@ -262,7 +266,8 @@ function Player(name, num) {
 
     if (this.card_counts[name] <= 0) {
       if (this.card_counts[name] < 0) {
-        handleError("Card count for " + name + " is negative (" + this.card_counts[name] + ")");
+        handleError("Card count for " + name + " is negative (" +
+            this.card_counts[name] + ")");
       }
       delete this.card_counts[name];
       this.special_counts["Uniques"] -= 1;
@@ -286,8 +291,8 @@ function Player(name, num) {
     var types = card.className.split("-").slice(1);
     for (type_i in types) {
       var type = types[type_i];
-      if (type == "none" || type == "duration" ||
-          type == "action" || type == "reaction") {
+      if (type == "none" || type == "duration" || type == "action" ||
+          type == "reaction") {
         this.changeSpecialCount("Actions", count);
       } else if (type == "curse") {
         this.changeSpecialCount("Curse", count);
@@ -296,16 +301,16 @@ function Player(name, num) {
       } else if (type == "treasure") {
         this.changeSpecialCount("Treasure", count);
       } else {
-        handleError("Unknown card class: " + card.className + " for " + card.innerText);
+        handleError("Unknown card class: " + card.className + " for " +
+            card.innerText);
       }
     }
   }
 
   this.gainCard = function(card, count, trashing) {
     if (debug_mode) {
-      $('#log').children().eq(-1).before(
-          '<div class="gain_debug">*** ' + name + " gains " +
-          count + " " + card.innerText + "</div>");
+      $('#log').children().eq(-1).before('<div class="gain_debug">*** ' + name +
+          " gains " + count + " " + card.innerText + "</div>");
     }
 
     last_gain_player = this;
@@ -340,9 +345,8 @@ function stateStrings() {
   var state = '';
   for (var player in players) {
     player = players[player];
-    state += '<b>' + player.name + "</b>: " +
-        player.getScore() + " points [deck size is " +
-        player.getDeckString() + "] - " +
+    state += '<b>' + player.name + "</b>: " + player.getScore() +
+        " points [deck size is " + player.getDeckString() + "] - " +
         JSON.stringify(player.special_counts) + "<br>" +
         JSON.stringify(player.card_counts) + "<br>";
   }
@@ -378,7 +382,7 @@ function createFullLog() {
 
     var full_log = $('<pre id="full_log"/>');
     $('#log').hide().before(full_log);
-    
+
     // Make a place to put a copy of temp_say in full_log so it will be visible.
     var temp_say = $('#temp_say');
     var copied_temp_say = temp_say.clone();
@@ -411,6 +415,7 @@ function findTrailingPlayer(text) {
 
 function maybeFindSuppiedCards() {
   if ($.isEmptyObject(supplied_cards)) {
+    supplied_cards = {};
     // Figure out which cards are in supply piles.
     $("#supply [cardname]").each(function() {
       supplied_cards[$(this).attr("cardname")] = true;
@@ -433,7 +438,7 @@ function maybeHandleTurnChange(node) {
   if (text.indexOf("—") != -1) {
     // Supply piles may not exist until the first turn (veto mode).
     maybeFindSuppiedCards();
-    
+
     view.beforeTurn();
 
     var maybe_number = text.match(/([0-9]+) —/);
@@ -504,7 +509,8 @@ function handleScoping(text_arr, text) {
     scope = 'Watchtower';
   } else {
     // In Hinterland, buying a card can cause actions that set up a scope.
-    var re = new RegExp("(?:You|" + player_re + ") (?:play|buy)s? an? ([^.]*)\\.");
+    var re = new RegExp("(?:You|" + player_re +
+        ") (?:play|buy)s? an? ([^.]*)\\.");
     var arr = text.match(re);
     if (arr && arr.length == 3) {
       scope = arr[2];
@@ -633,7 +639,8 @@ function maybeHandleOffensiveTrash(elems, text_arr, text) {
       return true;
     }
 
-    var arr = text.match(new RegExp("trash(?:es)? (?:one of )?" + player_re + "'s"));
+    var arr = text.match(new RegExp("trash(?:es)? (?:one of )?" + player_re +
+        "'s"));
     if (arr && arr.length == 2) {
       getPlayer(arr[1]).gainCard(elems[0], -1);
       return true;
@@ -661,7 +668,8 @@ function maybeHandleTrader(elems, text_arr, text) {
 
 // Handle Tunnel and any other place where revealing a card gains you card.
 function maybeHandleGainViaReveal(elems, text_arr, text) {
-  if (elems.length == 2 && text.match(/reveal(ing|s)? an? (.*) and gain(ing|s)? an? (.*)\./)) {
+  if (elems.length == 2 &&
+      text.match(/reveal(ing|s)? an? (.*) and gain(ing|s)? an? (.*)\./)) {
     var player = getPlayer(text_arr[0]);
     if (!player) player = last_player;
     player.gainCard(elems[elems.length - 1], 1);
@@ -708,7 +716,7 @@ function handleGainOrTrash(player, elems, text, multiplier) {
         player.gainCard(elems[elem], total);
         // If trashed card is gained by someone, take it back out of the trash.
         if (text.match(/ gain(s|ed)? the trashed /) ||
-            topScope() == "Noble Brigand") {
+            (topScope() == "Noble Brigand" && text.match(/ gains? the /))) {
           tablePlayer.gainCard(elems[elem], -total);
         }
       }
@@ -757,13 +765,17 @@ var last_summary = '';
 // chat stream. It remembers the last message, and doesn't print out the new
 // info message if it is the same as the old.
 function showCurrentInfo() {
+  function htmlToText(html) {
+    return $('<span></span>').html(html).text();
+  }
+
   if (!debug['infoData']) return;
   var summary = '';
   showStatus('all', function(msg) {
     summary += msg + "\n";
   });
   if (summary != last_summary) {
-    logDebug('infoData', summary);
+    logDebug('infoData', htmlToText(summary));
     last_summary = summary;
   }
 }
@@ -994,7 +1006,8 @@ function initialize(doc) {
   } else {
     var p = "(?:([^,]+), )";    // an optional player
     var pl = "(?:([^,]+),? )";  // the last player (might not have a comma)
-    var re = new RegExp("Turn order is " + p + "?" + p + "?" + p + "?" + pl + "and then (.+).");
+    var re = new RegExp("Turn order is " + p + "?" + p + "?" + p + "?" + pl +
+        "and then (.+).");
     arr = doc.innerText.match(re);
   }
   if (arr == null) {
@@ -1039,8 +1052,8 @@ function initialize(doc) {
     if (self_index != -1) {
       wait_time = 300 * self_index;
     }
-    console.log("Waiting " + wait_time + " to introduce " +
-        "(index is: " + self_index + ").");
+    console.log("Waiting " + wait_time + " to introduce " + "(index is: " +
+        self_index + ").");
     setTimeout("maybeIntroducePlugin()", wait_time);
   }
 }
@@ -1113,7 +1126,7 @@ function setupChatCommands() {
     help: 'show this list of commands',
     execute: writeHelp
   };
-  
+
   // Add the view's commands
   view.addChatCommands();
 }
@@ -1141,7 +1154,7 @@ function showStatus(request, showFunc) {
   if (my_name == undefined || my_name == null) my_name = "Me";
 
   showFunc = showFunc || writeText;
-  
+
   // Write status via "show", replacing "You" with the player's own name.
   function writeStatus(msg) {
     showFunc(">> " + msg.replace(/\bYou([:=])/g, my_name + "$1"));
@@ -1184,7 +1197,7 @@ function hideExtension() {
   $('#log').show();
   $('#full_log').hide();
   $('#optionPanelHolder').hide();
-  
+
   view.hide();
 }
 
@@ -1261,12 +1274,14 @@ function handleGameEnd(doc) {
           if (player_name == "You") {
             player_name = rewriteName(name);
           }
-          var re = new RegExp(RegExp.quote(player_name) + " has (-?[0-9]+) points");
+          var re = new RegExp(RegExp.quote(player_name) +
+              " has (-?[0-9]+) points");
           var arr = summary.match(re);
           if (arr && arr.length == 2) {
             var score = ("" + players[player].getScore()).replace(/^.*=/, "");
             if (score.indexOf("+") != -1) {
-              score = ("" + players[player].getScore()).replace(/^([0-9]+)\+.*/, "$1");
+              score = ("" + players[player].getScore()).replace(/^([0-9]+)\+.*/,
+                  "$1");
             }
             if (has_correct_score && arr[1] != score) {
               has_correct_score = false;
@@ -1549,14 +1564,15 @@ function buildStatusMessage() {
 }
 
 function enterLobby() {
-  if (optionSet('status_announce') &&
-      $('#lobby').length != 0 && $('#lobby').css('display') != "none") {
+  if (optionSet('status_announce') && $('#lobby').length != 0 &&
+      $('#lobby').css('display') != "none") {
     // Set the original status message.
     writeText(buildStatusMessage());
 
     // Handle updating status message as needed.
     $('#entry').css('display', 'none');
-    $('#entry').after('<input id="fake_entry" class="entry" style="width: 350px;">');
+    $('#entry')
+        .after('<input id="fake_entry" class="entry" style="width: 350px;">');
     $('#fake_entry').keyup(function(event) {
       var value = $('#fake_entry').val();
       var re = new RegExp("^/me(?: (.*))?$");
