@@ -1368,21 +1368,23 @@ function maybeStartOfGame(node) {
     console.log("--- starting game ---");
     removeStoredLog();
     localStorage.removeItem("disabled");
+    started = true;
   } else if (localStorage["log"]) {
-    try {
-      restoring_log = true;
-      console.log("--- replaying history ---");
-      disabled = localStorage['disabled'];
-      if (!restoreHistory(node)) return;
-    } finally {
-      restoring_log = false;
-    }
+    view.restoreLogWhenReady(function() {
+      try {
+        restoring_log = true;
+        console.log("--- replaying history ---");
+        disabled = localStorage['disabled'];
+        if (restoreHistory(node)) {
+          started = true;
+        }
+      } finally {
+        restoring_log = false;
+      }
+    });
   } else {
     // It's some other situation, so we don't start the game
-    return;
   }
-
-  started = true;
 }
 
 // Returns true if the log node should be handled as part of the game.
@@ -1466,7 +1468,8 @@ function handle(doc) {
 
   // We process log entries to the hidden log, copying them to the full_log.
   // Don't process those copies.
-  if (doc.parentNode.id == 'full_log') return;
+  var parentID = (doc.parentNode ? doc.parentNode.id : undefined);
+  if (parentID == 'full_log') return;
 
   // When the lobby screen is built, make sure point tracker settings are used.
   if (doc.className && doc.className == "constr") {
@@ -1493,7 +1496,7 @@ function handle(doc) {
 
     view.handle(doc);
 
-    if (doc.parentNode.id == 'log') {
+    if (parentID == 'log') {
       if (logEntryForGame(doc)) {
         handleLogEntry(doc);
         if (started) {
@@ -1503,7 +1506,7 @@ function handle(doc) {
     }
 
     // The child nodes of "supply" tell us whether certain cards are in play.
-    if (doc.parentNode.id == "supply") {
+    if (parentID == "supply") {
       show_action_count = false;
       show_unique_count = false;
       show_duchy_count = false;
@@ -1520,13 +1523,13 @@ function handle(doc) {
     if (!started) return;
 
     // If we're adding choices, it may be the choices at the end of the game
-    if (doc.constructor == HTMLDivElement && doc.parentNode.id == "choices") {
+    if (doc.constructor == HTMLDivElement && parentID == "choices") {
       handleGameEnd(doc);
       if (!started) return;
     }
 
     // We follow the chat lines to see if it says something we should react to.
-    if (doc.parentNode.id == "chat" && doc.childNodes.length > 2) {
+    if (parentID == "chat" && doc.childNodes.length > 2) {
       handleChatText(doc.childNodes[1].innerText.slice(0, -1),
           doc.childNodes[2].nodeValue);
     }

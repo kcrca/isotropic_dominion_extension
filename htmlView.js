@@ -144,7 +144,8 @@ function HtmlView() {
   var groups = {};
 
   // Are we in text mode (vs. image mode) in the UI?
-  var testMode;
+  var textMode;
+  var pendingLogRestore;
 
   var splitOutIslands = false;
 
@@ -524,12 +525,12 @@ function HtmlView() {
     }
 
     var ptab = $('<table/>');
-    if (!testMode) {
+    if (!textMode) {
       ptab.attr('align', 'right');
     }
     ptab.attr('id', 'playerDataTable');
 
-    if (testMode) {
+    if (textMode) {
       var outerTable = $('<table/>');
       outerTable.attr('id', 'playerDataArranger');
       var row = addRow(outerTable, null,
@@ -556,7 +557,7 @@ function HtmlView() {
   // As needed, set per-card count columns.
   function maybeSetupCardCounts() {
     rewriteTree(function () {
-      if (testMode) {
+      if (textMode) {
         setupPerPlayerTextCardCounts();
       } else {
         setupPerPlayerImageCardCounts('kingdom');
@@ -817,26 +818,34 @@ function HtmlView() {
     $('div[reinserted="true"]').css('display', 'none');
   };
 
-  // Discover whether we are in text mode or image mode. The primary bit of state
+  // Discover whether we are in text mode or image mode. The primary state
   // that this sets is for the benefit of CSS: If we are in text mode, body tag
   // has the "textMode" class, otherwise it has the "imageMode" class. In both
   // cases it has the "playing" class, which allows CSS to tell the difference
   // between being in the lobby vs. playing an actual game.
   function discoverGUIMode() {
     if (inLobby()) return;
+    if (textMode != undefined) return;
 
     $('#chat ~ a[href^="/mode/"]').each(function() {
       // The link is to the "text" mode when it's in image mode and vice versa.
-      testMode = $(this).text().indexOf("text") < 0;
+      textMode = $(this).text().indexOf("text") < 0;
     });
+    if (textMode == undefined) return;
 
     // Setting the class enables css selectors that distinguish between the modes.
     $("#body").addClass("playing").addClass(
-        testMode ? "textMode" : "imageMode");
+        textMode ? "textMode" : "imageMode");
+
+    setupPerPlayerInfoArea();
+    if (pendingLogRestore) {
+      pendingLogRestore();
+      pendingLogRestore = undefined;
+    }
   }
 
   this.inTextMode = function() {
-    return testMode;
+    return textMode;
   };
 
 // Drop any state related to knowing text vs. image mode.
@@ -857,6 +866,8 @@ function HtmlView() {
   };
 
   this.handle = function(doc) {
+    discoverGUIMode();
+
     activeData.startHandle(doc);
 
     if (!started) {
@@ -896,6 +907,14 @@ function HtmlView() {
     };
   };
 
+  this.restoreLogWhenReady = function(restoreFunc) {
+    if (textMode != undefined) {
+      restoreFunc();
+    } else {
+      pendingLogRestore = restoreFunc;
+      discoverGUIMode();
+    }
+  };
+
   discoverGUIMode();
-  setupPerPlayerInfoArea();
 }

@@ -90,4 +90,8 @@ function OrigView() {
 
   this.suppliedCardsKnown = function() {
   };
+
+  this.restoreLogWhenReady = function(restoreFunc) {
+    restoreFunc();
+  };
 }
