@@ -54,13 +54,15 @@ var extension_version = 'Unknown';
 
 var restoring_log = false;
 
+var pending_log_entries = 0;
+
 var selfTests = new SelfTests();
 
 var view = createView();
 
 var chatCommands = {};
 
-var debug = {'actvData': false, 'infoData': true, 'logShown': true };
+var debug = {click: true, 'actvData': false, 'infoData': true, 'logShown': true };
 
 // Quotes a string so it matches literally in a regex.
 RegExp.quote = function(str) {
@@ -786,7 +788,10 @@ function handleLogEntry(node) {
   // Do not handle copied log entries.
   if (node.parentNode.id == 'full_log') return;
 
-  logDebug('logShown', node.innerText);
+  // The replace makes the turn changes easier to find in the log
+  logDebug('logShown', node.innerText.replace(/—/g, '———————————————————————'));
+
+  pending_log_entries--;
 
   if (maybeHandleGameStart(node)) return;
 
@@ -1346,6 +1351,11 @@ function maybeStartOfGame(node) {
     return;
   }
 
+  // This happens sometime and we should treat it as nothing at all
+  if (localStorage.log == 'null' || localStorage.log == '') {
+    localStorage.removeItem('log');
+  }
+
   if (localStorage.getItem("log") == undefined &&
       nodeText.indexOf("Your turn 1 —") != -1) {
     // We haven't seen a turn order, but it's the user's turn 1. This must be a
@@ -1417,11 +1427,11 @@ function restoreHistory(node) {
 
   // First build a DOM tree of the old log messages in a copy of the log.
   var log_entries = $('<pre id="temp"></pre>').html(logHistory).children();
+  pending_log_entries = log_entries.length;
   log_entries.each(function() {
     var entry = $(this);
     if (entry.html() == node.innerHTML) return false;
     handleLogEntry(entry[0]);
-    return true;
   });
   return true;
 }

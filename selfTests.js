@@ -30,7 +30,9 @@ function SelfTests() {
       infoWindowTests(table);
     } finally {
       infoIsForTests = false;
+      logDebug('click', 'removing info window');
       $("body > div.black").remove();
+      logDebug('click', 'removed info window');
     }
   };
 
@@ -244,8 +246,9 @@ function SelfTests() {
 
   this.startInfoWIndowTests = function() {
     // Should not run these tests while restoring from log.
-    if (!restoring_log) {
+    if (!restoring_log && pending_log_entries < 0) {
       infoIsForTests = true;
+      logDebug('click', 'clicking on info button');
       $('button:contains(info)').click();
     }
   };
