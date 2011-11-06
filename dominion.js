@@ -1382,8 +1382,15 @@ function maybeStartOfGame(node) {
   } else if (localStorage["log"]) {
     view.restoreLogWhenReady(function() {
       try {
-        // Never restore if we're in the lobby
-        if (inLobby()) return;
+        if (inLobby()) {
+          // If we're in the lobby and there is a log, a previous game in this
+          // same browser was exited, but upon logging back in, the server put
+          // the user in the lobby. Which means the server dropped that game. So
+          // we need to do drop it too, and make sure that any remaining
+          // view-related behavior is terminated.
+          rejectStoredLog();
+          return;
+        }
 
         restoring_log = true;
         console.log("--- replaying history ---");
@@ -1400,16 +1407,14 @@ function maybeStartOfGame(node) {
   }
 }
 
+function rejectStoredLog() {
+  removeStoredLog();
+  removePlayerData();
+}
+
 // Returns true if the log node should be handled as part of the game.
 function logEntryForGame(node) {
   if (inLobby()) {
-    // If we're in the lobby and there is a log, that means that a previous game
-    // in this same browser was exited, but upon logging back in, the server put
-    // the user in the lobby. Which means the server dropped that game. So we
-    // need to do drop it too, and make sure that any remaining view-related
-    // behavior is terminated.
-    removeStoredLog();
-    removePlayerData();
     return false;
   }
 
