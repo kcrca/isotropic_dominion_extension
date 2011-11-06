@@ -1382,6 +1382,9 @@ function maybeStartOfGame(node) {
   } else if (localStorage["log"]) {
     view.restoreLogWhenReady(function() {
       try {
+        // Never restore if we're in the lobby
+        if (inLobby()) return;
+
         restoring_log = true;
         console.log("--- replaying history ---");
         disabled = localStorage['disabled'];
@@ -1502,9 +1505,9 @@ function handle(doc) {
   }
 
   try {
-    if (!started && maybeOfferToPlay(doc)) return;
-
     view.handle(doc);
+
+    if (!started && maybeOfferToPlay(doc)) return;
 
     if (parentID == 'log') {
       if (logEntryForGame(doc)) {
