@@ -141,7 +141,6 @@ function HtmlView() {
   var maxTradeRoute = undefined;
   var seenFirstTurn = false;
   var activeData = new ActiveData(this);
-  var groups = {};
 
   // Are we in text mode (vs. image mode) in the UI?
   var textMode;
@@ -157,9 +156,7 @@ function HtmlView() {
 
   this.setupPlayer = function(player) {
     player.icon = undefined;
-
-    // The set of "other" cards -- ones that aren't in the supply piles
-    player.otherCards = {};
+    var groups = {};
 
     if (player.isTable) {
       player.idPrefix = "table";
