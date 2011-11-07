@@ -37,6 +37,7 @@ var debug_mode = false;
 var last_player = null;
 var last_reveal_player = null;
 var last_reveal_card = null;
+var last_gained_from_trash;
 
 var turn_number = 0;
 
@@ -62,7 +63,7 @@ var view = createView();
 
 var chatCommands = {};
 
-var debug = {click: true, 'actvData': false, 'infoData': true, 'logShown': true };
+var debug = {'actvData': false, 'infoData': true, 'logShown': true };
 
 // Quotes a string so it matches literally in a regex.
 RegExp.quote = function(str) {
@@ -662,7 +663,7 @@ function maybeHandleTournament(elems, text_arr, text) {
 
 function maybeHandleTrader(elems, text_arr, text) {
   if (elems.length == 3 && text.match(/a Trader to gain a Silver/)) {
-    getPlayer(text_arr[0]).gainCard(elems[2], -1);
+    getPlayer(text_arr[0]).gainCard(elems[2], -1, last_gained_from_trash);
     return true;
   }
   return false;
@@ -720,6 +721,7 @@ function handleGainOrTrash(player, elems, text, multiplier) {
         if (text.match(/ gain(s|ed)? the trashed /) ||
             (topScope() == "Noble Brigand" && text.match(/ gains? the /))) {
           tablePlayer.gainCard(elems[elem], -total);
+          last_gained_from_trash = true;
         }
       }
     }
@@ -851,7 +853,7 @@ function handlePlayLog(node) {
 
   view.handleLog(elems, text, node.innerText);
 
-  // With no elems, maybe the view needs to see this, but nothing else does.
+  // With no elements, maybe the view needs to see this, but nothing else does.
   if (elems.length == 0) {
     if (maybeReturnToSupply(node.innerText)) return;
     return;
@@ -869,6 +871,7 @@ function handlePlayLog(node) {
   if (maybeHandleGainViaReveal(elems, text, node.innerText)) return;
   if (maybeHandleNobleBrigand(elems, text, node.innerText)) return;
 
+  last_gained_from_trash = false;
   if (text[0] == "trashing") {
     var player = last_player;
     if (topScope() == "Watchtower") {
