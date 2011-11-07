@@ -764,15 +764,15 @@ function maybeOfferToPlay(node) {
 
 var last_summary = '';
 
+function htmlToText(html) {
+  return $('<span></span>').html(html).text();
+}
+
 // If we're logging info data, write into the log the current info state, which
 // is the same info as if a user typed "!all", but we put it in the log, not the
 // chat stream. It remembers the last message, and doesn't print out the new
 // info message if it is the same as the old.
 function showCurrentInfo() {
-  function htmlToText(html) {
-    return $('<span></span>').html(html).text();
-  }
-
   if (!debug['infoData']) return;
   var summary = '';
   showStatus('all', function(msg) {

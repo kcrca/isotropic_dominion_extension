@@ -890,7 +890,7 @@ function HtmlView() {
       help:  "see card counts",
       execute: function(writeStatus) {
         allPlayers(function(player) {
-          writeStatus(player.countString());
+          writeStatus(htmlToText(player.countString()));
         });
       }
     };
