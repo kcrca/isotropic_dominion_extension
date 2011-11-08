@@ -133,17 +133,14 @@ html {
     height: 100%;
 }
 
-.playing #body {
-    height: 100%;
-    margin: 0 !important;
-}
-
-.playing #game {
+#body.playing #game {
     width: 100%;
     height: 100%;
 }
 
 #body.imageMode {
+    height: 100%;
+    margin: 0 !important;
     display: table;
 }
 
