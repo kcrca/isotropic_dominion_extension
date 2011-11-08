@@ -6,8 +6,7 @@
 
 /* !! The behavior of the log area is right, but it isn't full height at the start. */
 
-#optionPanel, .testInfo div.black,
-.internalInfoPage,
+#optionPanel,
 .you, .you *, #header > :not(.lobby) {
     background-color: #dbf8db;
 }
@@ -293,94 +292,4 @@ td.kingdom-column, td.basic-column {
 
 .playing .notInGame {
     display: none !important;
-}
-
-/*
- * The rest of the file are just css tweaks to the original UI to make it easier
- * to use. They have nothing to do with the point counter, just simple UI
- * improvements.
- */
-
-/*
- * Mark the selectable cards more clearly
- */
-a.buy, .kingdom-column .buy {
-    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.1, #ced0ff), color-stop(0.4, white)) !important;
-    background-image: -moz-linear-gradient(left center, white 10%, #ced0ff 40%) !important;
-}
-
-.basic-column .buy > .imbasic {
-    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.0, white), color-stop(1.0, #ced0ff)) !important;
-    background-image: -moz-linear-gradient(left center, white 0%, #ced0ff 100%) !important;
-}
-
-/* 
- * The 'card-...' styles override the colored backgrounds for card names to make
- * them less intense, so it's easier to read the text.
- */
-.card-treasure {
-    background: #fcedad !important;
-}
-
-.card-curse {
-    background: #e8d0e9 !important;
-}
-
-.card-victory {
-    background: #ceebc3 !important;
-}
-
-.card-reaction {
-    background: #cde5f3 !important;
-}
-
-.card-duration {
-    background: #ffd4aa !important;
-}
-
-/*
- * These use css, not images, to make a gradation from one color to the other.
- * Also they do it horizontally, not vertically, so there is more room to see
- * what's going on. (Each is done two ways because there is not yet browser
- * compatibility about this; overriding background-image is what is shown in
- * all the examples, although some validators choke on it.)
- */
-.card-victory-action {
-    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.3, #c0e4b1), color-stop(0.7, #f0f0f0)) !important;
-    background-image: -moz-linear-gradient(left center, #c0e4b1 30%, #f0f0f0 70%) !important;
-}
-
-.card-victory-treasure {
-    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.3, #c0e4b1), color-stop(0.7, #fce992)) !important;
-    background-image: -moz-linear-gradient(left center, #c0e4b1 30%, #fce992 70%) !important;
-}
-
-.card-treasure-reaction {
-    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.3, #fce992), color-stop(0.7, #c1e1f4)) !important;
-    background-image: -moz-linear-gradient(left center, #fce992 30%, #c1e1f4 70%) !important;
-}
-
-.card-victory-reaction {
-    background-image: -webkit-gradient(linear, left top, right top, color-stop(0.3, #c0e4b1), color-stop(0.7, #c1e1f4)) !important;
-    background-image: -moz-linear-gradient(left center, #c0e4b1 30%, #c1e1f4 70%) !important;
-}
-
-/* When a card is removed from play in text mode, make that easier to see. */
-.gone {
-    background: #ccc;
-}
-
-/* Mark text mode column headers for supply cards so they're easier to spot .*/
-body.textMode [grown]:not(:empty) {
-    background: #f2f2f2;
-}
-
-/* Tweaks that appl=y to leaderboard, which shouldn't wrap things. */
-tr.level td {
-    white-space: nowrap;
-}
-
-th {
-    text-align: left;
-    padding: 3px 15px;
 }
