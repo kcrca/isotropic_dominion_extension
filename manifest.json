@@ -16,17 +16,20 @@
             "matches": [ "http://*.dominion-point-counter.appspot.com/debug*" ]
         },
         {
-            "js": [ "jquery.js", "earlyPage.js", "options.js" ],
+            "js": [ "jquery.js", "earlyPage.js", "options.js",  "improvedUI.js"
+            ],
             "css": [ "playerData.css" ],
             "matches": [ "http://dominion.isotropic.org/" ]
         },
         {
-            "js": [ "login.js", "jquery.js", "earlyPage.js", "options.js" ],
+            "js": [ "login.js", "jquery.js", "earlyPage.js", "options.js",
+                "improvedUI.js"  ],
             "css": [ "playerData.css" ],
             "matches": [ "http://dominion.isotropic.org/*loggedin*" ]
         },
         {
-            "css": [ "base.css" ],
+            "js": [ "improvedUI.js" ],
+            "css": [ "base.css", "improvedUI.css" ],
             "matches": [ "http://dominion.isotropic.org/*" ]
         }
     ],

@@ -1,0 +1,20 @@
+#header, #lobby > *, #log {
+    border-bottom: rgb(0, 204, 204) solid 2px !important;
+    border-top: none;
+    margin-top: 0.5em !important;
+    margin-bottom: 0.5em !important;
+    padding-bottom: 0.5em;
+}
+
+#header {
+    border-bottom:  none !important;
+}
+
+#lobby > .constr {
+    width: 100%;
+}
+
+#chat {
+    border:  none !important;
+    height: 10em;
+}

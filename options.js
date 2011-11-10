@@ -70,6 +70,15 @@ function optionSave(evt) {
   localStorage[name] = button.attr('checked');
 }
 
+optionButtons = {
+  allow_disable: {text: "Allow opponents to disable point counter with !disable."},
+  status_announce: {text: "Change lobby status to announce you use point counter.",
+    extra: "Mandatory if disabling is not allowed."},
+  show_card_counts: {text: "Show every player's card counts for each card"},
+  show_active_data: {text: "Show current data for the active player",
+    extra: "Beta feature"}
+};
+
 function optionBuildControls(tag, showTitle) {
   showTitle = showTitle != undefined ? showTitle : true;
   tag = tag || 'div';
@@ -79,16 +88,9 @@ function optionBuildControls(tag, showTitle) {
     div.append('<h3>Dominion Point Counter Options</h3>');
   }
 
-  optionButtons = {};
-  optionGenerate('allow_disable', div,
-      "Allow opponents to disable point counter with !disable.");
-  optionGenerate('status_announce', div,
-      "Change lobby status to announce you use point counter.",
-      "Mandatory if disabling is not allowed.");
-  optionGenerate('show_card_counts', div,
-      "Show every player's card counts for each card");
-  optionGenerate('show_active_data', div,
-      "Show current data for the active player", "Beta feature");
+  for (var opt in optionButtons) {
+    optionGenerate(opt, div, optionButtons[opt].text, optionButtons[opt].extra);
+  }
 
   optionLoadAll();
 
