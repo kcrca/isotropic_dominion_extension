@@ -4,7 +4,7 @@
             "js": [
                 "jquery.js", "card_list.js", "card_map.js", "fields.js",
                 "options.js", "activeData.js", "htmlView.js", "origView.js",
-                "selfTests.js", "dominion.js"
+                "selfTests.js", "dominion.js", "improvedUI.js"
             ],
             "css": [ "playerData.css" ],
             "matches": [ "http://dominion.isotropic.org/play" ]
@@ -16,7 +16,7 @@
             "matches": [ "http://*.dominion-point-counter.appspot.com/debug*" ]
         },
         {
-            "js": [ "jquery.js", "earlyPage.js", "options.js",  "improvedUI.js"
+            "js": [ "jquery.js", "earlyPage.js", "options.js", "improvedUI.js"
             ],
             "css": [ "playerData.css" ],
             "matches": [ "http://dominion.isotropic.org/" ]
@@ -28,7 +28,6 @@
             "matches": [ "http://dominion.isotropic.org/*loggedin*" ]
         },
         {
-            "js": [ "improvedUI.js" ],
             "css": [ "base.css", "improvedUI.css" ],
             "matches": [ "http://dominion.isotropic.org/*" ]
         }

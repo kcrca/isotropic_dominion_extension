@@ -18,3 +18,11 @@
     border:  none !important;
     height: 10em;
 }
+
+div.automatch input {
+    margin-left: 1em !important;
+}
+
+div.automatch > span {
+    white-space: nowrap;
+}
