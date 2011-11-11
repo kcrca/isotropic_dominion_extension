@@ -50,8 +50,8 @@ function ImprovedUI() {
   function handleLoginPage(doc) {
   }
 
-  function handleLoginInfoPage(doc) {
-    var submitButton = doc.filter('input[type="submit"]');
+  function handleLoginInfoPage() {
+    var submitButton = $('input[type="submit"]');
     // Press the submit button if we don't see an error message
     if (submitButton.length > 0 &&
         $('body > p:contains("Choose a ")').length > 0) {
@@ -108,15 +108,6 @@ function ImprovedUI() {
       // Put in spaces to allow breaks between the items
       kids.find('span').after('<wbr>');
     });
-  }
-
-  function ensureOrder(first, second) {
-    var node = $(first);
-    if (node.length > 0 && node.next(second).length == 0) {
-      rewriteTree(function() {
-        node.after($(second));
-      });
-    }
   }
 
   // Have we ever seen an inLobby marker? If not, then this is the first time we
@@ -181,7 +172,7 @@ function ImprovedUI() {
     if (window.location.pathname == '/') {
       handleLoginPage(doc);
     } else if (window.location.pathname == '/loggedin') {
-      handleLoginInfoPage(doc);
+      handleLoginInfoPage();
     } else if (window.location.pathname == '/play') {
       if (typeof(rewritingTree) != 'undefined' && rewritingTree) return;
       handlePlayPage(doc);
