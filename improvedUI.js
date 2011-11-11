@@ -98,15 +98,19 @@ function ImprovedUI() {
   }
 
   function capitalizeForm(doc, selector) {
-    var kids = doc.filter(selector);
-    if (kids.length == 0) return;
+    var top = doc.filter(selector);
+    if (top.length == 0) return;
     rewriteTree(function () {
-      var textNodes = getTextNodesIn(kids);
+      var textNodes = getTextNodesIn(top);
       for (var i = 0; i < textNodes.length; i++) {
-        textNodes[i].nodeValue = initialUpperCase(textNodes[i].nodeValue);
+        var node = textNodes[i];
+        node.nodeValue = initialUpperCase(node.nodeValue);
+        if (node.parentNode == top[0] || node.parentNode.tagName == 'TD') {
+          $(node).wrap('<span class="formPrompt"/>');
+        }
       }
       // Put in spaces to allow breaks between the items
-      kids.find('span').after('<wbr>');
+      top.find('span').after('<wbr>');
     });
   }
 
@@ -152,7 +156,7 @@ function ImprovedUI() {
       capitalizeForm(doc, 'table.constr');
 
       var log;
-      if (foundLogHeight && (log = $('#log')).length > 0) {
+      if (!foundLogHeight && (log = $('#log')).length > 0) {
         rewriteTree(function () {
           var spacer = $('<div class="logline logSpacer">Spacer</div>');
           spacer.css('visibility', 'hidden');

@@ -26,3 +26,7 @@ div.automatch input {
 div.automatch > span {
     white-space: nowrap;
 }
+
+.formPrompt {
+    font-weight: bold;
+}
