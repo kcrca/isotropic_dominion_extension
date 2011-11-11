@@ -853,9 +853,11 @@ function HtmlView() {
   }
 
   this.remove = function() {
-    forgetGUIMode();
-    removePlayerArea();
-    $('#playerDataArranger').remove();
+    rewriteTree(function() {
+      forgetGUIMode();
+      removePlayerArea();
+      $('#playerDataArranger').remove();
+    });
   };
 
   this.stop = function() {
