@@ -3,6 +3,7 @@ function ImprovedUI() {
 
   var doneAutoLogin;
 
+  //noinspection JSUnusedLocalSymbols
   function save() {
     localStorage.uiInfo = JSON.stringify(uiInfo);
   }
@@ -109,7 +110,7 @@ function ImprovedUI() {
     });
   }
 
-  function ensureOrder(doc, first, second) {
+  function ensureOrder(first, second) {
     var node = $(first);
     if (node.length > 0 && node.next(second).length == 0) {
       rewriteTree(function() {
@@ -121,11 +122,36 @@ function ImprovedUI() {
   // Have we ever seen an inLobby marker? If not, then this is the first time we
   // are on the page and really are in the lobby, we just don't know it yet.
   var seenLobby = false;
+  var spanTemplate;
 
   function handlePlayPage(doc) {
-    // Quick tests for the common things we don't need to look at.
+    // Quick tests for the changes that come all the time, not just on load.
     var tag = doc[0].tagName;
-    if (tag == 'SPAN' || tag == 'BR' || tag == 'INPUT') return;
+    if (tag == 'INPUT') return;
+    if (tag == 'SPAN') {
+      if (!spanTemplate && doc.hasClass('choice2') &&
+          $('span.marker', doc).length > 0) {
+        var dup = doc.clone();
+        $('[id]', dup).removeAttr('id');
+        $('input', dup).attr('name', 'spanTemplate');
+        $('label', dup).removeAttr('listen').text('Spacer');
+        $('.pstat').text('Short Status');
+        dup.css('visibility', 'hidden');
+        spanTemplate = dup;
+        rewriteTree(function() {
+          $('player_table br').replaceWith(spanTemplate.clone());
+        });
+      }
+      return;
+    }
+    if (tag == 'BR') {
+      if (spanTemplate) {
+        rewriteTree(function() {
+          doc.replaceWith(spanTemplate.clone());
+        });
+      }
+      return;
+    }
     if (doc.hasClass('logline')) return;
 
     var isInLobby = inLobby();
@@ -134,8 +160,8 @@ function ImprovedUI() {
       capitalizeForm(doc, 'div.automatch');
       capitalizeForm(doc, 'table.constr');
 
-      ensureOrder(doc, '#lobby', ' div.automatch');
-      ensureOrder(doc, 'div.automatch', ' #log');
+      ensureOrder('#lobby', ' div.automatch');
+      ensureOrder('div.automatch', ' #log');
     }
   }
 
