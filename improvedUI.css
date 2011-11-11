@@ -1,6 +1,6 @@
-#header, #lobby > *, #log {
+#header, #lobby > *, #log, div.automatch {
     border-bottom: rgb(0, 204, 204) solid 2px !important;
-    border-top: none;
+    border-top: none !important;
     margin-top: 0.5em !important;
     margin-bottom: 0.5em !important;
     padding-bottom: 0.5em;

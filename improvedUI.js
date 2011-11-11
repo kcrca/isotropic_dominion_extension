@@ -98,6 +98,7 @@ function ImprovedUI() {
 
   function capitalizeForm(doc, selector) {
     var kids = doc.filter(selector);
+    if (kids.length == 0) return;
     rewriteTree(function () {
       var textNodes = getTextNodesIn(kids);
       for (var i = 0; i < textNodes.length; i++) {
@@ -108,30 +109,37 @@ function ImprovedUI() {
     });
   }
 
+  function ensureOrder(doc, first, second) {
+    var node = $(first);
+    if (node.length > 0 && node.next(second).length == 0) {
+      rewriteTree(function() {
+        node.after($(second));
+      });
+    }
+  }
+
   // Have we ever seen an inLobby marker? If not, then this is the first time we
   // are on the page and really are in the lobby, we just don't know it yet.
   var seenLobby = false;
 
   function handlePlayPage(doc) {
+    // Quick tests for the common things we don't need to look at.
+    var tag = doc[0].tagName;
+    if (tag == 'SPAN' || tag == 'BR' || tag == 'INPUT') return;
+    if (doc.hasClass('logline')) return;
+
     var isInLobby = inLobby();
     seenLobby |= isInLobby;
     if (isInLobby || !seenLobby) {
-      if (doc.is('div.automatch')) {
-        capitalizeForm(doc, 'div.automatch');
-      }
-      if (doc.is('table.constr')) {
-        capitalizeForm(doc, 'table.constr');
-      }
-      if (doc.filter('#log').prev().attr('id') == 'header') {
-        rewriteTree(function() {
-          $('#header').after($('#lobby'));
-        });
-      }
+      capitalizeForm(doc, 'div.automatch');
+      capitalizeForm(doc, 'table.constr');
+
+      ensureOrder(doc, '#lobby', ' div.automatch');
+      ensureOrder(doc, 'div.automatch', ' #log');
     }
   }
 
   this.handle = function(doc) {
-
     if (window.location.pathname == '/') {
       handleLoginPage(doc);
     } else if (window.location.pathname == '/loggedin') {
