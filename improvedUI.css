@@ -19,14 +19,18 @@
     height: 10em;
 }
 
-div.automatch input {
+.formArea input {
     margin-left: 1em !important;
 }
 
-div.automatch > span {
+.formArea > span {
     white-space: nowrap;
 }
 
 .formPrompt {
     font-weight: bold;
+}
+
+table.constr td[colspan="2"] {
+    padding-left: 4ex;
 }

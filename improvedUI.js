@@ -152,8 +152,31 @@ function ImprovedUI() {
 
     var isInLobby = inLobby();
     if (isInLobby || !seenLobby) {
-      capitalizeForm(doc, 'div.automatch');
-      capitalizeForm(doc, 'table.constr');
+      $('div.automatch').add('table.constr').addClass('formArea');
+
+      capitalizeForm(doc, '.formArea');
+      
+      rewriteTree(function () {
+        $('#propose_button:contains("propose")').text('Propose game with:');
+        $('table.constr tr:first-child td:first-child > input:first-child').each(function() {
+          $(this).before($('<span class="formPrompt">Game options:</span>'));
+        });
+        $('#player_table td[colspan="3"]').each(function() {
+          var $this = $(this);
+          if ($('span.formPrompt', $this).length > 0) return;
+          var textNodes = getTextNodesIn($this);
+          for (var i = 0; i < textNodes.length; i++) {
+            var node = textNodes[i];
+            var oldText = node.nodeValue;
+            var newText = oldText.replace(/Your status is/, 'Your status:');
+            if (newText != oldText) {
+              node.nodeValue = newText;
+              $(node).wrap('<span class="formPrompt"/>');
+            }
+          }
+        });
+        
+      });
 
       var log;
       if (!foundLogHeight && (log = $('#log')).length > 0) {
