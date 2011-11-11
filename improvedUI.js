@@ -123,6 +123,7 @@ function ImprovedUI() {
   // are on the page and really are in the lobby, we just don't know it yet.
   var seenLobby = false;
   var spanTemplate;
+  var foundLogHeight = false;
 
   function handlePlayPage(doc) {
     // Quick tests for the changes that come all the time, not just on load.
@@ -155,14 +156,25 @@ function ImprovedUI() {
     if (doc.hasClass('logline')) return;
 
     var isInLobby = inLobby();
-    seenLobby |= isInLobby;
     if (isInLobby || !seenLobby) {
       capitalizeForm(doc, 'div.automatch');
       capitalizeForm(doc, 'table.constr');
 
-      ensureOrder('#lobby', ' div.automatch');
-      ensureOrder('div.automatch', ' #log');
+      var log;
+      if (foundLogHeight && (log = $('#log')).length > 0) {
+        rewriteTree(function () {
+          var spacer = $('<div class="logline logSpacer">Spacer</div>');
+          spacer.css('visibility', 'hidden');
+          for (var i = 0; i < 7; i++) {
+            log.append(spacer.clone());
+          }
+          foundLogHeight = true;
+          log.css('min-height', log.css('height'));
+          log.find('.logSpacer').remove();
+        });
+      }
     }
+    seenLobby |= isInLobby;
   }
 
   this.handle = function(doc) {
