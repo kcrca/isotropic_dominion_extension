@@ -91,3 +91,8 @@ th {
 div.black {
     background-color: rgba(128, 128, 128, 0.5);
 }
+
+/* Align annotations next to a card at the top, to packe more efficiently */
+.imbasic {
+    vertical-align: top;
+}
