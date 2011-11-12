@@ -149,7 +149,9 @@ html {
 }
 
 .internalInfoPage {
-    font: bold italic;
+    font-weight: bold;
+    font-style: italic;
+    font-family: bold italic,sans-serif;
 }
 
 .tall {
