@@ -51,11 +51,13 @@ function ImprovedUI() {
   }
 
   function handleLoginInfoPage() {
+    var shouldClick = !doneAutoLogin && optionSet('auto_login');
+    $(document.body).css('visibility', shouldClick ? 'hidden' : 'visible');
     var submitButton = $('input[type="submit"]');
     // Press the submit button if we don't see an error message
     if (submitButton.length > 0 &&
         $('body > p:contains("Choose a ")').length > 0) {
-      if (optionSet('auto_login') && !doneAutoLogin) {
+      if (shouldClick) {
         submitButton.click();
         doneAutoLogin = true;
       }
