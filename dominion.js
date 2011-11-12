@@ -401,10 +401,12 @@ function maybeAddToFullLog(node) {
 }
 
 function putBackRealLog() {
-  // All children -- other things are there to be correctly located with log.
-  $('#header').after($('#logContainer').children());
-  $('#log').show();
-  $('#full_log').remove();
+  rewriteTree(function() {
+    // All children -- other things are there to be correctly located with log.
+    $('#header').after($('#logContainer').children());
+    $('#log').show();
+    $('#full_log').remove();
+  });
 }
 
 function findTrailingPlayer(text) {
