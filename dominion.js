@@ -1512,6 +1512,16 @@ function handle(doc) {
     });
   }
 
+  if (inLobby()) {
+    var log = $('#log');
+    if (log.prev().attr('id') == 'header') {
+      rewriteTree(function() {
+        $('#header').after($('#lobby'));
+      });
+    }
+    rejectStoredLog();
+  }
+
   try {
     view.handle(doc);
 
