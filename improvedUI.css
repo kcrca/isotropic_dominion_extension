@@ -31,6 +31,6 @@
     font-weight: bold;
 }
 
-table.constr td[colspan="2"] {
+table.constr tr.cardCriterion > td {
     padding-left: 4ex;
 }

@@ -121,46 +121,70 @@ function ImprovedUI() {
   var foundLogHeight = false;
 
   function handlePlayPage(doc) {
-    // Quick tests for the changes that come all the time, not just on load.
-    var tag = doc[0].tagName;
-    if (tag == 'INPUT') return;
-    if (tag == 'SPAN') {
-      if (!spanTemplate && doc.hasClass('choice2') &&
-          $('span.marker', doc).length > 0) {
-        var dup = doc.clone();
-        $('[id]', dup).removeAttr('id');
-        $('input', dup).attr('name', 'spanTemplate');
-        $('label', dup).removeAttr('listen').text('Spacer');
-        $('.pstat').text('Short Status');
-        dup.css('visibility', 'hidden');
-        spanTemplate = dup;
-        rewriteTree(function() {
+    rewriteTree(function() {
+      // Quick tests for the changes that come all the time, not just on load.
+      var tag = doc[0].tagName;
+      if (tag == 'INPUT') return;
+      if (tag == 'SPAN') {
+        if (!spanTemplate && doc.hasClass('choice2') &&
+            $('span.marker', doc).length > 0) {
+          var dup = doc.clone();
+          $('[id]', dup).removeAttr('id');
+          $('input', dup).attr('name', 'spanTemplate');
+          $('label', dup).removeAttr('listen').text('Spacer');
+          $('.pstat').text('Short Status');
+          dup.css('visibility', 'hidden');
+          spanTemplate = dup;
           $('player_table br').replaceWith(spanTemplate.clone());
-        });
+        }
+        return;
       }
-      return;
-    }
-    if (tag == 'BR') {
-      if (spanTemplate) {
-        rewriteTree(function() {
+      if (tag == 'BR') {
+        if (spanTemplate) {
           doc.replaceWith(spanTemplate.clone());
-        });
+        }
+        return;
       }
-      return;
-    }
-    if (doc.hasClass('logline')) return;
+      if (doc.hasClass('logline')) return;
 
-    var isInLobby = inLobby();
-    if (isInLobby || !seenLobby) {
-      $('div.automatch').add('table.constr').addClass('formArea');
+      var isInLobby = inLobby();
+      if (isInLobby || !seenLobby) {
+        $('div.automatch').add('table.constr').addClass('formArea');
 
-      capitalizeForm(doc, '.formArea');
-      
-      rewriteTree(function () {
+        if (tag == 'TR') {
+          // The only rows that get added in the lobby are under the card criteria
+          // area.
+          doc.addClass('cardCriterion');
+          return;
+        }
+        if (tag == 'SELECT') {
+          var tr = doc.parents('tr.cardCriterion');
+          if (tr.length > 0 && doc.text().indexOf('--') >= 0) {
+            $('option', doc).each(function() {
+              var $this = $(this);
+              var orig = $this.text();
+              var updated = orig;
+              if (orig == 'costs-potion') {
+                updated = 'Costs potion';
+              } else {
+                updated =
+                    orig.replace('-potion', ' + potion').replace('=', ': ')
+                        .replace(/'cost: /i, 'Cost: $').replace(/-/g, ' ');
+              }
+              if (orig != updated) $this.text(updated);
+            });
+            capitalizeForm(doc, '*');
+          }
+        }
+
+        capitalizeForm(doc, '.formArea');
+
         $('#propose_button:contains("propose")').text('Propose game with:');
-        $('table.constr tr:first-child td:first-child > input:first-child').each(function() {
-          $(this).before($('<span class="formPrompt">Game options:</span>'));
-        });
+        $('table.constr tr:first-child td:first-child > input:first-child')
+            .each(function() {
+              $(this)
+                  .before($('<span class="formPrompt">Game options:</span>'));
+            });
         $('#player_table td[colspan="3"]').each(function() {
           var $this = $(this);
           if ($('span.formPrompt', $this).length > 0) return;
@@ -175,12 +199,9 @@ function ImprovedUI() {
             }
           }
         });
-        
-      });
 
-      var log;
-      if (!foundLogHeight && (log = $('#log')).length > 0) {
-        rewriteTree(function () {
+        var log;
+        if (!foundLogHeight && (log = $('#log')).length > 0) {
           var spacer = $('<div class="logline logSpacer">Spacer</div>');
           spacer.css('visibility', 'hidden');
           for (var i = 0; i < 7; i++) {
@@ -189,10 +210,10 @@ function ImprovedUI() {
           foundLogHeight = true;
           log.css('min-height', log.css('height'));
           log.find('.logSpacer').remove();
-        });
+        }
       }
-    }
-    seenLobby |= isInLobby;
+      seenLobby |= isInLobby;
+    });
   }
 
   this.handle = function(doc) {
